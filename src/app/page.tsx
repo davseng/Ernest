@@ -1,15 +1,45 @@
-export default function Home() {
+import Link from "next/link";
+
+import { assets } from "@/data/assets";
+
+export default function Dashboard() {
+  const asset = assets[0];
+
   return (
-    <main>
-      <div className="content">
-        <p className="eyebrow">Ernest</p>
-        <h1>Your boat or RV, understood.</h1>
-        <p className="lede">
-          A private, structured home for your asset&apos;s systems, components, and
-          documentation—built to make expert answers possible.
-        </p>
-        <p className="status">Product development is getting underway.</p>
-      </div>
-    </main>
+    <div className="app-shell">
+      <header className="site-header">
+        <Link className="brand" href="/" aria-label="Ernest home">
+          <span className="brand-mark" aria-hidden="true">E</span>
+          Ernest
+        </Link>
+        <span className="demo-label">Demo workspace</span>
+      </header>
+
+      <main className="page-wrap">
+        <section className="page-heading">
+          <p className="eyebrow">Overview</p>
+          <h1>Your assets</h1>
+          <p className="lede">The essential details of the things you care for.</p>
+        </section>
+
+        <Link className="asset-card" href={`/assets/${asset.id}`}>
+          <div className="asset-card-top">
+            <div className="asset-icon" aria-hidden="true">
+              <svg viewBox="0 0 32 32"><path d="M5 20h22l-4 6H10l-5-6Zm6-2V8h9l4 10H11Zm2-8v8h8.8l-3.2-8H13Z" /></svg>
+            </div>
+            <span className="type-pill">{asset.type}</span>
+          </div>
+          <div className="asset-card-body">
+            <h2>{asset.name}</h2>
+            <p className="asset-spec">{asset.year} {asset.make} {asset.model}</p>
+            <p className="asset-summary">{asset.summary}</p>
+          </div>
+          <div className="asset-card-footer">
+            <span>{asset.systems.length} systems</span>
+            <span className="view-link">View asset <span aria-hidden="true">→</span></span>
+          </div>
+        </Link>
+      </main>
+    </div>
   );
 }

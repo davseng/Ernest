@@ -2,7 +2,7 @@
 
 ## Status
 
-This document describes the intended architecture, not the current implementation. Today the repository is a stateless Next.js application shell with no authentication, database, object storage, AI, retrieval, or local-agent integration.
+This document describes the intended architecture beyond the current implementation. Today the repository is a stateless Next.js application with a mock-data dashboard and asset detail route. Typed in-memory records model the asset → system → component hierarchy; there is no authentication, database, object storage, AI, retrieval, or local-agent integration.
 
 ## Goals
 
