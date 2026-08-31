@@ -1,9 +1,11 @@
 import Link from "next/link";
 
-import { assets } from "@/data/assets";
+import { getAssets } from "@/data/assets";
 
-export default function Dashboard() {
-  const asset = assets[0];
+export const dynamic = "force-dynamic";
+
+export default async function Dashboard() {
+  const assets = await getAssets();
 
   return (
     <div className="app-shell">
@@ -22,7 +24,7 @@ export default function Dashboard() {
           <p className="lede">The essential details of the things you care for.</p>
         </section>
 
-        <Link className="asset-card" href={`/assets/${asset.id}`}>
+        {assets.map((asset) => <Link className="asset-card" href={`/assets/${asset.id}`} key={asset.id}>
           <div className="asset-card-top">
             <div className="asset-icon" aria-hidden="true">
               <svg viewBox="0 0 32 32"><path d="M5 20h22l-4 6H10l-5-6Zm6-2V8h9l4 10H11Zm2-8v8h8.8l-3.2-8H13Z" /></svg>
@@ -38,7 +40,7 @@ export default function Dashboard() {
             <span>{asset.systems.length} systems</span>
             <span className="view-link">View asset <span aria-hidden="true">→</span></span>
           </div>
-        </Link>
+        </Link>)}
       </main>
     </div>
   );

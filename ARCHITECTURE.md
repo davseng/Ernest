@@ -2,7 +2,7 @@
 
 ## Status
 
-This document describes the intended architecture beyond the current implementation. Today the repository is a stateless Next.js application with a mock-data dashboard and asset detail route. Typed in-memory records model the asset → system → component hierarchy; there is no authentication, database, object storage, AI, retrieval, or local-agent integration.
+Ernest is a Next.js application backed by PostgreSQL. Server-rendered routes read the asset → system → component hierarchy through an application-owned repository interface and PostgreSQL adapter. There is no authentication, object storage, AI, retrieval, or local-agent integration.
 
 ## Goals
 
@@ -18,7 +18,7 @@ This document describes the intended architecture beyond the current implementat
 | Concern | Initial planned choice | Architectural boundary |
 | --- | --- | --- |
 | Web application | Next.js on Vercel | UI, server-side orchestration, and application use cases |
-| Relational data | PostgreSQL hosted on Neon | Repository interface and standard SQL migrations |
+| Relational data | PostgreSQL hosted on Neon | Implemented repository interface, `postgres` adapter, and standard SQL migrations |
 | Private documents | Cloudflare R2 | Object-storage interface using opaque object keys |
 | AI inference | Hosted AI API | Application-owned model gateway with provider-neutral requests and responses |
 | Retrieval | To be selected later | Retrieval interface; metadata filters always enforce asset scope |
@@ -28,7 +28,7 @@ The named vendors are deployment choices, not domain concepts. Domain and use-ca
 
 ## Data model direction
 
-PostgreSQL is the source of truth for structured records and relationships. The model will evolve through migrations, but the principal hierarchy is:
+PostgreSQL is the source of truth for structured records and relationships. The initial `assets`, `systems`, and `components` tables enforce their hierarchy with foreign keys and cascading deletes. Stable text IDs preserve the existing URL and domain identities, while ordering columns provide deterministic presentation. The model will evolve through migrations, but the principal hierarchy is:
 
 ```text
 Owner
@@ -77,6 +77,8 @@ As functionality arrives, keep dependencies pointing inward:
 
 Next.js is the delivery/runtime framework, not the location for provider-specific business logic. Server-only integrations must never be imported into client components.
 
+The current implementation reflects this split: `src/domain` owns TypeScript entities, `src/data/asset-repository.ts` defines the port, and `src/data/postgres-asset-repository.ts` maps relational rows into the nested domain model. Both data-access modules are marked `server-only`; the adapter reads only `process.env.DATABASE_URL`. UI routes call repository-backed functions and contain neither SQL nor Neon-specific logic. Migrations and seed commands are explicit operational tooling and never run at server startup or build time.
+
 ## Security and operations direction
 
 - Treat database credentials, object-storage credentials, and AI keys as server-only secrets.
@@ -89,8 +91,8 @@ Next.js is the delivery/runtime framework, not the location for provider-specifi
 
 ## Evolution sequence
 
-1. Establish the deployable Next.js/TypeScript shell (current phase).
-2. Define domain types and persistence migrations, then add PostgreSQL through a repository adapter.
+1. Establish the deployable Next.js/TypeScript shell (complete).
+2. Define domain types and persistence migrations, then add PostgreSQL through a repository adapter (complete).
 3. Add authenticated ownership and authorization before exposing private records.
 4. Add R2 through a storage adapter and implement secure document metadata/upload workflows.
 5. Add text extraction and source-addressable document processing.
