@@ -1,13 +1,17 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
+import { auth } from "@/auth";
+import { AccountMenu } from "@/components/account-menu";
 import { getAsset } from "@/data/assets";
 
 export const dynamic = "force-dynamic";
 
 export default async function AssetDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const asset = await getAsset(id);
+  const session = await auth();
+  if (!session?.user?.id) redirect("/sign-in");
+  const asset = await getAsset(id, session.user.id);
 
   if (!asset) notFound();
 
@@ -15,7 +19,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
     <div className="app-shell">
       <header className="site-header">
         <Link className="brand" href="/" aria-label="Ernest home"><span className="brand-mark" aria-hidden="true">E</span>Ernest</Link>
-        <span className="demo-label">Demo workspace</span>
+        <AccountMenu email={session.user.email} />
       </header>
       <main className="page-wrap detail-wrap">
         <Link className="back-link" href="/"><span aria-hidden="true">←</span> All assets</Link>

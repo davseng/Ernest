@@ -2,7 +2,7 @@
 
 ## Status
 
-Ernest is a Next.js application backed by PostgreSQL. Server-rendered routes read the asset → system → component hierarchy through an application-owned repository interface and PostgreSQL adapter. There is no authentication, object storage, AI, retrieval, or local-agent integration.
+Ernest is a Next.js application backed by PostgreSQL. Auth.js authenticates users through Resend magic links and stores users, sessions, and verification tokens in PostgreSQL. Server-rendered routes read the asset → system → component hierarchy through an application-owned repository interface and PostgreSQL adapter. There is no object storage, AI, retrieval, or local-agent integration.
 
 ## Goals
 
@@ -19,6 +19,7 @@ Ernest is a Next.js application backed by PostgreSQL. Server-rendered routes rea
 | --- | --- | --- |
 | Web application | Next.js on Vercel | UI, server-side orchestration, and application use cases |
 | Relational data | PostgreSQL hosted on Neon | Implemented repository interface, `postgres` adapter, and standard SQL migrations |
+| Authentication | Auth.js and Resend | Auth.js PostgreSQL adapter, passwordless email, and server-side session checks |
 | Private documents | Cloudflare R2 | Object-storage interface using opaque object keys |
 | AI inference | Hosted AI API | Application-owned model gateway with provider-neutral requests and responses |
 | Retrieval | To be selected later | Retrieval interface; metadata filters always enforce asset scope |
@@ -42,7 +43,7 @@ Owner
 
 Assets, systems, and components should use internal stable IDs. Manufacturer, model, serial number, dates, and owner-entered attributes remain queryable fields rather than being embedded only in prose. Flexible metadata may complement this schema, but should not replace identity, tenancy, or relationship columns.
 
-Every asset-owned record must carry an enforceable ownership path. Authorization and retrieval filters will scope every operation to an owner and asset once authentication is introduced.
+Every asset carries a non-null `owner_id` referencing its Auth.js user. Dashboard and detail routes require a server-side session, and repository operations require the session's user ID so their SQL filters by owner. A request for another user's asset therefore returns the same not-found result as an unknown asset ID.
 
 ## Document lifecycle and retrieval
 
@@ -93,7 +94,7 @@ The current implementation reflects this split: `src/domain` owns TypeScript ent
 
 1. Establish the deployable Next.js/TypeScript shell (complete).
 2. Define domain types and persistence migrations, then add PostgreSQL through a repository adapter (complete).
-3. Add authenticated ownership and authorization before exposing private records.
+3. Add authenticated ownership and authorization before exposing private records (complete).
 4. Add R2 through a storage adapter and implement secure document metadata/upload workflows.
 5. Add text extraction and source-addressable document processing.
 6. Evaluate retrieval approaches, then add vector search/RAG behind the retrieval interface.

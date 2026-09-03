@@ -3,6 +3,6 @@ import "server-only";
 import type { Asset } from "@/domain/assets";
 
 export interface AssetRepository {
-  findAll(): Promise<Asset[]>;
-  findById(id: string): Promise<Asset | undefined>;
+  findAllByOwner(ownerId: string): Promise<Asset[]>;
+  findByIdAndOwner(id: string, ownerId: string): Promise<Asset | undefined>;
 }

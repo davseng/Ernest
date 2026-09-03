@@ -1,6 +1,9 @@
 import { connect } from "./database.mjs";
 
 const sql = connect();
+const ownerEmail = process.env.SEED_OWNER_EMAIL;
+if (!ownerEmail) throw new Error("SEED_OWNER_EMAIL is required to assign Far Better to a sign-in email");
+const ownerId = "00000000-0000-0000-0000-000000000001";
 const systems = [
   ["electrical", "Electrical", "Power generation, storage, and distribution."],
   ["fresh-water", "Fresh Water", "Fresh water storage, heating, and delivery."],
@@ -18,7 +21,8 @@ const components = [
 ];
 try {
   await sql.begin(async (tx) => {
-    await tx`INSERT INTO assets (id,name,type,make,model,year,summary) VALUES ('far-better','Far Better','Boat','Grand Banks','42 Classic',1998,'A dependable coastal cruiser, thoughtfully maintained for long weekends and unhurried passages.') ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,type=EXCLUDED.type,make=EXCLUDED.make,model=EXCLUDED.model,year=EXCLUDED.year,summary=EXCLUDED.summary`;
+    await tx`UPDATE users SET email=${ownerEmail} WHERE id=${ownerId}`;
+    await tx`INSERT INTO assets (id,owner_id,name,type,make,model,year,summary) VALUES ('far-better',${ownerId},'Far Better','Boat','Grand Banks','42 Classic',1998,'A dependable coastal cruiser, thoughtfully maintained for long weekends and unhurried passages.') ON CONFLICT (id) DO UPDATE SET owner_id=EXCLUDED.owner_id,name=EXCLUDED.name,type=EXCLUDED.type,make=EXCLUDED.make,model=EXCLUDED.model,year=EXCLUDED.year,summary=EXCLUDED.summary`;
     for (const [id, name, description] of systems) await tx`INSERT INTO systems (id,asset_id,name,description,position) VALUES (${id},'far-better',${name},${description},${systems.findIndex((item) => item[0] === id)}) ON CONFLICT (id) DO UPDATE SET asset_id=EXCLUDED.asset_id,name=EXCLUDED.name,description=EXCLUDED.description,position=EXCLUDED.position`;
     for (const [id,systemId,name,manufacturer,model,location,notes] of components) await tx`INSERT INTO components (id,system_id,name,manufacturer,model,location,notes,position) VALUES (${id},${systemId},${name},${manufacturer},${model},${location},${notes},${components.filter((item) => item[1] === systemId).findIndex((item) => item[0] === id)}) ON CONFLICT (id) DO UPDATE SET system_id=EXCLUDED.system_id,name=EXCLUDED.name,manufacturer=EXCLUDED.manufacturer,model=EXCLUDED.model,location=EXCLUDED.location,notes=EXCLUDED.notes,position=EXCLUDED.position`;
   });

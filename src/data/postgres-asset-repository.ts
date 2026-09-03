@@ -59,12 +59,12 @@ const selectAssets = `
   LEFT JOIN components c ON c.system_id = s.id`;
 
 export const postgresAssetRepository: AssetRepository = {
-  async findAll() {
-    const rows = await database().unsafe<JoinedRow[]>(`${selectAssets} ORDER BY a.name, s.position, c.position`);
+  async findAllByOwner(ownerId) {
+    const rows = await database().unsafe<JoinedRow[]>(`${selectAssets} WHERE a.owner_id = $1 ORDER BY a.name, s.position, c.position`, [ownerId]);
     return mapRows(rows);
   },
-  async findById(id) {
-    const rows = await database().unsafe<JoinedRow[]>(`${selectAssets} WHERE a.id = $1 ORDER BY s.position, c.position`, [id]);
+  async findByIdAndOwner(id, ownerId) {
+    const rows = await database().unsafe<JoinedRow[]>(`${selectAssets} WHERE a.id = $1 AND a.owner_id = $2 ORDER BY s.position, c.position`, [id, ownerId]);
     return mapRows(rows)[0];
   },
 };

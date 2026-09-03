@@ -2,7 +2,7 @@
 
 Ernest is the foundation for an AI-powered boat and RV asset manager. The product will organize an owner's asset data and private documentation so that future AI answers can be specific, useful, and grounded in the owner's records.
 
-The application persists its asset inventory in PostgreSQL. Authentication, file uploads, AI integrations, retrieval, and local agents remain intentionally out of scope. See [PRODUCT.md](./PRODUCT.md) for the MVP and [ARCHITECTURE.md](./ARCHITECTURE.md) for the system design.
+The application persists each user's private asset inventory in PostgreSQL and uses passwordless email authentication. File uploads, AI integrations, retrieval, and local agents remain intentionally out of scope. See [PRODUCT.md](./PRODUCT.md) for the MVP, [ARCHITECTURE.md](./ARCHITECTURE.md) for the system design, and [AUTHENTICATION.md](./AUTHENTICATION.md) for the authentication decision.
 
 ## Tech stack
 
@@ -11,6 +11,7 @@ The application persists its asset inventory in PostgreSQL. Authentication, file
 - TypeScript with strict type checking
 - ESLint
 - PostgreSQL via the lightweight `postgres` driver (compatible with Neon)
+- Auth.js with its PostgreSQL adapter and Resend magic links
 - Vercel-compatible build and runtime conventions
 
 ## Local development
@@ -29,11 +30,11 @@ npm run db:seed
 npm run dev
 ```
 
-Set `DATABASE_URL` in `.env.local` or your shell before running database commands and the app. Next.js loads `.env.local`; standalone Node scripts require it to be exported (for example, `set -a; source .env.local; set +a`). `DATABASE_URL` is server-only and must never use a `NEXT_PUBLIC_` prefix.
+Set the values documented in `.env.example`. `AUTH_SECRET` signs authentication cookies, while `AUTH_RESEND_KEY` and `AUTH_EMAIL_FROM` enable magic-link delivery. Next.js loads `.env.local`; standalone Node scripts require it to be exported (for example, `set -a; source .env.local; set +a`). These values are server-only and must never use a `NEXT_PUBLIC_` prefix.
 
 ## Database setup and changes
 
-Migrations are ordered SQL files in `migrations/`. The migration runner records each applied file in `schema_migrations` and runs new files transactionally. The seed is idempotent and populates the Far Better asset with its Electrical, Fresh Water, and Propulsion inventory.
+Migrations are ordered SQL files in `migrations/`. The migration runner records each applied file in `schema_migrations` and runs new files transactionally. Migration `003` adds the Auth.js tables and a required asset owner. The seed is idempotent and assigns the Far Better asset and its inventory to `SEED_OWNER_EMAIL`; use the same email when signing in.
 
 ```bash
 # With DATABASE_URL exported in this shell:
@@ -53,7 +54,7 @@ npm run build
 
 ## Deploy to Vercel
 
-Import the Git repository into Vercel and use the detected Next.js defaults. Add `DATABASE_URL` through Vercel's environment settings, then apply migrations and the seed from a trusted administrative environment. Never commit `.env.local` or database credentials.
+Import the Git repository into Vercel and use the detected Next.js defaults. Add `DATABASE_URL`, `AUTH_SECRET`, `AUTH_RESEND_KEY`, and `AUTH_EMAIL_FROM` through Vercel's environment settings. Apply migrations and the seed, with `SEED_OWNER_EMAIL` set, from a trusted administrative environment. Never commit `.env.local` or credentials. Configure the Resend sender domain before expecting magic links to arrive.
 
 ## Repository layout
 
@@ -65,5 +66,6 @@ migrations/       Version-controlled PostgreSQL schema changes
 scripts/          Explicit migration and seed tooling
 PRODUCT.md        MVP scope and product principles
 ARCHITECTURE.md   Planned boundaries and evolution
+AUTHENTICATION.md Authentication provider decision and trade-offs
 .env.example      Future configuration names, without secrets
 ```
