@@ -2,7 +2,7 @@
 
 ## Status
 
-Ernest is a Next.js application backed by PostgreSQL. Auth.js authenticates users through Resend magic links and stores users, sessions, and verification tokens in PostgreSQL. Server-rendered routes read the asset → system → component hierarchy through an application-owned repository interface and PostgreSQL adapter. There is no object storage, AI, retrieval, or local-agent integration.
+Ernest is a Next.js application backed by PostgreSQL. Auth.js authenticates users through magic links sent by Nodemailer over Brevo SMTP and stores users, sessions, and verification tokens in PostgreSQL. Server-rendered routes read the asset → system → component hierarchy through an application-owned repository interface and PostgreSQL adapter. There is no object storage, AI, retrieval, or local-agent integration.
 
 ## Goals
 
@@ -19,7 +19,7 @@ Ernest is a Next.js application backed by PostgreSQL. Auth.js authenticates user
 | --- | --- | --- |
 | Web application | Next.js on Vercel | UI, server-side orchestration, and application use cases |
 | Relational data | PostgreSQL hosted on Neon | Implemented repository interface, `postgres` adapter, and standard SQL migrations |
-| Authentication | Auth.js and Resend | Auth.js PostgreSQL adapter, passwordless email, and server-side session checks |
+| Authentication | Auth.js, Nodemailer, and Brevo SMTP | Auth.js PostgreSQL adapter, passwordless email, and server-side session checks |
 | Private documents | Cloudflare R2 | Object-storage interface using opaque object keys |
 | AI inference | Hosted AI API | Application-owned model gateway with provider-neutral requests and responses |
 | Retrieval | To be selected later | Retrieval interface; metadata filters always enforce asset scope |

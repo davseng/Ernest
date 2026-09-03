@@ -11,7 +11,7 @@ The application persists each user's private asset inventory in PostgreSQL and u
 - TypeScript with strict type checking
 - ESLint
 - PostgreSQL via the lightweight `postgres` driver (compatible with Neon)
-- Auth.js with its PostgreSQL adapter and Resend magic links
+- Auth.js with its PostgreSQL adapter and Nodemailer/Brevo SMTP magic links
 - Vercel-compatible build and runtime conventions
 
 ## Local development
@@ -30,7 +30,7 @@ npm run db:seed
 npm run dev
 ```
 
-Set the values documented in `.env.example`. `AUTH_SECRET` signs authentication cookies, while `AUTH_RESEND_KEY` and `AUTH_EMAIL_FROM` enable magic-link delivery. Next.js loads `.env.local`; standalone Node scripts require it to be exported (for example, `set -a; source .env.local; set +a`). These values are server-only and must never use a `NEXT_PUBLIC_` prefix.
+Set the values documented in `.env.example`. `AUTH_SECRET` signs authentication cookies. The `EMAIL_SERVER_*` variables configure Brevo's SMTP relay and `EMAIL_FROM` must use an authenticated sender on `sailfarbetter.com`. Port 587 uses STARTTLS. Next.js loads `.env.local`; standalone Node scripts require it to be exported (for example, `set -a; source .env.local; set +a`). These values are server-only and must never use a `NEXT_PUBLIC_` prefix.
 
 ## Database setup and changes
 
@@ -54,7 +54,7 @@ npm run build
 
 ## Deploy to Vercel
 
-Import the Git repository into Vercel and use the detected Next.js defaults. Add `DATABASE_URL`, `AUTH_SECRET`, `AUTH_RESEND_KEY`, and `AUTH_EMAIL_FROM` through Vercel's environment settings. Apply migrations and the seed, with `SEED_OWNER_EMAIL` set, from a trusted administrative environment. Never commit `.env.local` or credentials. Configure the Resend sender domain before expecting magic links to arrive.
+Import the Git repository into Vercel and use the detected Next.js defaults. Add `DATABASE_URL`, `AUTH_SECRET`, all four `EMAIL_SERVER_*` values, and `EMAIL_FROM` through Vercel's environment settings. Apply migrations and the seed, with `SEED_OWNER_EMAIL` set, from a trusted administrative environment. Never commit `.env.local` or credentials. The SMTP user and password are Brevo SMTP credentials, not an interactive Brevo account password.
 
 ## Repository layout
 

@@ -14,7 +14,7 @@ export default async function SignInPage() {
         <p className="lede">Enter your email and we’ll send you a secure sign-in link.</p>
         <form className="auth-form" action={async (formData) => {
           "use server";
-          await signIn("resend", formData);
+          await signIn("nodemailer", formData);
         }}>
           <label htmlFor="email">Email address</label>
           <input id="email" name="email" type="email" autoComplete="email" required autoFocus />
