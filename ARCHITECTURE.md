@@ -43,6 +43,12 @@ Owner
 
 Assets, systems, and components should use internal stable IDs. Manufacturer, model, serial number, dates, and owner-entered attributes remain queryable fields rather than being embedded only in prose. Flexible metadata may complement this schema, but should not replace identity, tenancy, or relationship columns.
 
+The asset → system → component hierarchy describes **what equipment exists**. Operating history describes **what happened to an asset over time** and is intentionally separate from that inventory. `log_entries` is the first general operating-history record: it captures the asset, authenticated author, event and creation times, a type, prose, provenance, and optional coordinates. Entries are ordered by when the event occurred rather than only when it was entered.
+
+`entry_type` and `source` are text columns rather than database enums or subtype tables. The application initially recognizes note, maintenance, passage, observation, and incident types, and manual, system, and imported sources. This keeps the foundation lightweight and permits later values without a schema migration, while application boundaries validate values they accept. Future maintenance or passage workflows can reference or enrich these records; telemetry and AI processes can add entries with new provenance values. Specialized tables should be introduced only when those features have structured data and invariants that a general log entry cannot represent.
+
+Log entries cascade when their asset is deliberately deleted because history without its asset authorization boundary has no useful home. User deletion sets a surviving entry's `author_user_id` to null rather than independently erasing history. In the current schema, deleting an owner also cascades to that user's assets, so those assets and their logs are consequently removed. Both log reads and inserts constrain the operation through `assets.owner_id`; an arbitrary asset ID can neither reveal nor receive log data for a non-owner.
+
 Every asset carries a non-null `owner_id` referencing its Auth.js user. Dashboard and detail routes require a server-side session, and repository operations require the session's user ID so their SQL filters by owner. A request for another user's asset therefore returns the same not-found result as an unknown asset ID.
 
 ## Document lifecycle and retrieval
@@ -71,7 +77,7 @@ Prompts, model selection, and response parsing belong in versioned application/i
 
 As functionality arrives, keep dependencies pointing inward:
 
-1. **Domain:** asset, system, component, and document concepts and invariants.
+1. **Domain:** asset, system, component, log entry, and document concepts and invariants.
 2. **Application:** use cases and provider-neutral ports for repositories, object storage, retrieval, and AI inference.
 3. **Infrastructure:** Neon/PostgreSQL, R2, hosted AI, and future retrieval adapters.
 4. **Delivery:** Next.js routes, server actions, and UI that invoke application use cases.
