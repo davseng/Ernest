@@ -3,15 +3,19 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { AccountMenu } from "@/components/account-menu";
+import { DeleteButton } from "@/components/delete-button";
+import { ErrorNotice } from "@/components/error-notice";
 import { getAsset } from "@/data/assets";
 import { getLogEntries } from "@/data/log-entries";
 import { logEntryTypes } from "@/domain/log-entries";
 import { addLogEntry } from "./actions";
+import { addComponent, addSystem, editComponent, editSystem, removeComponent, removeSystem } from "./inventory-actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function AssetDetail({ params }: { params: Promise<{ id: string }> }) {
+export default async function AssetDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const { id } = await params;
+  const { error } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   const asset = await getAsset(id, session.user.id);
@@ -31,12 +35,14 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
         <section className="asset-header">
           <div>
             <div className="title-row"><h1>{asset.name}</h1><span className="type-pill">{asset.type}</span></div>
+            <Link className="text-button" href={`/assets/${asset.id}/edit`}>Edit asset</Link>
             <p className="asset-summary detail-summary">{asset.summary}</p>
           </div>
           <dl className="asset-facts">
             <div><dt>Make</dt><dd>{asset.make}</dd></div>
             <div><dt>Model</dt><dd>{asset.model}</dd></div>
             <div><dt>Year</dt><dd>{asset.year}</dd></div>
+            {asset.registrationNumber ? <div><dt>Registration / VIN</dt><dd>{asset.registrationNumber}</dd></div> : null}
           </dl>
         </section>
 
@@ -67,30 +73,20 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
           </div>
         </section>
 
-        <section className="systems-section">
+        <section className="systems-section" id="inventory">
           <div className="section-heading"><p className="eyebrow">Inventory</p><h2>Systems</h2><p>{asset.systems.length} systems · {asset.systems.reduce((total, system) => total + system.components.length, 0)} components</p></div>
+          <ErrorNotice message={error} />
+          <details className="editor-card add-record"><summary>Add a system</summary><form className="compact-form" action={addSystem.bind(null, id)}><label>Name<input name="name" maxLength={100} required /></label><label>Description<textarea name="description" maxLength={500} required /></label><button className="primary-button">Add system</button></form></details>
+          {asset.systems.length === 0 ? <p className="empty-log">No systems yet. Add a system such as electrical, propulsion, plumbing, or HVAC.</p> : null}
           <div className="system-list">
-            {asset.systems.map((system) => (
-              <article className="system-card" key={system.id}>
-                <div className="system-heading">
-                  <div><h3>{system.name}</h3><p>{system.description}</p></div>
-                  <span>{system.components.length} components</span>
-                </div>
-                <div className="component-list">
-                  {system.components.map((component) => (
-                    <div className="component" key={component.id}>
-                      <h4>{component.name}</h4>
-                      <dl className="component-facts">
-                        <div><dt>Manufacturer</dt><dd>{component.manufacturer}</dd></div>
-                        <div><dt>Model</dt><dd>{component.model}</dd></div>
-                        <div><dt>Location</dt><dd>{component.location}</dd></div>
-                      </dl>
-                      <p className="notes"><span>Notes</span>{component.notes}</p>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            ))}
+            {asset.systems.map((system) => <article className="system-card" key={system.id}>
+              <div className="system-heading"><div><h3>{system.name}</h3><p>{system.description}</p></div><span>{system.components.length} components</span></div>
+              <details className="editor-card"><summary>Edit system</summary><form className="compact-form" action={editSystem.bind(null, id, system.id)}><label>Name<input name="name" defaultValue={system.name} maxLength={100} required /></label><label>Description<textarea name="description" defaultValue={system.description} maxLength={500} required /></label><div className="form-actions"><button className="primary-button">Save system</button></div></form><form action={removeSystem.bind(null, id, system.id)}><DeleteButton label="Delete system" confirmation={`Delete ${system.name} and all of its components?`} /></form></details>
+              <div className="component-list">{system.components.map((component) => <div className="component" key={component.id}><h4>{component.name}</h4><dl className="component-facts"><div><dt>Manufacturer</dt><dd>{component.manufacturer}</dd></div><div><dt>Model</dt><dd>{component.model}</dd></div>{component.serialNumber ? <div><dt>Serial number</dt><dd>{component.serialNumber}</dd></div> : null}<div><dt>Location</dt><dd>{component.location}</dd></div></dl><p className="notes"><span>Notes</span>{component.notes}</p>
+                <details className="editor-card component-editor"><summary>Edit component</summary><form className="compact-form" action={editComponent.bind(null, id, system.id, component.id)}><label>Name<input name="name" defaultValue={component.name} maxLength={100} required /></label><label>Manufacturer<input name="manufacturer" defaultValue={component.manufacturer} maxLength={100} required /></label><label>Model<input name="model" defaultValue={component.model} maxLength={100} required /></label><label>Serial number <span>(optional)</span><input name="serialNumber" defaultValue={component.serialNumber} maxLength={100} /></label><label>Location<input name="location" defaultValue={component.location} maxLength={200} required /></label><label>Notes<textarea name="notes" defaultValue={component.notes} maxLength={1000} required /></label><button className="primary-button">Save component</button></form><form action={removeComponent.bind(null, id, system.id, component.id)}><DeleteButton label="Delete component" confirmation={`Delete ${component.name}?`} /></form></details>
+              </div>)}</div>
+              <details className="editor-card add-component"><summary>Add a component</summary><form className="compact-form" action={addComponent.bind(null, id, system.id)}><label>Name<input name="name" maxLength={100} required /></label><label>Manufacturer<input name="manufacturer" maxLength={100} required /></label><label>Model<input name="model" maxLength={100} required /></label><label>Serial number <span>(optional)</span><input name="serialNumber" maxLength={100} /></label><label>Location<input name="location" maxLength={200} required /></label><label>Notes<textarea name="notes" maxLength={1000} required /></label><button className="primary-button">Add component</button></form></details>
+            </article>)}
           </div>
         </section>
       </main>

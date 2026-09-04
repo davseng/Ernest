@@ -2,7 +2,7 @@
 
 ## Status
 
-Ernest is a Next.js application backed by PostgreSQL. Auth.js authenticates users through magic links sent by Nodemailer over Brevo SMTP and stores users, sessions, and verification tokens in PostgreSQL. Server-rendered routes read the asset → system → component hierarchy through an application-owned repository interface and PostgreSQL adapter. There is no object storage, AI, retrieval, or local-agent integration.
+Ernest is a Next.js application backed by PostgreSQL. Auth.js authenticates users through magic links sent by Nodemailer over Brevo SMTP and stores users, sessions, and verification tokens in PostgreSQL. Server-rendered routes create and manage the asset → system → component hierarchy through an application-owned repository interface and PostgreSQL adapter. There is no object storage, AI, retrieval, or local-agent integration.
 
 ## Goals
 
@@ -101,8 +101,9 @@ The current implementation reflects this split: `src/domain` owns TypeScript ent
 1. Establish the deployable Next.js/TypeScript shell (complete).
 2. Define domain types and persistence migrations, then add PostgreSQL through a repository adapter (complete).
 3. Add authenticated ownership and authorization before exposing private records (complete).
-4. Add R2 through a storage adapter and implement secure document metadata/upload workflows.
-5. Add text extraction and source-addressable document processing.
-6. Evaluate retrieval approaches, then add vector search/RAG behind the retrieval interface.
-7. Add a hosted model adapter and grounded, cited asset Q&A.
-8. Integrate an OpenClaw-based local agent through a narrowly scoped, authenticated API only after its trust and sync model is defined.
+4. Add self-service asset, system, and component management (complete).
+5. Add R2 through a storage adapter and implement secure document metadata/upload workflows.
+6. Add text extraction and source-addressable document processing.
+7. Evaluate retrieval approaches, then add vector search/RAG behind the retrieval interface.
+8. Add a hosted model adapter and grounded, cited asset Q&A.
+9. Integrate an OpenClaw-based local agent through a narrowly scoped, authenticated API only after its trust and sync model is defined.

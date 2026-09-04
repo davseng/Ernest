@@ -2,7 +2,7 @@
 
 Ernest is the foundation for an AI-powered boat and RV asset manager. The product will organize an owner's asset data and private documentation so that future AI answers can be specific, useful, and grounded in the owner's records.
 
-The application persists each user's private asset inventory in PostgreSQL and uses passwordless email authentication. File uploads, AI integrations, retrieval, and local agents remain intentionally out of scope. See [PRODUCT.md](./PRODUCT.md) for the MVP, [ARCHITECTURE.md](./ARCHITECTURE.md) for the system design, and [AUTHENTICATION.md](./AUTHENTICATION.md) for the authentication decision.
+The application lets each owner create and manage a private asset, system, component, and operating-history record in PostgreSQL and uses passwordless email authentication. File uploads, AI integrations, retrieval, and local agents remain intentionally out of scope. See [PRODUCT.md](./PRODUCT.md) for the MVP, [ARCHITECTURE.md](./ARCHITECTURE.md) for the system design, and [AUTHENTICATION.md](./AUTHENTICATION.md) for the authentication decision.
 
 ## Tech stack
 
@@ -34,7 +34,7 @@ Set the values documented in `.env.example`. `AUTH_SECRET` signs authentication 
 
 ## Database setup and changes
 
-Migrations are ordered SQL files in `migrations/`. The migration runner records each applied file in `schema_migrations` and runs new files transactionally. Migration `003` adds the Auth.js tables and a required asset owner; migration `004` adds the surrogate account and session IDs returned by the PostgreSQL adapter while preserving the existing primary keys and auth data. Migration `005` adds the owner-scoped operating log. The seed is idempotent and assigns the Far Better asset and its inventory to `SEED_OWNER_EMAIL`; use the same email when signing in.
+Migrations are ordered SQL files in `migrations/`. The migration runner records each applied file in `schema_migrations` and runs new files transactionally. Migration `003` adds the Auth.js tables and a required asset owner; migration `004` adds the surrogate account and session IDs returned by the PostgreSQL adapter while preserving the existing primary keys and auth data. Migration `005` adds the owner-scoped operating log, and migration `006` adds optional asset registration and component serial identifiers. The seed is idempotent and assigns the Far Better asset and its inventory to `SEED_OWNER_EMAIL`; use the same email when signing in.
 
 ```bash
 # With DATABASE_URL exported in this shell:
