@@ -30,7 +30,7 @@ npm run db:seed
 npm run dev
 ```
 
-Set the values documented in `.env.example`. `AUTH_SECRET` signs authentication cookies. The `EMAIL_SERVER_*` variables configure Brevo's SMTP relay and `EMAIL_FROM` must use an authenticated sender on `sailfarbetter.com`. Port 587 uses STARTTLS. Next.js loads `.env.local`; standalone Node scripts require it to be exported (for example, `set -a; source .env.local; set +a`). These values are server-only and must never use a `NEXT_PUBLIC_` prefix.
+Set the values documented in `.env.example`. `AUTH_SECRET` signs authentication cookies. Either the standard Auth.js `EMAIL_SERVER` SMTP URL or the split `EMAIL_SERVER_*` variables configure Brevo's SMTP relay; `EMAIL_SERVER` takes precedence when both are present. `EMAIL_FROM` must use an authenticated sender on `sailfarbetter.com`. Port 587 uses STARTTLS. Next.js loads `.env.local`; standalone Node scripts require it to be exported (for example, `set -a; source .env.local; set +a`). These values are server-only and must never use a `NEXT_PUBLIC_` prefix.
 
 ## Database setup and changes
 
@@ -55,7 +55,12 @@ npm run build
 
 ## Deploy to Vercel
 
-Import the Git repository into Vercel and use the detected Next.js defaults. Add `DATABASE_URL`, `AUTH_SECRET`, all four `EMAIL_SERVER_*` values, and `EMAIL_FROM` through Vercel's environment settings. Apply migrations and the seed, with `SEED_OWNER_EMAIL` set, from a trusted administrative environment. Never commit `.env.local` or credentials. The SMTP user and password are Brevo SMTP credentials, not an interactive Brevo account password.
+Import the Git repository into Vercel and use the detected Next.js defaults. Add `DATABASE_URL`, `AUTH_SECRET`, `EMAIL_FROM`, and either `EMAIL_SERVER` or all four split `EMAIL_SERVER_*` values through Vercel's environment settings. Enable every required variable for both **Preview** and **Production**: Vercel does not automatically copy environment-scoped values between them, and a preview deployment without these values cannot send a sign-in link. Redeploy after changing environment variables. Apply migrations and the seed, with `SEED_OWNER_EMAIL` set, from a trusted administrative environment. Never commit `.env.local` or credentials. The SMTP user and password are Brevo SMTP credentials, not an interactive Brevo account password.
+
+The sign-in page remains available when authentication infrastructure is
+temporarily unavailable. A sign-in submission validates configuration first;
+deployment logs identify missing variable **names** without logging their
+values or credentials.
 
 ## Repository layout
 
