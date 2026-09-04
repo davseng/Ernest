@@ -30,3 +30,8 @@ keys or recreating authentication records. The adapter's user queries use
 the OAuth token fields plus `id`; its session queries use `id`, `sessionToken`,
 `userId`, and `expires`; and its verification-token queries use `identifier`,
 `token`, and `expires`.
+
+Authentication redirects to the asset list after a valid magic link. That
+page also requires the application migrations to be current; a successful
+sign-in followed by PostgreSQL `42703` is schema drift in the asset tables, not
+an email-authentication failure.
