@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 
-import { auth, signIn } from "@/auth";
+import { auth } from "@/auth";
 import { ErrorNotice } from "@/components/error-notice";
+
+import { requestSignInLink } from "./actions";
 
 const signInErrors: Record<string, string> = {
   AccessDenied: "That email address is not allowed to sign in.",
@@ -29,13 +31,9 @@ export default async function SignInPage({
         <h1>Sign in</h1>
         <p className="lede">Enter your email and we’ll send you a secure sign-in link.</p>
         <ErrorNotice message={errorMessage} />
-        <form className="auth-form" action={async (formData) => {
-          "use server";
-          await signIn("nodemailer", formData);
-        }}>
+        <form className="auth-form" action={requestSignInLink}>
           <label htmlFor="email">Email address</label>
           <input id="email" name="email" type="email" autoComplete="email" required autoFocus />
-          <input type="hidden" name="redirectTo" value="/" />
           <button type="submit">Email me a sign-in link</button>
         </form>
       </section>

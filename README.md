@@ -55,7 +55,7 @@ npm run build
 
 ## Deploy to Vercel
 
-Import the Git repository into Vercel and use the detected Next.js defaults. Add `DATABASE_URL`, `AUTH_SECRET`, `EMAIL_FROM`, and either `EMAIL_SERVER` or all four split `EMAIL_SERVER_*` values through Vercel's environment settings. Apply migrations and the seed, with `SEED_OWNER_EMAIL` set, from a trusted administrative environment. Never commit `.env.local` or credentials. The SMTP user and password are Brevo SMTP credentials, not an interactive Brevo account password.
+Import the Git repository into Vercel and use the detected Next.js defaults. Add `DATABASE_URL`, `AUTH_SECRET`, `EMAIL_FROM`, and either `EMAIL_SERVER` or all four split `EMAIL_SERVER_*` values through Vercel's environment settings. Enable every required variable for both **Preview** and **Production**: Vercel does not automatically copy environment-scoped values between them, and a preview deployment without these values cannot send a sign-in link. Redeploy after changing environment variables. Apply migrations and the seed, with `SEED_OWNER_EMAIL` set, from a trusted administrative environment. Never commit `.env.local` or credentials. The SMTP user and password are Brevo SMTP credentials, not an interactive Brevo account password.
 
 ## Repository layout
 
