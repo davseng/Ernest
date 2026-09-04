@@ -7,6 +7,17 @@ a { color: inherit; }
 .brand { display: flex; align-items: center; gap: 10px; font-family: Georgia, serif; font-weight: 700; font-size: 1.25rem; text-decoration: none; }
 .brand-mark { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; color: white; background: var(--teal); font-family: Georgia, serif; font-size: 1rem; }
 .demo-label { color: var(--muted); font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; }
+.account-menu { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: .78rem; }
+.account-menu form { margin: 0; }
+.account-menu button { padding: 7px 11px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--paper); cursor: pointer; }
+.auth-page { display: grid; min-height: 100vh; padding: 24px; place-items: center; }
+.auth-card { width: min(440px, 100%); padding: 42px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: 0 12px 40px rgba(26,54,52,.08); }
+.auth-card .brand-mark { margin-bottom: 28px; }
+.auth-card h1 { font-size: 2.8rem; }
+.auth-form { display: grid; gap: 10px; margin-top: 30px; }
+.auth-form label { font-size: .8rem; font-weight: 700; }
+.auth-form input { width: 100%; padding: 13px 14px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--paper); font: inherit; }
+.auth-form button { margin-top: 6px; padding: 13px 16px; border: 0; border-radius: 8px; color: white; background: var(--teal); font: inherit; font-weight: 700; cursor: pointer; }
 .page-wrap { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 72px 0 96px; }
 .page-heading { margin-bottom: 36px; }
 .eyebrow { margin: 0 0 10px; color: var(--teal); font-size: .72rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
@@ -56,6 +67,7 @@ dd { margin: 7px 0 0; font-size: .9rem; font-weight: 700; }
 @media (max-width: 760px) {
   .site-header { height: 64px; padding: 0 20px; }
   .demo-label { font-size: .68rem; }
+  .account-menu > span { display: none; }
   .page-wrap { width: calc(100% - 32px); padding: 46px 0 72px; }
   .asset-card-top { min-height: 120px; }
   .asset-card-body, .asset-card-footer { padding-left: 22px; padding-right: 22px; }

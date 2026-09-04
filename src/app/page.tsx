@@ -1,11 +1,16 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
+import { auth } from "@/auth";
+import { AccountMenu } from "@/components/account-menu";
 import { getAssets } from "@/data/assets";
 
 export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
-  const assets = await getAssets();
+  const session = await auth();
+  if (!session?.user?.id) redirect("/sign-in");
+  const assets = await getAssets(session.user.id);
 
   return (
     <div className="app-shell">
@@ -14,7 +19,7 @@ export default async function Dashboard() {
           <span className="brand-mark" aria-hidden="true">E</span>
           Ernest
         </Link>
-        <span className="demo-label">Demo workspace</span>
+        <AccountMenu email={session.user.email} />
       </header>
 
       <main className="page-wrap">
