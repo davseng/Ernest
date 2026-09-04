@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import postgres from "postgres";
 
 import type { AssetRepository } from "@/data/asset-repository";
@@ -7,9 +8,10 @@ import type { Asset, AssetSystem, AssetType, Component } from "@/domain/assets";
 
 type JoinedRow = {
   asset_id: string; asset_name: string; asset_type: AssetType; make: string; asset_model: string;
-  year: number; summary: string; system_id: string | null; system_name: string | null;
-  system_description: string | null; component_id: string | null; component_name: string | null;
-  manufacturer: string | null; component_model: string | null; location: string | null; notes: string | null;
+  year: number; summary: string; registration_number: string | null; system_id: string | null;
+  system_name: string | null; system_description: string | null; component_id: string | null;
+  component_name: string | null; manufacturer: string | null; component_model: string | null;
+  serial_number: string | null; location: string | null; notes: string | null;
 };
 
 let client: ReturnType<typeof postgres> | undefined;
@@ -29,7 +31,8 @@ function mapRows(rows: JoinedRow[]): Asset[] {
     let asset = assets.get(row.asset_id);
     if (!asset) {
       asset = { id: row.asset_id, name: row.asset_name, type: row.asset_type, make: row.make,
-        model: row.asset_model, year: row.year, summary: row.summary, systems: [] };
+        model: row.asset_model, year: row.year, summary: row.summary,
+        registrationNumber: row.registration_number ?? undefined, systems: [] };
       assets.set(asset.id, asset);
     }
     if (!row.system_id || !row.system_name || !row.system_description) continue;
@@ -43,7 +46,8 @@ function mapRows(rows: JoinedRow[]): Asset[] {
     if (row.component_id) {
       system.components.push({ id: row.component_id, systemId: row.system_id,
         name: row.component_name ?? "", manufacturer: row.manufacturer ?? "",
-        model: row.component_model ?? "", location: row.location ?? "", notes: row.notes ?? "" } satisfies Component);
+        model: row.component_model ?? "", serialNumber: row.serial_number ?? undefined,
+        location: row.location ?? "", notes: row.notes ?? "" } satisfies Component);
     }
   }
   return [...assets.values()];
@@ -51,9 +55,10 @@ function mapRows(rows: JoinedRow[]): Asset[] {
 
 const selectAssets = `
   SELECT a.id AS asset_id, a.name AS asset_name, a.type AS asset_type, a.make,
-    a.model AS asset_model, a.year, a.summary, s.id AS system_id, s.name AS system_name,
-    s.description AS system_description, c.id AS component_id, c.name AS component_name,
-    c.manufacturer, c.model AS component_model, c.location, c.notes
+    a.model AS asset_model, a.year, a.summary, a.registration_number,
+    s.id AS system_id, s.name AS system_name, s.description AS system_description,
+    c.id AS component_id, c.name AS component_name, c.manufacturer,
+    c.model AS component_model, c.serial_number, c.location, c.notes
   FROM assets a
   LEFT JOIN systems s ON s.asset_id = a.id
   LEFT JOIN components c ON c.system_id = s.id`;
@@ -66,5 +71,64 @@ export const postgresAssetRepository: AssetRepository = {
   async findByIdAndOwner(id, ownerId) {
     const rows = await database().unsafe<JoinedRow[]>(`${selectAssets} WHERE a.id = $1 AND a.owner_id = $2 ORDER BY s.position, c.position`, [id, ownerId]);
     return mapRows(rows)[0];
+  },
+  async createForOwner(ownerId, details) {
+    const id = randomUUID();
+    await database()`INSERT INTO assets (id, owner_id, name, type, make, model, year, summary, registration_number)
+      VALUES (${id}, ${ownerId}, ${details.name}, ${details.type}, ${details.make}, ${details.model},
+        ${details.year}, ${details.summary}, ${details.registrationNumber ?? null})`;
+    return { id, ...details, systems: [] };
+  },
+  async updateForOwner(id, ownerId, details) {
+    const rows = await database()`UPDATE assets SET name=${details.name}, type=${details.type}, make=${details.make},
+      model=${details.model}, year=${details.year}, summary=${details.summary},
+      registration_number=${details.registrationNumber ?? null} WHERE id=${id} AND owner_id=${ownerId} RETURNING id`;
+    return rows.length === 1;
+  },
+  async deleteForOwner(id, ownerId) {
+    const rows = await database()`DELETE FROM assets WHERE id=${id} AND owner_id=${ownerId} RETURNING id`;
+    return rows.length === 1;
+  },
+  async createSystemForOwner(assetId, ownerId, details) {
+    const rows = await database()`INSERT INTO systems (id, asset_id, name, description, position)
+      SELECT ${randomUUID()}, a.id, ${details.name}, ${details.description},
+        COALESCE((SELECT MAX(position) + 1 FROM systems WHERE asset_id=a.id), 0)
+      FROM assets a WHERE a.id=${assetId} AND a.owner_id=${ownerId} RETURNING id`;
+    return rows.length === 1;
+  },
+  async updateSystemForOwner(assetId, systemId, ownerId, details) {
+    const rows = await database()`UPDATE systems s SET name=${details.name}, description=${details.description}
+      FROM assets a WHERE s.id=${systemId} AND s.asset_id=${assetId} AND a.id=s.asset_id
+        AND a.owner_id=${ownerId} RETURNING s.id`;
+    return rows.length === 1;
+  },
+  async deleteSystemForOwner(assetId, systemId, ownerId) {
+    const rows = await database()`DELETE FROM systems s USING assets a
+      WHERE s.id=${systemId} AND s.asset_id=${assetId} AND a.id=s.asset_id AND a.owner_id=${ownerId} RETURNING s.id`;
+    return rows.length === 1;
+  },
+  async createComponentForOwner(assetId, systemId, ownerId, details) {
+    const rows = await database()`INSERT INTO components
+      (id, system_id, name, manufacturer, model, serial_number, location, notes, position)
+      SELECT ${randomUUID()}, s.id, ${details.name}, ${details.manufacturer}, ${details.model},
+        ${details.serialNumber ?? null}, ${details.location}, ${details.notes},
+        COALESCE((SELECT MAX(position) + 1 FROM components WHERE system_id=s.id), 0)
+      FROM systems s INNER JOIN assets a ON a.id=s.asset_id
+      WHERE s.id=${systemId} AND a.id=${assetId} AND a.owner_id=${ownerId} RETURNING id`;
+    return rows.length === 1;
+  },
+  async updateComponentForOwner(assetId, systemId, componentId, ownerId, details) {
+    const rows = await database()`UPDATE components c SET name=${details.name}, manufacturer=${details.manufacturer},
+      model=${details.model}, serial_number=${details.serialNumber ?? null}, location=${details.location}, notes=${details.notes}
+      FROM systems s INNER JOIN assets a ON a.id=s.asset_id
+      WHERE c.id=${componentId} AND c.system_id=${systemId} AND s.id=c.system_id
+        AND a.id=${assetId} AND a.owner_id=${ownerId} RETURNING c.id`;
+    return rows.length === 1;
+  },
+  async deleteComponentForOwner(assetId, systemId, componentId, ownerId) {
+    const rows = await database()`DELETE FROM components c USING systems s, assets a
+      WHERE c.id=${componentId} AND c.system_id=${systemId} AND s.id=c.system_id
+        AND a.id=s.asset_id AND a.id=${assetId} AND a.owner_id=${ownerId} RETURNING c.id`;
+    return rows.length === 1;
   },
 };

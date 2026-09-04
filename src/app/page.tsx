@@ -23,13 +23,14 @@ export default async function Dashboard() {
       </header>
 
       <main className="page-wrap">
-        <section className="page-heading">
+        <section className="page-heading dashboard-heading">
           <p className="eyebrow">Overview</p>
           <h1>Your assets</h1>
           <p className="lede">The essential details of the things you care for.</p>
+          <Link className="primary-button" href="/assets/new">Add an asset</Link>
         </section>
 
-        {assets.map((asset) => <Link className="asset-card" href={`/assets/${asset.id}`} key={asset.id}>
+        {assets.length === 0 ? <section className="empty-state"><h2>Build your first asset record</h2><p>Add your boat or RV, then organize its systems, components, and history in one place.</p><Link className="primary-button" href="/assets/new">Add your first asset</Link></section> : assets.map((asset) => <Link className="asset-card" href={`/assets/${asset.id}`} key={asset.id}>
           <div className="asset-card-top">
             <div className="asset-icon" aria-hidden="true">
               <svg viewBox="0 0 32 32"><path d="M5 20h22l-4 6H10l-5-6Zm6-2V8h9l4 10H11Zm2-8v8h8.8l-3.2-8H13Z" /></svg>

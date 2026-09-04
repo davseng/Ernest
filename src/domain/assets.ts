@@ -6,6 +6,7 @@ export interface Component {
   name: string;
   manufacturer: string;
   model: string;
+  serialNumber?: string;
   location: string;
   notes: string;
 }
@@ -26,5 +27,30 @@ export interface Asset {
   model: string;
   year: number;
   summary: string;
+  registrationNumber?: string;
   systems: AssetSystem[];
+}
+
+export interface AssetDetails {
+  name: string;
+  type: AssetType;
+  make: string;
+  model: string;
+  year: number;
+  summary: string;
+  registrationNumber?: string;
+}
+
+export interface SystemDetails {
+  name: string;
+  description: string;
+}
+
+export interface ComponentDetails {
+  name: string;
+  manufacturer: string;
+  model: string;
+  serialNumber?: string;
+  location: string;
+  notes: string;
 }
