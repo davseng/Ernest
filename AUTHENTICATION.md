@@ -20,3 +20,13 @@ to Brevo's authenticated SMTP relay on port 587 and requires STARTTLS; sender
 addresses use the already authenticated `sailfarbetter.com` domain. Local
 development can still validate the UI and authorization flow, but delivery of
 a sign-in link requires Brevo SMTP credentials.
+
+The Auth.js PostgreSQL schema retains UUID user IDs, natural uniqueness for
+accounts and session tokens, and the existing asset ownership foreign key. A
+forward-only compatibility migration adds the numeric `accounts.id` and
+`sessions.id` values returned by the adapter without replacing those existing
+keys or recreating authentication records. The adapter's user queries use
+`id`, `name`, `email`, `emailVerified`, and `image`; its account queries use
+the OAuth token fields plus `id`; its session queries use `id`, `sessionToken`,
+`userId`, and `expires`; and its verification-token queries use `identifier`,
+`token`, and `expires`.

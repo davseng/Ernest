@@ -34,7 +34,7 @@ Set the values documented in `.env.example`. `AUTH_SECRET` signs authentication 
 
 ## Database setup and changes
 
-Migrations are ordered SQL files in `migrations/`. The migration runner records each applied file in `schema_migrations` and runs new files transactionally. Migration `003` adds the Auth.js tables and a required asset owner. The seed is idempotent and assigns the Far Better asset and its inventory to `SEED_OWNER_EMAIL`; use the same email when signing in.
+Migrations are ordered SQL files in `migrations/`. The migration runner records each applied file in `schema_migrations` and runs new files transactionally. Migration `003` adds the Auth.js tables and a required asset owner; migration `004` adds the surrogate account and session IDs returned by the PostgreSQL adapter while preserving the existing primary keys and auth data. The seed is idempotent and assigns the Far Better asset and its inventory to `SEED_OWNER_EMAIL`; use the same email when signing in.
 
 ```bash
 # With DATABASE_URL exported in this shell:
