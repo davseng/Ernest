@@ -4,20 +4,12 @@ import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { signIn } from "@/auth";
-import { missingAuthConfiguration } from "@/auth-configuration";
 
 export async function requestSignInLink(formData: FormData) {
   const email = formData.get("email");
 
   if (typeof email !== "string" || email.trim() === "") {
     redirect("/sign-in?error=EmailSignInError");
-  }
-
-  const missing = missingAuthConfiguration();
-  if (missing.length > 0) {
-    // Names are safe to log; values and credentials must never be logged.
-    console.error(`[auth] Missing required environment variables: ${missing.join(", ")}`);
-    redirect("/sign-in?error=Configuration");
   }
 
   let destination: string;

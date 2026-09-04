@@ -1,5 +1,8 @@
 import { ErrorNotice } from "@/components/error-notice";
 
+import { auth } from "@/auth";
+import { ErrorNotice } from "@/components/error-notice";
+
 import { requestSignInLink } from "./actions";
 
 const signInErrors: Record<string, string> = {
@@ -14,6 +17,7 @@ export default async function SignInPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  if (await auth()) redirect("/");
   const { error } = await searchParams;
   const errorMessage = error
     ? signInErrors[error] ?? "We could not sign you in. Please request a new link."
