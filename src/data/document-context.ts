@@ -27,9 +27,27 @@ type ContextRow = {
   relevance: number | string;
 };
 
+const GENERIC_QUERY_WORDS = new Set([
+  "about", "and", "are", "can", "could", "document", "does", "for", "from",
+  "have", "how", "into", "me", "should", "that", "the", "their", "there",
+  "these", "this", "those", "what", "when", "where", "which", "with", "would",
+]);
+
+function buildRetrievalQuery(question: string) {
+  const terms = question
+    .toLowerCase()
+    .match(/[a-z0-9][a-z0-9_-]*/g)
+    ?.filter((term) => term.length > 2 && !GENERIC_QUERY_WORDS.has(term)) ?? [];
+
+  const uniqueTerms = [...new Set(terms)].slice(0, 12);
+  if (uniqueTerms.length === 0) return question.trim().slice(0, 500);
+  return uniqueTerms.join(" OR ");
+}
+
 export async function getErnestDocumentContext(assetId: string, ownerId: string, question: string) {
   const normalized = question.trim().slice(0, 500);
   if (!normalized) return [];
+  const retrievalQuery = buildRetrievalQuery(normalized);
 
   const rows = await database()<ContextRow[]>`
     WITH ranked_hits AS (
@@ -38,7 +56,7 @@ export async function getErnestDocumentContext(assetId: string, ownerId: string,
         c.page_number,
         ts_rank(
           to_tsvector('english', c.text_content),
-          plainto_tsquery('english', ${normalized})
+          websearch_to_tsquery('english', ${retrievalQuery})
         ) AS relevance
       FROM document_chunks c
       INNER JOIN documents d ON d.id = c.document_id
@@ -46,7 +64,7 @@ export async function getErnestDocumentContext(assetId: string, ownerId: string,
       WHERE d.asset_id = ${assetId}
         AND d.owner_id = ${ownerId}
         AND a.owner_id = ${ownerId}
-        AND to_tsvector('english', c.text_content) @@ plainto_tsquery('english', ${normalized})
+        AND to_tsvector('english', c.text_content) @@ websearch_to_tsquery('english', ${retrievalQuery})
       ORDER BY relevance DESC
       LIMIT 6
     ), expanded_pages AS (
