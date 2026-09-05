@@ -43,9 +43,6 @@ function mapDocument(row: DocumentRow): AssetDocument {
   };
 }
 
-const documentColumns = `d.id, d.asset_id, d.title, d.original_filename, d.content_type,
-      d.size_bytes, d.storage_key, d.created_at, d.extracted_at, d.page_count, d.extraction_error`;
-
 export async function getDocumentsForAsset(assetId: string, ownerId: string) {
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
@@ -60,7 +57,6 @@ export async function getDocumentsForAsset(assetId: string, ownerId: string) {
 }
 
 export async function getDocumentForAsset(documentId: string, assetId: string, ownerId: string) {
-  void documentColumns;
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.extracted_at, d.page_count, d.extraction_error
