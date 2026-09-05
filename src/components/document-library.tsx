@@ -7,14 +7,22 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function extractionStatus(document: AssetDocument) {
+  if (document.extractionError) return "Extraction failed";
+  if (document.extractedAt) return `Extracted · ${document.pageCount ?? 0} pages`;
+  return "Not extracted";
+}
+
 export function DocumentLibrary({
   documents,
   error,
   uploadAction,
+  extractAction,
 }: {
   documents: AssetDocument[];
   error?: string;
   uploadAction: (formData: FormData) => void | Promise<void>;
+  extractAction: (documentId: string) => void | Promise<void>;
 }) {
   return (
     <section className="systems-section" id="documents">
@@ -45,7 +53,12 @@ export function DocumentLibrary({
               </div>
               <h3>{document.title}</h3>
               <p>{document.originalFilename}</p>
-              <small>{formatBytes(document.sizeBytes)}</small>
+              <small>{formatBytes(document.sizeBytes)} · {extractionStatus(document)}</small>
+              <form action={extractAction.bind(null, document.id)}>
+                <button className="primary-button" type="submit">
+                  {document.extractedAt ? "Re-extract text" : "Extract text"}
+                </button>
+              </form>
             </article>
           ))}
         </div>
