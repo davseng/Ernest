@@ -5,10 +5,11 @@ import { auth } from "@/auth";
 import { AccountMenu } from "@/components/account-menu";
 import { ComponentDeleteButton } from "@/components/component-delete-button";
 import { DocumentLibrary } from "@/components/document-library";
+import { DocumentSearch } from "@/components/document-search";
 import { ErrorNotice } from "@/components/error-notice";
 import { SystemDeleteButton } from "@/components/system-delete-button";
 import { getAsset } from "@/data/assets";
-import { getDocumentsForAsset } from "@/data/documents";
+import { getDocumentsForAsset, searchDocumentChunks } from "@/data/documents";
 import { getLogEntries } from "@/data/log-entries";
 import { logEntryTypes } from "@/domain/log-entries";
 import { addLogEntry } from "./actions";
@@ -19,18 +20,20 @@ export const dynamic = "force-dynamic";
 
 export default async function AssetDetail({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ inventoryError?: string; documentError?: string }>;
+  searchParams: Promise<{ inventoryError?: string; documentError?: string; documentQuery?: string }>;
 }) {
   const { id } = await params;
-  const { inventoryError, documentError } = await searchParams;
+  const { inventoryError, documentError, documentQuery = "" } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   const asset = await getAsset(id, session.user.id);
 
   if (!asset) notFound();
-  const [logEntries, documents] = await Promise.all([
+  const normalizedDocumentQuery = documentQuery.trim().slice(0, 200);
+  const [logEntries, documents, documentSearchResults] = await Promise.all([
     getLogEntries(id, session.user.id),
     getDocumentsForAsset(id, session.user.id),
+    searchDocumentChunks(id, session.user.id, normalizedDocumentQuery),
   ]);
   const createEntry = addLogEntry.bind(null, id);
   const uploadAssetDocument = uploadDocument.bind(null, id);
@@ -58,6 +61,7 @@ export default async function AssetDetail({ params, searchParams }: {
         </section>
 
         <DocumentLibrary documents={documents} error={documentError} uploadAction={uploadAssetDocument} />
+        <DocumentSearch assetId={id} query={normalizedDocumentQuery} results={documentSearchResults} />
 
         <section className="log-section">
           <div className="section-heading"><p className="eyebrow">Operating history</p><h2>Log</h2><p>{logEntries.length} {logEntries.length === 1 ? "entry" : "entries"}</p></div>
