@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { ErrorNotice } from "@/components/error-notice";
 
 import { auth } from "@/auth";
 import { ErrorNotice } from "@/components/error-notice";

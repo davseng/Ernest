@@ -34,7 +34,7 @@ Set the values documented in `.env.example`. `AUTH_SECRET` signs authentication 
 
 ## Database setup and changes
 
-Migrations are ordered SQL files in `migrations/`. The migration runner records each applied file in `schema_migrations` and runs new files transactionally. Migration `003` adds the Auth.js tables and a required asset owner; migration `004` adds the surrogate account and session IDs returned by the PostgreSQL adapter while preserving the existing primary keys and auth data. Migration `005` adds the owner-scoped operating log, and migration `006` adds optional asset registration and component serial identifiers. The seed is idempotent and assigns the Far Better asset and its inventory to `SEED_OWNER_EMAIL`; use the same email when signing in.
+Migrations are ordered SQL files in `migrations/`. The migration runner records each applied file in `schema_migrations` and runs new files transactionally. Migration `003` adds the Auth.js tables and a required asset owner; migration `004` adds the surrogate account and session IDs returned by the PostgreSQL adapter while preserving the existing primary keys and auth data. Migration `005` adds the owner-scoped operating log, migration `006` adds optional asset registration and component serial identifiers, and idempotent migration `007` repairs environments whose migration history says those identifier columns exist when they do not. The seed is idempotent and assigns the Far Better asset and its inventory to `SEED_OWNER_EMAIL`; use the same email when signing in.
 
 ```bash
 # With DATABASE_URL exported in this shell:
@@ -43,6 +43,13 @@ npm run db:seed
 ```
 
 Apply those commands deliberately to each environment. They are **not** run automatically during builds or application startup. Do not point local tooling at a live database unless you intend to modify it, and never commit a connection string.
+
+Promoting application code does not promote its database schema. Before (or
+immediately after) promoting a release with new migrations, export the target
+environment's `DATABASE_URL` in a trusted administrative shell and run
+`npm run db:migrate`. PostgreSQL error `42703` for `registration_number` means
+the target database is behind the application and specifically requires the
+pending migrations; redeploying the same application bundle cannot add it.
 
 ## Checks
 
