@@ -67,6 +67,19 @@ dd { margin: 7px 0 0; font-size: .9rem; font-weight: 700; }
 .log-entry h3 { margin-bottom: 8px; font-size: 1rem; }
 .log-entry p { margin-bottom: 0; color: var(--muted); line-height: 1.55; white-space: pre-wrap; }
 .log-entry small { display: block; margin-top: 12px; color: var(--muted); }
+.document-search-section { padding: 54px 0; border-bottom: 1px solid var(--line); }
+.document-search-form { max-width: 760px; padding: 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.document-search-form label { display: block; margin-bottom: 8px; font-size: .78rem; font-weight: 700; }
+.document-search-controls { display: flex; gap: 10px; }
+.document-search-controls input { min-width: 0; flex: 1; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--paper); font: inherit; }
+.document-search-controls button { padding: 11px 16px; border: 0; border-radius: 8px; color: white; background: var(--teal); font: inherit; font-weight: 700; cursor: pointer; }
+.document-search-results { display: grid; gap: 12px; margin-top: 20px; }
+.document-search-count { margin: 0; color: var(--muted); font-size: .85rem; }
+.document-search-result { padding: 20px 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.document-search-source { display: flex; gap: 12px; margin-bottom: 10px; align-items: center; justify-content: space-between; }
+.document-search-source strong { font-size: .9rem; }
+.document-search-source span { flex: none; color: var(--teal); font-size: .76rem; font-weight: 700; }
+.document-search-result p { margin: 0; color: var(--muted); line-height: 1.6; white-space: pre-wrap; }
 .section-heading { margin-bottom: 26px; }
 .section-heading h2 { margin-bottom: 7px; font-family: Georgia, serif; font-size: 2rem; }
 .section-heading > p:last-child { margin: 0; color: var(--muted); font-size: .85rem; }
@@ -106,8 +119,9 @@ dd { margin: 7px 0 0; font-size: .9rem; font-weight: 700; }
   .asset-facts { min-width: 0; margin-top: 30px; padding: 18px 14px; }
   .asset-facts div + div { padding-left: 14px; }
   .systems-section { padding-top: 40px; }
-  .log-section { padding: 40px 0; }
+  .log-section, .document-search-section { padding: 40px 0; }
   .log-layout { grid-template-columns: 1fr; }
+  .document-search-controls { display: grid; }
   .system-heading { padding: 20px; }
   .system-heading > span { display: none; }
   .component-list { grid-template-columns: 1fr; }
