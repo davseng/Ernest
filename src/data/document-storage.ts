@@ -4,7 +4,14 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 let client: S3Client | undefined;
 
-function storageConfig() {
+type StorageConfig = {
+  endpoint: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucket: string;
+};
+
+function storageConfig(): StorageConfig {
   const accountId = process.env.R2_ACCOUNT_ID;
   const endpoint = process.env.R2_ENDPOINT ?? (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : undefined);
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -21,7 +28,12 @@ function storageConfig() {
     throw new Error(`R2 storage is not configured. Missing: ${missing.join(", ")}.`);
   }
 
-  return { endpoint, accessKeyId, secretAccessKey, bucket };
+  return {
+    endpoint: endpoint as string,
+    accessKeyId: accessKeyId as string,
+    secretAccessKey: secretAccessKey as string,
+    bucket: bucket as string,
+  };
 }
 
 function storageClient() {
