@@ -4,29 +4,36 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AccountMenu } from "@/components/account-menu";
 import { ComponentDeleteButton } from "@/components/component-delete-button";
+import { DocumentLibrary } from "@/components/document-library";
 import { ErrorNotice } from "@/components/error-notice";
 import { SystemDeleteButton } from "@/components/system-delete-button";
 import { getAsset } from "@/data/assets";
+import { getDocumentsForAsset } from "@/data/documents";
 import { getLogEntries } from "@/data/log-entries";
 import { logEntryTypes } from "@/domain/log-entries";
 import { addLogEntry } from "./actions";
+import { uploadDocument } from "./document-actions";
 import { addComponent, addSystem, editComponent, editSystem, removeComponent, removeSystem } from "./inventory-actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function AssetDetail({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ inventoryError?: string }>;
+  searchParams: Promise<{ inventoryError?: string; documentError?: string }>;
 }) {
   const { id } = await params;
-  const { inventoryError } = await searchParams;
+  const { inventoryError, documentError } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   const asset = await getAsset(id, session.user.id);
 
   if (!asset) notFound();
-  const logEntries = await getLogEntries(id, session.user.id);
+  const [logEntries, documents] = await Promise.all([
+    getLogEntries(id, session.user.id),
+    getDocumentsForAsset(id, session.user.id),
+  ]);
   const createEntry = addLogEntry.bind(null, id);
+  const uploadAssetDocument = uploadDocument.bind(null, id);
 
   return (
     <div className="app-shell">
@@ -49,6 +56,8 @@ export default async function AssetDetail({ params, searchParams }: {
             {asset.registrationNumber ? <div><dt>Registration / VIN</dt><dd>{asset.registrationNumber}</dd></div> : null}
           </dl>
         </section>
+
+        <DocumentLibrary documents={documents} error={documentError} uploadAction={uploadAssetDocument} />
 
         <section className="log-section">
           <div className="section-heading"><p className="eyebrow">Operating history</p><h2>Log</h2><p>{logEntries.length} {logEntries.length === 1 ? "entry" : "entries"}</p></div>
