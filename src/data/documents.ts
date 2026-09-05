@@ -33,7 +33,7 @@ type DocumentSearchRow = {
   document_title: string;
   page_number: number;
   chunk_index: number;
-  text_content: string;
+  page_text: string;
 };
 
 function mapDocument(row: DocumentRow): AssetDocument {
@@ -75,10 +75,13 @@ export async function searchDocumentChunks(assetId: string, ownerId: string, que
       d.title AS document_title,
       c.page_number,
       c.chunk_index,
-      c.text_content
+      p.text_content AS page_text
     FROM document_chunks c
     INNER JOIN documents d ON d.id = c.document_id
     INNER JOIN assets a ON a.id = d.asset_id
+    INNER JOIN document_pages p
+      ON p.document_id = c.document_id
+      AND p.page_number = c.page_number
     WHERE d.asset_id = ${assetId}
       AND d.owner_id = ${ownerId}
       AND a.owner_id = ${ownerId}
@@ -88,15 +91,26 @@ export async function searchDocumentChunks(assetId: string, ownerId: string, que
       d.title,
       c.page_number,
       c.chunk_index
-    LIMIT 8`;
+    LIMIT 24`;
 
-  return rows.map((row) => ({
-    documentId: row.document_id,
-    documentTitle: row.document_title,
-    pageNumber: row.page_number,
-    chunkIndex: row.chunk_index,
-    text: row.text_content,
-  }));
+  const seenPages = new Set<string>();
+  const results = [];
+
+  for (const row of rows) {
+    const pageKey = `${row.document_id}:${row.page_number}`;
+    if (seenPages.has(pageKey)) continue;
+    seenPages.add(pageKey);
+    results.push({
+      documentId: row.document_id,
+      documentTitle: row.document_title,
+      pageNumber: row.page_number,
+      chunkIndex: row.chunk_index,
+      text: row.page_text,
+    });
+    if (results.length >= 8) break;
+  }
+
+  return results;
 }
 
 export async function getDocumentForAsset(documentId: string, assetId: string, ownerId: string) {
