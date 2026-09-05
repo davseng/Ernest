@@ -7,6 +7,9 @@ export interface AssetDocument {
   sizeBytes: number;
   storageKey: string;
   createdAt: Date;
+  extractedAt?: Date;
+  pageCount?: number;
+  extractionError?: string;
 }
 
 export interface NewAssetDocument {
@@ -15,4 +18,9 @@ export interface NewAssetDocument {
   contentType: string;
   sizeBytes: number;
   storageKey: string;
+}
+
+export interface ExtractedDocumentPage {
+  pageNumber: number;
+  text: string;
 }
