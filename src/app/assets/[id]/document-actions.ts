@@ -4,8 +4,14 @@ import { randomUUID } from "node:crypto";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { createDocumentForAsset } from "@/data/documents";
-import { storeDocument } from "@/data/document-storage";
+import {
+  createDocumentForAsset,
+  getDocumentForAsset,
+  markDocumentExtractionError,
+  replaceDocumentPages,
+} from "@/data/documents";
+import { readDocument, storeDocument } from "@/data/document-storage";
+import { extractPdfPages } from "@/data/pdf-text";
 import { getAsset } from "@/data/assets";
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -58,6 +64,28 @@ export async function uploadDocument(assetId: string, formData: FormData) {
     storageKey,
   });
   if (!created) notFound();
+
+  redirect(`/assets/${encodeURIComponent(assetId)}#documents`);
+}
+
+export async function extractDocumentText(assetId: string, documentId: string) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/sign-in");
+
+  const document = await getDocumentForAsset(documentId, assetId, session.user.id);
+  if (!document) notFound();
+
+  try {
+    const bytes = await readDocument(document.storageKey);
+    const pages = await extractPdfPages(bytes);
+    const stored = await replaceDocumentPages(documentId, assetId, session.user.id, pages);
+    if (!stored) notFound();
+  } catch (error) {
+    console.error("Document text extraction failure", error);
+    const message = error instanceof Error ? error.message.slice(0, 500) : "Unknown extraction error";
+    await markDocumentExtractionError(documentId, assetId, session.user.id, message);
+    redirect(documentErrorUrl(assetId, "Text extraction failed. The original PDF is unchanged."));
+  }
 
   redirect(`/assets/${encodeURIComponent(assetId)}#documents`);
 }
