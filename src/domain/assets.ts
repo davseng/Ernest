@@ -6,6 +6,7 @@ export interface Component {
   name: string;
   manufacturer: string;
   model: string;
+  serialNumber?: string;
   location: string;
   notes: string;
 }
@@ -26,9 +27,10 @@ export interface Asset {
   model: string;
   year: number;
   summary: string;
+  registrationNumber?: string;
   systems: AssetSystem[];
 }
 
-export type AssetDetails = Pick<Asset, "name" | "type" | "make" | "model" | "year" | "summary">;
+export type AssetDetails = Pick<Asset, "name" | "type" | "make" | "model" | "year" | "summary" | "registrationNumber">;
 export type SystemDetails = Pick<AssetSystem, "name" | "description">;
-export type ComponentDetails = Pick<Component, "name" | "manufacturer" | "model" | "location" | "notes">;
+export type ComponentDetails = Pick<Component, "name" | "manufacturer" | "model" | "serialNumber" | "location" | "notes">;
