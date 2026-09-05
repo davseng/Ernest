@@ -2,7 +2,13 @@
 
 import { useActionState } from "react";
 
-import { askErnest, emptyAskErnestState } from "@/app/assets/[id]/ask-actions";
+import { askErnest, type AskErnestState } from "@/app/assets/[id]/ask-actions";
+
+const emptyAskErnestState: AskErnestState = {
+  question: "",
+  answer: "",
+  sources: [],
+};
 
 export function AskErnest({ assetId }: { assetId: string }) {
   const [state, formAction, pending] = useActionState(
