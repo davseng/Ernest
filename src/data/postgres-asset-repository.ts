@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import postgres from "postgres";
 
 import type { AssetRepository } from "@/data/asset-repository";
@@ -74,6 +75,34 @@ export const postgresAssetRepository: AssetRepository = {
         model = ${details.model}, year = ${details.year}, summary = ${details.summary}
       WHERE id = ${id} AND owner_id = ${ownerId}
       RETURNING id`;
+    return rows.length === 1;
+  },
+  async createSystemForOwner(assetId, ownerId, details) {
+    const rows = await database()`
+      INSERT INTO systems (id, asset_id, name, description, position)
+      SELECT ${randomUUID()}, a.id, ${details.name}, ${details.description},
+        COALESCE((SELECT MAX(position) + 1 FROM systems WHERE asset_id = a.id), 0)
+      FROM assets a
+      WHERE a.id = ${assetId} AND a.owner_id = ${ownerId}
+      RETURNING id`;
+    return rows.length === 1;
+  },
+  async updateSystemForOwner(assetId, systemId, ownerId, details) {
+    const rows = await database()`
+      UPDATE systems s
+      SET name = ${details.name}, description = ${details.description}
+      FROM assets a
+      WHERE s.id = ${systemId} AND s.asset_id = ${assetId}
+        AND a.id = s.asset_id AND a.owner_id = ${ownerId}
+      RETURNING s.id`;
+    return rows.length === 1;
+  },
+  async deleteSystemForOwner(assetId, systemId, ownerId) {
+    const rows = await database()`
+      DELETE FROM systems s USING assets a
+      WHERE s.id = ${systemId} AND s.asset_id = ${assetId}
+        AND a.id = s.asset_id AND a.owner_id = ${ownerId}
+      RETURNING s.id`;
     return rows.length === 1;
   },
 };
