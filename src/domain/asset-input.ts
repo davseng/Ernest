@@ -1,4 +1,4 @@
-import { type AssetDetails } from "@/domain/assets";
+import { type AssetDetails, type SystemDetails } from "@/domain/assets";
 
 export class AssetInputError extends Error {}
 
@@ -27,5 +27,12 @@ export function parseAssetDetails(formData: FormData): AssetDetails {
     model: required(formData, "model", "Model", 100),
     year,
     summary: required(formData, "summary", "Summary", 1000),
+  };
+}
+
+export function parseSystemDetails(formData: FormData): SystemDetails {
+  return {
+    name: required(formData, "name", "System name", 100),
+    description: required(formData, "description", "Description", 500),
   };
 }
