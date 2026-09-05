@@ -17,12 +17,10 @@ export function DocumentLibrary({
   documents,
   error,
   uploadAction,
-  extractAction,
 }: {
   documents: AssetDocument[];
   error?: string;
   uploadAction: (formData: FormData) => void | Promise<void>;
-  extractAction: (documentId: string) => void | Promise<void>;
 }) {
   return (
     <section className="systems-section" id="documents">
@@ -54,7 +52,7 @@ export function DocumentLibrary({
               <h3>{document.title}</h3>
               <p>{document.originalFilename}</p>
               <small>{formatBytes(document.sizeBytes)} · {extractionStatus(document)}</small>
-              <form action={extractAction.bind(null, document.id)}>
+              <form action={`/assets/${encodeURIComponent(document.assetId)}/documents/${encodeURIComponent(document.id)}/extract`} method="post">
                 <button className="primary-button" type="submit">
                   {document.extractedAt ? "Re-extract text" : "Extract text"}
                 </button>
