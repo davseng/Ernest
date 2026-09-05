@@ -41,6 +41,7 @@ function buildRetrievalQuery(question: string) {
 
   const uniqueTerms = [...new Set(terms)].slice(0, 12);
   if (uniqueTerms.length === 0) return question.trim().slice(0, 500);
+  // PostgreSQL websearch_to_tsquery uses the literal word OR as the boolean OR operator.
   return uniqueTerms.join(" OR ");
 }
 
@@ -50,23 +51,23 @@ export async function getErnestDocumentContext(assetId: string, ownerId: string,
   const retrievalQuery = buildRetrievalQuery(normalized);
 
   const rows = await database()<ContextRow[]>`
-    WITH ranked_hits AS (
+    WITH query AS (
+      SELECT websearch_to_tsquery('english', ${retrievalQuery}) AS value
+    ), ranked_hits AS (
       SELECT
         c.document_id,
         c.page_number,
-        ts_rank(
-          to_tsvector('english', c.text_content),
-          websearch_to_tsquery('english', ${retrievalQuery})
-        ) AS relevance
+        ts_rank(to_tsvector('english', c.text_content), q.value) AS relevance
       FROM document_chunks c
       INNER JOIN documents d ON d.id = c.document_id
       INNER JOIN assets a ON a.id = d.asset_id
+      CROSS JOIN query q
       WHERE d.asset_id = ${assetId}
         AND d.owner_id = ${ownerId}
         AND a.owner_id = ${ownerId}
-        AND to_tsvector('english', c.text_content) @@ websearch_to_tsquery('english', ${retrievalQuery})
+        AND to_tsvector('english', c.text_content) @@ q.value
       ORDER BY relevance DESC
-      LIMIT 6
+      LIMIT 8
     ), expanded_pages AS (
       SELECT
         p.document_id,
@@ -92,7 +93,7 @@ export async function getErnestDocumentContext(assetId: string, ownerId: string,
       AND d.owner_id = ${ownerId}
       AND a.owner_id = ${ownerId}
     ORDER BY e.relevance DESC, d.title, e.page_number
-    LIMIT 16`;
+    LIMIT 20`;
 
   let totalChars = 0;
   const context: ErnestContextPage[] = [];
