@@ -1,6 +1,6 @@
 import "server-only";
 
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 let client: S3Client | undefined;
 
@@ -59,4 +59,15 @@ export async function storeDocument(key: string, file: File) {
     Body: body,
     ContentType: file.type || "application/octet-stream",
   }));
+}
+
+export async function readDocument(key: string) {
+  const config = storageConfig();
+  const response = await storageClient().send(new GetObjectCommand({
+    Bucket: config.bucket,
+    Key: key,
+  }));
+
+  if (!response.Body) throw new Error("Stored document has no body.");
+  return response.Body.transformToByteArray();
 }
