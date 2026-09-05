@@ -3,8 +3,8 @@
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { createSystem, deleteSystem, updateSystem } from "@/data/assets";
-import { AssetInputError, parseSystemDetails } from "@/domain/asset-input";
+import { createComponent, createSystem, deleteComponent, deleteSystem, updateComponent, updateSystem } from "@/data/assets";
+import { AssetInputError, parseComponentDetails, parseSystemDetails } from "@/domain/asset-input";
 
 async function owner() {
   const session = await auth();
@@ -47,5 +47,34 @@ export async function editSystem(assetId: string, systemId: string, formData: Fo
 
 export async function removeSystem(assetId: string, systemId: string) {
   if (!await deleteSystem(assetId, systemId, await owner())) notFound();
+  redirect(destination(assetId));
+}
+
+export async function addComponent(assetId: string, systemId: string, formData: FormData) {
+  const ownerId = await owner();
+  let created = false;
+  try {
+    created = await createComponent(assetId, systemId, ownerId, parseComponentDetails(formData));
+  } catch (error) {
+    redirect(destination(assetId, errorMessage(error)));
+  }
+  if (!created) notFound();
+  redirect(destination(assetId));
+}
+
+export async function editComponent(assetId: string, systemId: string, componentId: string, formData: FormData) {
+  const ownerId = await owner();
+  let updated = false;
+  try {
+    updated = await updateComponent(assetId, systemId, componentId, ownerId, parseComponentDetails(formData));
+  } catch (error) {
+    redirect(destination(assetId, errorMessage(error)));
+  }
+  if (!updated) notFound();
+  redirect(destination(assetId));
+}
+
+export async function removeComponent(assetId: string, systemId: string, componentId: string) {
+  if (!await deleteComponent(assetId, systemId, componentId, await owner())) notFound();
   redirect(destination(assetId));
 }
