@@ -16,13 +16,14 @@ test("Ask Ernest retrieval is owner scoped through documents and assets", () => 
 
 test("Ask Ernest expands matched chunks into neighboring source pages", () => {
   assert.match(contextSource, /p\.page_number BETWEEN GREATEST\(1, h\.page_number - 1\) AND h\.page_number \+ 1/);
-  assert.match(contextSource, /LIMIT 16/);
+  assert.match(contextSource, /LIMIT 20/);
 });
 
 test("Ask Ernest tolerates natural-language questions during retrieval", () => {
   assert.match(contextSource, /GENERIC_QUERY_WORDS/);
   assert.match(contextSource, /uniqueTerms\.join\(" OR "\)/);
   assert.match(contextSource, /websearch_to_tsquery\('english', \$\{retrievalQuery\}\)/);
+  assert.match(contextSource, /CROSS JOIN query q/);
 });
 
 test("Ask Ernest derives owner from authenticated session and grounds the model", () => {
