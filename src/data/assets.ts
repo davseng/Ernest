@@ -9,3 +9,6 @@ export const updateAsset = postgresAssetRepository.updateForOwner.bind(postgresA
 export const createSystem = postgresAssetRepository.createSystemForOwner.bind(postgresAssetRepository);
 export const updateSystem = postgresAssetRepository.updateSystemForOwner.bind(postgresAssetRepository);
 export const deleteSystem = postgresAssetRepository.deleteSystemForOwner.bind(postgresAssetRepository);
+export const createComponent = postgresAssetRepository.createComponentForOwner.bind(postgresAssetRepository);
+export const updateComponent = postgresAssetRepository.updateComponentForOwner.bind(postgresAssetRepository);
+export const deleteComponent = postgresAssetRepository.deleteComponentForOwner.bind(postgresAssetRepository);
