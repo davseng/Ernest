@@ -32,6 +32,7 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
           <div>
             <div className="title-row"><h1>{asset.name}</h1><span className="type-pill">{asset.type}</span></div>
             <p className="asset-summary detail-summary">{asset.summary}</p>
+            <Link className="edit-asset-link" href={`/assets/${asset.id}/edit`}>Edit asset</Link>
           </div>
           <dl className="asset-facts">
             <div><dt>Make</dt><dd>{asset.make}</dd></div>
