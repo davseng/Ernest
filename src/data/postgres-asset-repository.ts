@@ -105,4 +105,36 @@ export const postgresAssetRepository: AssetRepository = {
       RETURNING s.id`;
     return rows.length === 1;
   },
+  async createComponentForOwner(assetId, systemId, ownerId, details) {
+    const rows = await database()`
+      INSERT INTO components (id, system_id, name, manufacturer, model, location, notes, position)
+      SELECT ${randomUUID()}, s.id, ${details.name}, ${details.manufacturer}, ${details.model},
+        ${details.location}, ${details.notes},
+        COALESCE((SELECT MAX(position) + 1 FROM components WHERE system_id = s.id), 0)
+      FROM systems s
+      INNER JOIN assets a ON a.id = s.asset_id
+      WHERE s.id = ${systemId} AND a.id = ${assetId} AND a.owner_id = ${ownerId}
+      RETURNING id`;
+    return rows.length === 1;
+  },
+  async updateComponentForOwner(assetId, systemId, componentId, ownerId, details) {
+    const rows = await database()`
+      UPDATE components c
+      SET name = ${details.name}, manufacturer = ${details.manufacturer}, model = ${details.model},
+        location = ${details.location}, notes = ${details.notes}
+      FROM systems s
+      INNER JOIN assets a ON a.id = s.asset_id
+      WHERE c.id = ${componentId} AND c.system_id = ${systemId} AND s.id = c.system_id
+        AND a.id = ${assetId} AND a.owner_id = ${ownerId}
+      RETURNING c.id`;
+    return rows.length === 1;
+  },
+  async deleteComponentForOwner(assetId, systemId, componentId, ownerId) {
+    const rows = await database()`
+      DELETE FROM components c USING systems s, assets a
+      WHERE c.id = ${componentId} AND c.system_id = ${systemId} AND s.id = c.system_id
+        AND a.id = s.asset_id AND a.id = ${assetId} AND a.owner_id = ${ownerId}
+      RETURNING c.id`;
+    return rows.length === 1;
+  },
 };
