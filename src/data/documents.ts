@@ -28,6 +28,14 @@ type DocumentRow = {
   extraction_error: string | null;
 };
 
+type DocumentSearchRow = {
+  document_id: string;
+  document_title: string;
+  page_number: number;
+  chunk_index: number;
+  text_content: string;
+};
+
 function mapDocument(row: DocumentRow): AssetDocument {
   return {
     id: row.id,
@@ -55,6 +63,40 @@ export async function getDocumentsForAsset(assetId: string, ownerId: string) {
       AND a.owner_id = ${ownerId}
     ORDER BY d.created_at DESC`;
   return rows.map(mapDocument);
+}
+
+export async function searchDocumentChunks(assetId: string, ownerId: string, query: string) {
+  const normalized = query.trim().slice(0, 200);
+  if (!normalized) return [];
+
+  const rows = await database()<DocumentSearchRow[]>`
+    SELECT
+      c.document_id,
+      d.title AS document_title,
+      c.page_number,
+      c.chunk_index,
+      c.text_content
+    FROM document_chunks c
+    INNER JOIN documents d ON d.id = c.document_id
+    INNER JOIN assets a ON a.id = d.asset_id
+    WHERE d.asset_id = ${assetId}
+      AND d.owner_id = ${ownerId}
+      AND a.owner_id = ${ownerId}
+      AND to_tsvector('english', c.text_content) @@ plainto_tsquery('english', ${normalized})
+    ORDER BY
+      ts_rank(to_tsvector('english', c.text_content), plainto_tsquery('english', ${normalized})) DESC,
+      d.title,
+      c.page_number,
+      c.chunk_index
+    LIMIT 8`;
+
+  return rows.map((row) => ({
+    documentId: row.document_id,
+    documentTitle: row.document_title,
+    pageNumber: row.page_number,
+    chunkIndex: row.chunk_index,
+    text: row.text_content,
+  }));
 }
 
 export async function getDocumentForAsset(documentId: string, assetId: string, ownerId: string) {
