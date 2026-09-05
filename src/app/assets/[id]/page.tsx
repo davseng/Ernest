@@ -3,15 +3,22 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { AccountMenu } from "@/components/account-menu";
+import { ErrorNotice } from "@/components/error-notice";
+import { SystemDeleteButton } from "@/components/system-delete-button";
 import { getAsset } from "@/data/assets";
 import { getLogEntries } from "@/data/log-entries";
 import { logEntryTypes } from "@/domain/log-entries";
 import { addLogEntry } from "./actions";
+import { addSystem, editSystem, removeSystem } from "./inventory-actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function AssetDetail({ params }: { params: Promise<{ id: string }> }) {
+export default async function AssetDetail({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ inventoryError?: string }>;
+}) {
   const { id } = await params;
+  const { inventoryError } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   const asset = await getAsset(id, session.user.id);
@@ -68,8 +75,17 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
           </div>
         </section>
 
-        <section className="systems-section">
+        <section className="systems-section" id="inventory">
           <div className="section-heading"><p className="eyebrow">Inventory</p><h2>Systems</h2><p>{asset.systems.length} systems · {asset.systems.reduce((total, system) => total + system.components.length, 0)} components</p></div>
+          <ErrorNotice message={inventoryError} />
+          <details className="editor-card add-system">
+            <summary>Add a system</summary>
+            <form className="compact-form" action={addSystem.bind(null, id)}>
+              <label>Name<input name="name" maxLength={100} required /></label>
+              <label>Description<textarea name="description" maxLength={500} required /></label>
+              <button className="primary-button" type="submit">Add system</button>
+            </form>
+          </details>
           <div className="system-list">
             {asset.systems.map((system) => (
               <article className="system-card" key={system.id}>
@@ -77,6 +93,17 @@ export default async function AssetDetail({ params }: { params: Promise<{ id: st
                   <div><h3>{system.name}</h3><p>{system.description}</p></div>
                   <span>{system.components.length} components</span>
                 </div>
+                <details className="editor-card system-editor">
+                  <summary>Edit system</summary>
+                  <form className="compact-form" action={editSystem.bind(null, id, system.id)}>
+                    <label>Name<input name="name" defaultValue={system.name} maxLength={100} required /></label>
+                    <label>Description<textarea name="description" defaultValue={system.description} maxLength={500} required /></label>
+                    <button className="primary-button" type="submit">Save system</button>
+                  </form>
+                  <form className="delete-system-form" action={removeSystem.bind(null, id, system.id)}>
+                    <SystemDeleteButton name={system.name} />
+                  </form>
+                </details>
                 <div className="component-list">
                   {system.components.map((component) => (
                     <div className="component" key={component.id}>
