@@ -11,6 +11,12 @@ function required(formData: FormData, name: string, label: string, maximum: numb
   return value;
 }
 
+function optional(formData: FormData, name: string, label: string, maximum: number) {
+  const value = String(formData.get(name) ?? "").trim();
+  if (value.length > maximum) throw new AssetInputError(`${label} must be ${maximum} characters or fewer.`);
+  return value || undefined;
+}
+
 export function parseAssetDetails(formData: FormData): AssetDetails {
   const type = String(formData.get("type") ?? "");
   if (type !== "Boat" && type !== "RV") throw new AssetInputError("Choose Boat or RV.");
@@ -27,6 +33,7 @@ export function parseAssetDetails(formData: FormData): AssetDetails {
     model: required(formData, "model", "Model", 100),
     year,
     summary: required(formData, "summary", "Summary", 1000),
+    registrationNumber: optional(formData, "registrationNumber", "Registration or VIN", 100),
   };
 }
 
@@ -42,6 +49,7 @@ export function parseComponentDetails(formData: FormData): ComponentDetails {
     name: required(formData, "name", "Component name", 100),
     manufacturer: required(formData, "manufacturer", "Manufacturer", 100),
     model: required(formData, "model", "Model", 100),
+    serialNumber: optional(formData, "serialNumber", "Serial number", 100),
     location: required(formData, "location", "Location", 200),
     notes: required(formData, "notes", "Notes", 1000),
   };
