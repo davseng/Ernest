@@ -6,3 +6,6 @@ export const getAssets = (ownerId: string) => postgresAssetRepository.findAllByO
 export const getAsset = (id: string, ownerId: string) =>
   postgresAssetRepository.findByIdAndOwner(id, ownerId);
 export const updateAsset = postgresAssetRepository.updateForOwner.bind(postgresAssetRepository);
+export const createSystem = postgresAssetRepository.createSystemForOwner.bind(postgresAssetRepository);
+export const updateSystem = postgresAssetRepository.updateSystemForOwner.bind(postgresAssetRepository);
+export const deleteSystem = postgresAssetRepository.deleteSystemForOwner.bind(postgresAssetRepository);
