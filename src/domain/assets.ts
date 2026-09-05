@@ -31,3 +31,4 @@ export interface Asset {
 
 export type AssetDetails = Pick<Asset, "name" | "type" | "make" | "model" | "year" | "summary">;
 export type SystemDetails = Pick<AssetSystem, "name" | "description">;
+export type ComponentDetails = Pick<Component, "name" | "manufacturer" | "model" | "location" | "notes">;
