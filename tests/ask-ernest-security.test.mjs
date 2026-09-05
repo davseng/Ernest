@@ -19,6 +19,12 @@ test("Ask Ernest expands matched chunks into neighboring source pages", () => {
   assert.match(contextSource, /LIMIT 16/);
 });
 
+test("Ask Ernest tolerates natural-language questions during retrieval", () => {
+  assert.match(contextSource, /GENERIC_QUERY_WORDS/);
+  assert.match(contextSource, /uniqueTerms\.join\(" OR "\)/);
+  assert.match(contextSource, /websearch_to_tsquery\('english', \$\{retrievalQuery\}\)/);
+});
+
 test("Ask Ernest derives owner from authenticated session and grounds the model", () => {
   assert.match(actionSource, /getErnestDocumentContext\(assetId, session\.user\.id, question\)/);
   assert.doesNotMatch(actionSource, /ownerId.*formData/);
