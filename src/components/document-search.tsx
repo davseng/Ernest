@@ -20,7 +20,7 @@ export function DocumentSearch({
       <div className="section-heading">
         <p className="eyebrow">Knowledge</p>
         <h2>Search documents</h2>
-        <p>Search extracted PDF text. Results always show the source document and page.</p>
+        <p>Search extracted PDF text. Matches are ranked by chunk, but results show the full matching page for context.</p>
       </div>
       <form className="document-search-form" method="get" action={`/assets/${assetId}`}>
         <label htmlFor="documentQuery">Search your manuals and records</label>
