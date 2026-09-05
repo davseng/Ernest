@@ -2,6 +2,7 @@ import "server-only";
 
 import postgres from "postgres";
 
+import { chunkExtractedPages } from "@/data/document-chunks";
 import type { AssetDocument, ExtractedDocumentPage, NewAssetDocument } from "@/domain/documents";
 
 let client: ReturnType<typeof postgres> | undefined;
@@ -92,14 +93,24 @@ export async function replaceDocumentPages(
   const sql = database();
   const owned = await getDocumentForAsset(documentId, assetId, ownerId);
   if (!owned) return false;
+  const chunks = chunkExtractedPages(pages);
 
   await sql.begin(async (tx) => {
+    await tx`DELETE FROM document_chunks WHERE document_id = ${documentId}`;
     await tx`DELETE FROM document_pages WHERE document_id = ${documentId}`;
+
     for (const page of pages) {
       await tx`
         INSERT INTO document_pages (document_id, page_number, text_content)
         VALUES (${documentId}, ${page.pageNumber}, ${page.text})`;
     }
+
+    for (const chunk of chunks) {
+      await tx`
+        INSERT INTO document_chunks (document_id, page_number, chunk_index, text_content)
+        VALUES (${documentId}, ${chunk.pageNumber}, ${chunk.chunkIndex}, ${chunk.text})`;
+    }
+
     await tx`
       UPDATE documents
       SET extracted_at = now(), page_count = ${pages.length}, extraction_error = NULL
