@@ -46,6 +46,7 @@ export default async function AssetDetail({ params, searchParams }: {
             <div><dt>Make</dt><dd>{asset.make}</dd></div>
             <div><dt>Model</dt><dd>{asset.model}</dd></div>
             <div><dt>Year</dt><dd>{asset.year}</dd></div>
+            {asset.registrationNumber ? <div><dt>Registration / VIN</dt><dd>{asset.registrationNumber}</dd></div> : null}
           </dl>
         </section>
 
@@ -112,6 +113,7 @@ export default async function AssetDetail({ params, searchParams }: {
                       <dl className="component-facts">
                         <div><dt>Manufacturer</dt><dd>{component.manufacturer}</dd></div>
                         <div><dt>Model</dt><dd>{component.model}</dd></div>
+                        {component.serialNumber ? <div><dt>Serial number</dt><dd>{component.serialNumber}</dd></div> : null}
                         <div><dt>Location</dt><dd>{component.location}</dd></div>
                       </dl>
                       <p className="notes"><span>Notes</span>{component.notes}</p>
@@ -121,6 +123,7 @@ export default async function AssetDetail({ params, searchParams }: {
                           <label>Name<input name="name" defaultValue={component.name} maxLength={100} required /></label>
                           <label>Manufacturer<input name="manufacturer" defaultValue={component.manufacturer} maxLength={100} required /></label>
                           <label>Model<input name="model" defaultValue={component.model} maxLength={100} required /></label>
+                          <label>Serial number <span>(optional)</span><input name="serialNumber" defaultValue={component.serialNumber} maxLength={100} /></label>
                           <label>Location<input name="location" defaultValue={component.location} maxLength={200} required /></label>
                           <label>Notes<textarea name="notes" defaultValue={component.notes} maxLength={1000} required /></label>
                           <button className="primary-button" type="submit">Save component</button>
@@ -138,6 +141,7 @@ export default async function AssetDetail({ params, searchParams }: {
                     <label>Name<input name="name" maxLength={100} required /></label>
                     <label>Manufacturer<input name="manufacturer" maxLength={100} required /></label>
                     <label>Model<input name="model" maxLength={100} required /></label>
+                    <label>Serial number <span>(optional)</span><input name="serialNumber" maxLength={100} /></label>
                     <label>Location<input name="location" maxLength={200} required /></label>
                     <label>Notes<textarea name="notes" maxLength={1000} required /></label>
                     <button className="primary-button" type="submit">Add component</button>
