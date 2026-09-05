@@ -13,8 +13,8 @@ async function owner() {
 }
 
 function destination(assetId: string, error?: string) {
-  const base = `/assets/${encodeURIComponent(assetId)}#inventory`;
-  return error ? `${base}?error=${encodeURIComponent(error)}` : base;
+  const base = `/assets/${encodeURIComponent(assetId)}`;
+  return error ? `${base}?inventoryError=${encodeURIComponent(error)}#inventory` : `${base}#inventory`;
 }
 
 function errorMessage(error: unknown) {
