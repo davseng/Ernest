@@ -28,3 +28,5 @@ export interface Asset {
   summary: string;
   systems: AssetSystem[];
 }
+
+export type AssetDetails = Pick<Asset, "name" | "type" | "make" | "model" | "year" | "summary">;
