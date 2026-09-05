@@ -67,4 +67,13 @@ export const postgresAssetRepository: AssetRepository = {
     const rows = await database().unsafe<JoinedRow[]>(`${selectAssets} WHERE a.id = $1 AND a.owner_id = $2 ORDER BY s.position, c.position`, [id, ownerId]);
     return mapRows(rows)[0];
   },
+  async updateForOwner(id, ownerId, details) {
+    const rows = await database()`
+      UPDATE assets
+      SET name = ${details.name}, type = ${details.type}, make = ${details.make},
+        model = ${details.model}, year = ${details.year}, summary = ${details.summary}
+      WHERE id = ${id} AND owner_id = ${ownerId}
+      RETURNING id`;
+    return rows.length === 1;
+  },
 };
