@@ -11,11 +11,13 @@ export type AskErnestState = {
   error?: string;
 };
 
-export const emptyAskErnestState: AskErnestState = {
-  question: "",
-  answer: "",
-  sources: [],
-};
+function emptyAskErnestState(): AskErnestState {
+  return {
+    question: "",
+    answer: "",
+    sources: [],
+  };
+}
 
 export async function askErnest(
   assetId: string,
@@ -24,12 +26,12 @@ export async function askErnest(
 ): Promise<AskErnestState> {
   const session = await auth();
   if (!session?.user?.id) {
-    return { ...emptyAskErnestState, error: "Please sign in again." };
+    return { ...emptyAskErnestState(), error: "Please sign in again." };
   }
 
   const question = String(formData.get("question") ?? "").trim().slice(0, 500);
   if (!question) {
-    return { ...emptyAskErnestState, error: "Enter a question." };
+    return { ...emptyAskErnestState(), error: "Enter a question." };
   }
 
   try {
