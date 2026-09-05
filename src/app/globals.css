@@ -42,6 +42,8 @@ h1 { margin-bottom: 12px; font-family: Georgia, serif; font-size: clamp(2.5rem, 
 .title-row { display: flex; align-items: center; gap: 16px; }
 .title-row h1 { margin-bottom: 14px; }
 .detail-summary { max-width: 680px; }
+.edit-asset-link { display: inline-block; margin-top: 20px; color: var(--teal); font-size: .86rem; font-weight: 700; text-decoration: none; }
+.edit-asset-link:hover { text-decoration: underline; }
 .asset-facts { display: grid; grid-template-columns: repeat(3, minmax(90px, 1fr)); min-width: 360px; margin: 5px 0 0; padding: 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
 .asset-facts div + div { padding-left: 22px; border-left: 1px solid var(--line); }
 dt { color: var(--muted); font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
@@ -82,6 +84,14 @@ dd { margin: 7px 0 0; font-size: .9rem; font-weight: 700; }
 .component-facts dd { font-weight: 400; line-height: 1.35; }
 .notes { margin: 0; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .82rem; line-height: 1.55; }
 .notes span { display: block; margin-bottom: 5px; color: var(--ink); font-size: .68rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.form-page { max-width: 820px; }
+.record-form { display: grid; gap: 22px; margin-top: 32px; padding: 30px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.record-form label { display: grid; gap: 7px; color: var(--ink); font-size: .78rem; font-weight: 700; }
+.record-form input, .record-form select, .record-form textarea { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--paper); font: inherit; }
+.record-form textarea { resize: vertical; }
+.primary-button { justify-self: start; padding: 11px 15px; border: 0; border-radius: 8px; color: white; background: var(--teal); font: inherit; font-size: .86rem; font-weight: 700; cursor: pointer; }
+.error-notice { margin: 24px 0; padding: 13px 15px; border: 1px solid #e5baba; border-radius: 8px; color: #822; background: #fff7f7; }
 @media (max-width: 760px) {
   .site-header { height: 64px; padding: 0 20px; }
   .demo-label { font-size: .68rem; }
@@ -104,4 +114,6 @@ dd { margin: 7px 0 0; font-size: .9rem; font-weight: 700; }
   .component { padding: 24px 20px; }
   .component + .component { border-top: 1px solid var(--line); border-left: 0; }
   .component h4 { min-height: 0; }
+  .form-grid { grid-template-columns: 1fr; }
+  .record-form { padding: 22px; }
 }
