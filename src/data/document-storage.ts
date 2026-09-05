@@ -11,8 +11,14 @@ function storageConfig() {
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
   const bucket = process.env.R2_BUCKET_NAME ?? process.env.R2_BUCKET;
 
-  if (!endpoint || !accessKeyId || !secretAccessKey || !bucket) {
-    throw new Error("R2 storage is not configured. Expected R2_ENDPOINT or R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME or R2_BUCKET.");
+  const missing: string[] = [];
+  if (!endpoint) missing.push("R2_ENDPOINT or R2_ACCOUNT_ID");
+  if (!accessKeyId) missing.push("R2_ACCESS_KEY_ID");
+  if (!secretAccessKey) missing.push("R2_SECRET_ACCESS_KEY");
+  if (!bucket) missing.push("R2_BUCKET_NAME or R2_BUCKET");
+
+  if (missing.length > 0) {
+    throw new Error(`R2 storage is not configured. Missing: ${missing.join(", ")}.`);
   }
 
   return { endpoint, accessKeyId, secretAccessKey, bucket };
