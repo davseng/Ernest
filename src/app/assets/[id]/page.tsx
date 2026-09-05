@@ -3,13 +3,14 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { AccountMenu } from "@/components/account-menu";
+import { ComponentDeleteButton } from "@/components/component-delete-button";
 import { ErrorNotice } from "@/components/error-notice";
 import { SystemDeleteButton } from "@/components/system-delete-button";
 import { getAsset } from "@/data/assets";
 import { getLogEntries } from "@/data/log-entries";
 import { logEntryTypes } from "@/domain/log-entries";
 import { addLogEntry } from "./actions";
-import { addSystem, editSystem, removeSystem } from "./inventory-actions";
+import { addComponent, addSystem, editComponent, editSystem, removeComponent, removeSystem } from "./inventory-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -114,9 +115,34 @@ export default async function AssetDetail({ params, searchParams }: {
                         <div><dt>Location</dt><dd>{component.location}</dd></div>
                       </dl>
                       <p className="notes"><span>Notes</span>{component.notes}</p>
+                      <details className="editor-card component-editor">
+                        <summary>Edit component</summary>
+                        <form className="compact-form" action={editComponent.bind(null, id, system.id, component.id)}>
+                          <label>Name<input name="name" defaultValue={component.name} maxLength={100} required /></label>
+                          <label>Manufacturer<input name="manufacturer" defaultValue={component.manufacturer} maxLength={100} required /></label>
+                          <label>Model<input name="model" defaultValue={component.model} maxLength={100} required /></label>
+                          <label>Location<input name="location" defaultValue={component.location} maxLength={200} required /></label>
+                          <label>Notes<textarea name="notes" defaultValue={component.notes} maxLength={1000} required /></label>
+                          <button className="primary-button" type="submit">Save component</button>
+                        </form>
+                        <form action={removeComponent.bind(null, id, system.id, component.id)}>
+                          <ComponentDeleteButton name={component.name} />
+                        </form>
+                      </details>
                     </div>
                   ))}
                 </div>
+                <details className="editor-card add-component">
+                  <summary>Add a component</summary>
+                  <form className="compact-form" action={addComponent.bind(null, id, system.id)}>
+                    <label>Name<input name="name" maxLength={100} required /></label>
+                    <label>Manufacturer<input name="manufacturer" maxLength={100} required /></label>
+                    <label>Model<input name="model" maxLength={100} required /></label>
+                    <label>Location<input name="location" maxLength={200} required /></label>
+                    <label>Notes<textarea name="notes" maxLength={1000} required /></label>
+                    <button className="primary-button" type="submit">Add component</button>
+                  </form>
+                </details>
               </article>
             ))}
           </div>
