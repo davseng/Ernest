@@ -4,12 +4,14 @@ import { auth } from "@/auth";
 import { answerErnestQuestion } from "@/data/ask-ernest";
 import { getAsset } from "@/data/assets";
 import { getErnestDocumentContext } from "@/data/document-context";
+import { proposeErnestWrite, type ErnestWriteProposal } from "@/data/ernest-write-proposals";
 import { getLogEntries } from "@/data/log-entries";
 
 export type AskErnestState = {
   question: string;
   answer: string;
   sources: { documentTitle: string; pageNumber: number }[];
+  proposal?: ErnestWriteProposal;
   error?: string;
 };
 
@@ -62,6 +64,16 @@ function verifiedAssetContext(
   return lines.join("\n");
 }
 
+function proposalAnswer(proposal: ErnestWriteProposal) {
+  if (proposal.kind === "log") {
+    return `I can save that to ${proposal.log.entryType} history for ${proposal.log.occurredAt}. Review it below before I write anything.`;
+  }
+  if (proposal.kind === "component_fact") {
+    return `I can save that as owner-provided information for ${proposal.componentFact.componentName}. Review the change below first.`;
+  }
+  return "I can save that as owner-provided information for this asset. Review the change below first.";
+}
+
 export async function askErnest(
   assetId: string,
   _previousState: AskErnestState,
@@ -86,6 +98,11 @@ export async function askErnest(
 
     if (!asset) {
       return { ...emptyAskErnestState(), question, error: "I couldn’t find that asset." };
+    }
+
+    const proposal = await proposeErnestWrite(question, asset);
+    if (proposal) {
+      return { question, answer: proposalAnswer(proposal), sources: [], proposal };
     }
 
     const answer = await answerErnestQuestion(question, context, verifiedAssetContext(asset, logs));
