@@ -21,20 +21,25 @@ export async function POST(request: Request, context: {
   const document = await getDocumentForAsset(documentId, assetId, session.user.id);
   if (!document) return new NextResponse("Not found", { status: 404 });
 
+  let stage = "read-storage";
   try {
     const bytes = await readDocument(document.storageKey);
+    stage = "pdf-extract";
     const pages = await extractPdfPages(bytes);
+    stage = "database-write";
     const stored = await replaceDocumentPages(documentId, assetId, session.user.id, pages);
     if (!stored) return new NextResponse("Not found", { status: 404 });
   } catch (error) {
-    console.error("Document text extraction failure", error);
-    const message = error instanceof Error ? error.message.slice(0, 500) : "Unknown extraction error";
+    console.error(`Document text extraction failure at ${stage}`, error);
+    const detail = error instanceof Error ? error.message : "Unknown extraction error";
+    const message = `[${stage}] ${detail}`.replace(/\u0000/g, "").slice(0, 500);
     await markDocumentExtractionError(documentId, assetId, session.user.id, message);
-    const failure = new URL(`/assets/${encodeURIComponent(assetId)}`, request.url);
-    failure.searchParams.set("documentError", "Text extraction failed. The original PDF is unchanged.");
-    failure.hash = "documents";
+    const failure = new URL(`/assets/${encodeURIComponent(assetId)}/documents/${encodeURIComponent(documentId)}`, request.url);
     return NextResponse.redirect(failure, 303);
   }
 
-  return NextResponse.redirect(new URL(`/assets/${encodeURIComponent(assetId)}#documents`, request.url), 303);
+  return NextResponse.redirect(
+    new URL(`/assets/${encodeURIComponent(assetId)}/documents/${encodeURIComponent(documentId)}`, request.url),
+    303,
+  );
 }
