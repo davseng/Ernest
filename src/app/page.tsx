@@ -3,49 +3,58 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { AccountMenu } from "@/components/account-menu";
+import { AssetSwitcher } from "@/components/asset-switcher";
+import { ErnestChat } from "@/components/ernest-chat";
 import { getAssets } from "@/data/assets";
 
 export const dynamic = "force-dynamic";
 
-export default async function Dashboard() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<{ asset?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   const assets = await getAssets(session.user.id);
+  const query = searchParams ? await searchParams : undefined;
+
+  if (assets.length === 0) {
+    return (
+      <div className="app-shell">
+        <header className="site-header conversational-header">
+          <Link className="brand" href="/" aria-label="Ernest home"><span className="brand-mark" aria-hidden="true">E</span>Ernest</Link>
+          <AccountMenu email={session.user.email} />
+        </header>
+        <main className="empty-conversation-home">
+          <h1>Ernest needs an asset to get started.</h1>
+          <p>Add an asset first, then Ernest can organize its knowledge and become the day-to-day interface for it.</p>
+        </main>
+      </div>
+    );
+  }
+
+  const selectedAsset = assets.find((asset) => asset.id === query?.asset) ?? assets[0];
 
   return (
-    <div className="app-shell">
-      <header className="site-header">
-        <Link className="brand" href="/" aria-label="Ernest home">
-          <span className="brand-mark" aria-hidden="true">E</span>
-          Ernest
-        </Link>
-        <AccountMenu email={session.user.email} />
+    <div className="app-shell conversational-shell">
+      <header className="site-header conversational-header">
+        <div className="conversation-header-left">
+          <Link className="brand" href="/" aria-label="Ernest home"><span className="brand-mark" aria-hidden="true">E</span>Ernest</Link>
+          <AssetSwitcher
+            assets={assets.map((asset) => ({ id: asset.id, name: asset.name, type: asset.type }))}
+            selectedAssetId={selectedAsset.id}
+          />
+        </div>
+        <nav className="conversation-nav" aria-label="Asset tools">
+          <Link href={`/assets/${selectedAsset.id}/documents`}>Documents</Link>
+          <Link href={`/assets/${selectedAsset.id}`}>Asset</Link>
+          <AccountMenu email={session.user.email} />
+        </nav>
       </header>
 
-      <main className="page-wrap">
-        <section className="page-heading">
-          <p className="eyebrow">Overview</p>
-          <h1>Your assets</h1>
-          <p className="lede">The essential details of the things you care for.</p>
-        </section>
-
-        {assets.map((asset) => <Link className="asset-card" href={`/assets/${asset.id}`} key={asset.id}>
-          <div className="asset-card-top">
-            <div className="asset-icon" aria-hidden="true">
-              <svg viewBox="0 0 32 32"><path d="M5 20h22l-4 6H10l-5-6Zm6-2V8h9l4 10H11Zm2-8v8h8.8l-3.2-8H13Z" /></svg>
-            </div>
-            <span className="type-pill">{asset.type}</span>
-          </div>
-          <div className="asset-card-body">
-            <h2>{asset.name}</h2>
-            <p className="asset-spec">{asset.year} {asset.make} {asset.model}</p>
-            <p className="asset-summary">{asset.summary}</p>
-          </div>
-          <div className="asset-card-footer">
-            <span>{asset.systems.length} systems</span>
-            <span className="view-link">View asset <span aria-hidden="true">→</span></span>
-          </div>
-        </Link>)}
+      <main className="conversation-main">
+        <ErnestChat assetId={selectedAsset.id} assetName={selectedAsset.name} />
       </main>
     </div>
   );
