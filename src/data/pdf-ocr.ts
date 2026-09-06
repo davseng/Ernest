@@ -47,6 +47,10 @@ export async function ocrPdfPages(
     .sort((a, b) => a - b);
   if (requested.length === 0) return [];
 
+  // Responses API inline file inputs require a base64 data URL, not a bare
+  // base64 payload. Keep the MIME type explicit so the API renders this as PDF.
+  const pdfDataUrl = `data:application/pdf;base64,${Buffer.from(bytes).toString("base64")}`;
+
   const response = await openai().responses.create({
     model: process.env.OPENAI_OCR_MODEL || "gpt-5.6-terra",
     reasoning: { effort: "low" },
@@ -67,7 +71,7 @@ export async function ocrPdfPages(
           {
             type: "input_file",
             filename: filename || "document.pdf",
-            file_data: Buffer.from(bytes).toString("base64"),
+            file_data: pdfDataUrl,
           },
           {
             type: "input_text",
