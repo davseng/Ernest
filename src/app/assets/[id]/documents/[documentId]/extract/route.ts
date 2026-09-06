@@ -48,8 +48,11 @@ export async function POST(request: Request, context: {
   try {
     const bytes = await readDocument(document.storageKey);
 
+    // PDF.js may transfer/detach the ArrayBuffer it receives while parsing.
+    // Give native extraction its own copy so the original bytes remain intact
+    // for OCR fallback later in the same request.
     stage = "pdf-extract";
-    const nativePages = await extractPdfPages(bytes);
+    const nativePages = await extractPdfPages(bytes.slice());
     const weakPageNumbers = nativePages.filter(needsOcr).map((page) => page.pageNumber);
 
     let pages = nativePages;
