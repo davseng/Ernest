@@ -75,7 +75,7 @@ export default async function DocumentDetailPage({ params }: {
               <h3>Text processing</h3>
               <p>{document.extractedAt ? `Last extracted ${document.extractedAt.toLocaleString()}.` : "Text has not been extracted yet."}</p>
               {document.extractedAt && weakPages > 0 ? (
-                <p className="error-notice">{weakPages} page{weakPages === 1 ? "" : "s"} have weak or no machine-readable text and will need OCR/layout fallback.</p>
+                <p className="error-notice">{weakPages} page{weakPages === 1 ? "" : "s"} still have weak or no readable text after extraction. OCR/layout fallback runs automatically on weak pages.</p>
               ) : null}
               {document.extractionError ? <p className="error-notice">{document.extractionError}</p> : null}
               <form action={`/assets/${encodeURIComponent(id)}/documents/${encodeURIComponent(documentId)}/extract`} method="post">
@@ -96,7 +96,7 @@ export default async function DocumentDetailPage({ params }: {
           <div className="section-heading">
             <p className="eyebrow">What Ernest knows</p>
             <h2>Extracted text</h2>
-            <p>{pages.length} pages · {weakPages} weak / OCR candidates</p>
+            <p>{pages.length} pages · {weakPages} weak after OCR fallback</p>
           </div>
           {pages.length === 0 ? (
             <p className="empty-log">No extracted text is available. Run extraction above.</p>
@@ -108,7 +108,7 @@ export default async function DocumentDetailPage({ params }: {
                     <span>PAGE {page.pageNumber}</span>
                     <span>{page.quality.label}</span>
                   </div>
-                  {page.text.trim() ? <pre className="document-text-page">{page.text}</pre> : <p className="empty-log">No machine-readable text found on this page. This page is an OCR candidate.</p>}
+                  {page.text.trim() ? <pre className="document-text-page">{page.text}</pre> : <p className="empty-log">No readable text was recovered from this page.</p>}
                 </article>
               ))}
             </div>
