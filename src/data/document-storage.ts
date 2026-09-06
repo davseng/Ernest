@@ -1,6 +1,13 @@
 import "server-only";
 
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 let client: S3Client | undefined;
 
@@ -51,13 +58,50 @@ function storageClient() {
 }
 
 export async function storeDocument(key: string, file: File) {
-  const config = storageConfig();
   const body = Buffer.from(await file.arrayBuffer());
+  return storeDocumentBytes(key, body, file.type || "application/octet-stream");
+}
+
+export async function storeDocumentBytes(key: string, body: Uint8Array, contentType: string) {
+  const config = storageConfig();
   await storageClient().send(new PutObjectCommand({
     Bucket: config.bucket,
     Key: key,
     Body: body,
-    ContentType: file.type || "application/octet-stream",
+    ContentType: contentType,
+  }));
+}
+
+export async function createDocumentUploadUrl(key: string, contentType: string) {
+  const config = storageConfig();
+  return getSignedUrl(
+    storageClient(),
+    new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      ContentType: contentType,
+    }),
+    { expiresIn: 10 * 60 },
+  );
+}
+
+export async function inspectDocument(key: string) {
+  const config = storageConfig();
+  const response = await storageClient().send(new HeadObjectCommand({
+    Bucket: config.bucket,
+    Key: key,
+  }));
+  return {
+    sizeBytes: response.ContentLength ?? 0,
+    contentType: response.ContentType ?? "application/octet-stream",
+  };
+}
+
+export async function deleteStoredDocument(key: string) {
+  const config = storageConfig();
+  await storageClient().send(new DeleteObjectCommand({
+    Bucket: config.bucket,
+    Key: key,
   }));
 }
 

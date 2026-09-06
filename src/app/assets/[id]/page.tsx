@@ -13,7 +13,6 @@ import { getDocumentsForAsset, searchDocumentChunks } from "@/data/documents";
 import { getLogEntries } from "@/data/log-entries";
 import { logEntryTypes } from "@/domain/log-entries";
 import { addLogEntry } from "./actions";
-import { uploadDocument } from "./document-actions";
 import { addComponent, addSystem, editComponent, editSystem, removeComponent, removeSystem } from "./inventory-actions";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +35,6 @@ export default async function AssetDetail({ params, searchParams }: {
     searchDocumentChunks(id, session.user.id, normalizedDocumentQuery),
   ]);
   const createEntry = addLogEntry.bind(null, id);
-  const uploadAssetDocument = uploadDocument.bind(null, id);
 
   return (
     <div className="app-shell">
@@ -60,7 +58,7 @@ export default async function AssetDetail({ params, searchParams }: {
           </dl>
         </section>
 
-        <DocumentLibrary documents={documents} error={documentError} uploadAction={uploadAssetDocument} />
+        <DocumentLibrary assetId={id} documents={documents} error={documentError} />
         <DocumentSearch assetId={id} query={normalizedDocumentQuery} results={documentSearchResults} />
 
         <section className="log-section">

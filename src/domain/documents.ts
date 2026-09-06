@@ -1,3 +1,5 @@
+export type DocumentSourceType = "upload" | "url";
+
 export interface AssetDocument {
   id: string;
   assetId: string;
@@ -7,6 +9,8 @@ export interface AssetDocument {
   sizeBytes: number;
   storageKey: string;
   createdAt: Date;
+  sourceType: DocumentSourceType;
+  sourceUrl?: string;
   extractedAt?: Date;
   pageCount?: number;
   extractionError?: string;
@@ -18,6 +22,8 @@ export interface NewAssetDocument {
   contentType: string;
   sizeBytes: number;
   storageKey: string;
+  sourceType?: DocumentSourceType;
+  sourceUrl?: string;
 }
 
 export interface ExtractedDocumentPage {

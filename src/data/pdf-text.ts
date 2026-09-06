@@ -29,6 +29,16 @@ async function ensurePdfWorker() {
   runtime.pdfjsWorker = { WorkerMessageHandler: worker.WorkerMessageHandler };
 }
 
+function normalizeExtractedText(text: string) {
+  // PostgreSQL text values cannot contain NUL bytes. Some PDFs expose embedded
+  // NUL characters through their font/text encoding even though the visible
+  // text is otherwise valid. Remove only those NULs, then normalize whitespace.
+  return text
+    .replace(/\u0000/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export async function extractPdfPages(bytes: Uint8Array): Promise<ExtractedPage[]> {
   await ensurePdfWorker();
 
@@ -39,11 +49,11 @@ export async function extractPdfPages(bytes: Uint8Array): Promise<ExtractedPage[
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
       const page = await pdf.getPage(pageNumber);
       const content = await page.getTextContent();
-      const text = content.items
-        .map((item) => ("str" in item ? item.str : ""))
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim();
+      const text = normalizeExtractedText(
+        content.items
+          .map((item) => ("str" in item ? item.str : ""))
+          .join(" "),
+      );
 
       pages.push({ pageNumber, text });
       page.cleanup();
