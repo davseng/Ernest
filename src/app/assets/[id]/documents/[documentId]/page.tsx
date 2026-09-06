@@ -15,6 +15,14 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function extractionQuality(text: string) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  const usefulCharacters = (normalized.match(/[A-Za-z0-9]/g) ?? []).length;
+  if (usefulCharacters === 0) return { label: "No text", weak: true };
+  if (usefulCharacters < 80) return { label: "Weak", weak: true };
+  return { label: "Good", weak: false };
+}
+
 export default async function DocumentDetailPage({ params }: {
   params: Promise<{ id: string; documentId: string }>;
 }) {
@@ -26,7 +34,8 @@ export default async function DocumentDetailPage({ params }: {
   const document = await getDocumentForAsset(documentId, id, session.user.id);
   if (!document) notFound();
   const pages = await getDocumentPages(documentId, id, session.user.id) ?? [];
-  const blankPages = pages.filter((page) => !page.text.trim()).length;
+  const pageQuality = pages.map((page) => ({ ...page, quality: extractionQuality(page.text) }));
+  const weakPages = pageQuality.filter((page) => page.quality.weak).length;
 
   return (
     <div className="app-shell">
@@ -65,6 +74,9 @@ export default async function DocumentDetailPage({ params }: {
             <div className="compact-form">
               <h3>Text processing</h3>
               <p>{document.extractedAt ? `Last extracted ${document.extractedAt.toLocaleString()}.` : "Text has not been extracted yet."}</p>
+              {document.extractedAt && weakPages > 0 ? (
+                <p className="error-notice">{weakPages} page{weakPages === 1 ? "" : "s"} have weak or no machine-readable text and will need OCR/layout fallback.</p>
+              ) : null}
               {document.extractionError ? <p className="error-notice">{document.extractionError}</p> : null}
               <form action={`/assets/${encodeURIComponent(id)}/documents/${encodeURIComponent(documentId)}/extract`} method="post">
                 <button className="primary-button" type="submit">{document.extractedAt ? "Re-extract text" : "Extract text"}</button>
@@ -84,16 +96,19 @@ export default async function DocumentDetailPage({ params }: {
           <div className="section-heading">
             <p className="eyebrow">What Ernest knows</p>
             <h2>Extracted text</h2>
-            <p>{pages.length} pages · {blankPages} blank</p>
+            <p>{pages.length} pages · {weakPages} weak / OCR candidates</p>
           </div>
           {pages.length === 0 ? (
-            <p className="empty-log">No extracted text is available. Run extraction above. Image-only PDFs will remain blank until OCR fallback is added.</p>
+            <p className="empty-log">No extracted text is available. Run extraction above.</p>
           ) : (
             <div className="log-list">
-              {pages.map((page) => (
+              {pageQuality.map((page) => (
                 <article className="log-entry" key={page.pageNumber}>
-                  <div className="log-entry-meta"><span>PAGE {page.pageNumber}</span></div>
-                  {page.text.trim() ? <pre className="document-text-page">{page.text}</pre> : <p className="empty-log">No machine-readable text found on this page.</p>}
+                  <div className="log-entry-meta">
+                    <span>PAGE {page.pageNumber}</span>
+                    <span>{page.quality.label}</span>
+                  </div>
+                  {page.text.trim() ? <pre className="document-text-page">{page.text}</pre> : <p className="empty-log">No machine-readable text found on this page. This page is an OCR candidate.</p>}
                 </article>
               ))}
             </div>
