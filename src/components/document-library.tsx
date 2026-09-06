@@ -16,14 +16,14 @@ function extractionStatus(document: AssetDocument) {
 }
 
 export function DocumentLibrary({
+  assetId,
   documents,
   error,
 }: {
+  assetId: string;
   documents: AssetDocument[];
   error?: string;
-  uploadAction: (formData: FormData) => void | Promise<void>;
 }) {
-  const assetId = documents[0]?.assetId;
   return (
     <section className="systems-section" id="documents">
       <div className="section-heading">
@@ -32,9 +32,9 @@ export function DocumentLibrary({
         <p>{documents.length} {documents.length === 1 ? "document" : "documents"}</p>
       </div>
       <ErrorNotice message={error} />
-      {assetId ? <Link className="primary-button" href={`/assets/${assetId}/documents`}>Open Document Library</Link> : null}
+      <Link className="primary-button" href={`/assets/${assetId}/documents`}>Open Document Library</Link>
       {documents.length === 0 ? (
-        <p className="empty-log">No documents yet. Open the Document Library to add a manual, survey, invoice, or service record.</p>
+        <p className="empty-log">No documents yet. Open the Document Library to add a manual, survey, invoice, listing, or service record.</p>
       ) : (
         <div className="log-list">
           {documents.slice(0, 3).map((document) => (
@@ -48,7 +48,7 @@ export function DocumentLibrary({
               <small>{formatBytes(document.sizeBytes)} · {extractionStatus(document)}</small>
             </article>
           ))}
-          {documents.length > 3 && assetId ? <Link className="edit-asset-link" href={`/assets/${assetId}/documents`}>View all {documents.length} documents →</Link> : null}
+          {documents.length > 3 ? <Link className="edit-asset-link" href={`/assets/${assetId}/documents`}>View all {documents.length} documents →</Link> : null}
         </div>
       )}
     </section>
