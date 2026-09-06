@@ -99,7 +99,12 @@ export async function completeDirectUpload(assetId: string, input: {
 }
 
 function assertPublicHttpsUrl(value: string) {
-  const url = new URL(value);
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Enter a valid public HTTPS URL.");
+  }
   if (url.protocol !== "https:") throw new Error("Document URL must use https://");
   const hostname = url.hostname.toLowerCase();
   if (hostname === "localhost" || hostname.endsWith(".local")) throw new Error("Private URLs are not allowed.");
@@ -123,57 +128,81 @@ function assertPublicHttpsUrl(value: string) {
 async function fetchPublicPdf(startUrl: string) {
   let url = assertPublicHttpsUrl(startUrl);
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
-    const response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(30_000) });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(30_000),
+        headers: {
+          "User-Agent": "Ernest/0.2 document importer",
+          Accept: "application/pdf,application/octet-stream;q=0.9,*/*;q=0.1",
+        },
+      });
+    } catch (error) {
+      const detail = error instanceof Error && error.name === "TimeoutError"
+        ? "The remote server took too long to respond."
+        : "Ernest could not connect to the remote server.";
+      throw new Error(detail);
+    }
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
       if (!location || redirects === MAX_REDIRECTS) throw new Error("Too many redirects while downloading the PDF.");
       url = assertPublicHttpsUrl(new URL(location, url).toString());
       continue;
     }
-    if (!response.ok) throw new Error(`Unable to download PDF (${response.status}).`);
+    if (!response.ok) throw new Error(`The remote server returned ${response.status} while downloading the PDF.`);
     const contentLength = Number(response.headers.get("content-length") ?? "0");
     if (contentLength > MAX_FILE_BYTES) throw new Error("PDF must be 20 MB or smaller.");
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.byteLength === 0) throw new Error("The URL returned an empty file.");
     if (bytes.byteLength > MAX_FILE_BYTES) throw new Error("PDF must be 20 MB or smaller.");
     const contentType = response.headers.get("content-type")?.split(";")[0].trim() || "application/pdf";
-    if (contentType !== "application/pdf" && !url.pathname.toLowerCase().endsWith(".pdf")) {
+    const hasPdfSignature = bytes.byteLength >= 5 && new TextDecoder("ascii").decode(bytes.slice(0, 5)) === "%PDF-";
+    if (!hasPdfSignature && contentType !== "application/pdf" && !url.pathname.toLowerCase().endsWith(".pdf")) {
       throw new Error("The URL did not return a PDF.");
     }
-    return { bytes, contentType, finalUrl: url.toString() };
+    if (!hasPdfSignature) throw new Error("The URL did not return a valid PDF file.");
+    return { bytes, contentType: "application/pdf", finalUrl: url.toString() };
   }
   throw new Error("Unable to download PDF.");
 }
 
-export async function uploadDocumentFromUrl(assetId: string, formData: FormData) {
-  const { ownerId } = await ownedAsset(assetId);
-  const title = String(formData.get("title") ?? "").trim();
-  const sourceUrl = String(formData.get("url") ?? "").trim();
-  if (!title || title.length > 200) throw new Error("Enter a document title of 200 characters or fewer.");
+export async function uploadDocumentFromUrl(assetId: string, _previousState: { error: string | null }, formData: FormData) {
+  let key: string | null = null;
+  try {
+    const { ownerId } = await ownedAsset(assetId);
+    const title = String(formData.get("title") ?? "").trim();
+    const sourceUrl = String(formData.get("url") ?? "").trim();
+    if (!title || title.length > 200) throw new Error("Enter a document title of 200 characters or fewer.");
 
-  const download = await fetchPublicPdf(sourceUrl);
-  const final = new URL(download.finalUrl);
-  const filename = safeFilename(final.pathname.split("/").pop() || `${title}.pdf`);
-  const filenameWithPdf = filename.toLowerCase().endsWith(".pdf") ? filename : `${filename}.pdf`;
-  const key = storageKey(assetId, filenameWithPdf);
-  await storeDocumentBytes(key, download.bytes, download.contentType);
+    const download = await fetchPublicPdf(sourceUrl);
+    const final = new URL(download.finalUrl);
+    const filename = safeFilename(final.pathname.split("/").pop() || `${title}.pdf`);
+    const filenameWithPdf = filename.toLowerCase().endsWith(".pdf") ? filename : `${filename}.pdf`;
+    key = storageKey(assetId, filenameWithPdf);
+    await storeDocumentBytes(key, download.bytes, download.contentType);
 
-  const createdId = await createDocumentForAsset(assetId, ownerId, {
-    title,
-    originalFilename: filenameWithPdf,
-    contentType: download.contentType,
-    sizeBytes: download.bytes.byteLength,
-    storageKey: key,
-    sourceType: "url",
-    sourceUrl: download.finalUrl,
-  });
-  if (!createdId) {
-    await deleteStoredDocument(key).catch(() => undefined);
-    notFound();
+    const createdId = await createDocumentForAsset(assetId, ownerId, {
+      title,
+      originalFilename: filenameWithPdf,
+      contentType: download.contentType,
+      sizeBytes: download.bytes.byteLength,
+      storageKey: key,
+      sourceType: "url",
+      sourceUrl: download.finalUrl,
+    });
+    if (!createdId) throw new Error("Ernest could not save the imported document.");
+    revalidatePath(`/assets/${assetId}`);
+    revalidatePath(`/assets/${assetId}/documents`);
+    redirect(`/assets/${encodeURIComponent(assetId)}/documents/${encodeURIComponent(createdId)}`);
+  } catch (error) {
+    if (error && typeof error === "object" && "digest" in error && String((error as { digest?: unknown }).digest).startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
+    if (key) await deleteStoredDocument(key).catch(() => undefined);
+    console.error("URL document import failed", error);
+    return { error: error instanceof Error ? error.message : "Unable to add this PDF from its URL." };
   }
-  revalidatePath(`/assets/${assetId}`);
-  revalidatePath(`/assets/${assetId}/documents`);
-  redirect(`/assets/${encodeURIComponent(assetId)}/documents/${encodeURIComponent(createdId)}`);
 }
 
 export async function renameDocument(assetId: string, documentId: string, formData: FormData) {
