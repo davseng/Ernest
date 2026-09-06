@@ -4,9 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AccountMenu } from "@/components/account-menu";
 import { DocumentUploadPanel } from "@/components/document-upload-panel";
+import { DocumentUrlImportForm } from "@/components/document-url-import-form";
 import { getAsset } from "@/data/assets";
 import { getDocumentsForAsset } from "@/data/documents";
-import { uploadDocumentFromUrl } from "../document-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -52,16 +52,7 @@ export default async function DocumentsPage({ params }: { params: Promise<{ id: 
         </section>
 
         <DocumentUploadPanel assetId={id} />
-
-        <details className="editor-card add-system">
-          <summary>Add from URL</summary>
-          <form className="compact-form" action={uploadDocumentFromUrl.bind(null, id)}>
-            <label>Title<input name="title" maxLength={200} required /></label>
-            <label>Public PDF URL<input name="url" type="url" placeholder="https://manufacturer.com/manual.pdf" required /></label>
-            <p>Ernest downloads the PDF server-to-server into the same private R2 library. HTTPS only · maximum 20 MB.</p>
-            <button className="primary-button" type="submit">Add from URL</button>
-          </form>
-        </details>
+        <DocumentUrlImportForm assetId={id} />
 
         <section className="systems-section">
           <div className="section-heading">
