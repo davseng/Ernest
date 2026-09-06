@@ -18,9 +18,10 @@ export function DocumentUploadPanel({ assetId }: { assetId: string }) {
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setError(undefined);
     setProgress(undefined);
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const title = String(form.get("title") ?? "").trim();
     const file = form.get("file");
 
@@ -61,7 +62,7 @@ export function DocumentUploadPanel({ assetId }: { assetId: string }) {
         contentType: prepared.contentType,
         expectedSizeBytes: file.size,
       });
-      event.currentTarget.reset();
+      formElement.reset();
       setProgress("Uploaded. Ready for text extraction.");
       router.refresh();
     } catch (uploadError) {
