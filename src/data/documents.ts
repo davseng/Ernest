@@ -23,6 +23,8 @@ type DocumentRow = {
   size_bytes: string | number;
   storage_key: string;
   created_at: Date;
+  source_type: "upload" | "url";
+  source_url: string | null;
   extracted_at: Date | null;
   page_count: number | null;
   extraction_error: string | null;
@@ -36,6 +38,15 @@ type DocumentSearchRow = {
   page_text: string;
 };
 
+type DocumentPageRow = {
+  page_number: number;
+  text_content: string;
+};
+
+const documentColumns = `d.id, d.asset_id, d.title, d.original_filename, d.content_type,
+      d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.extracted_at, d.page_count, d.extraction_error`;
+
 function mapDocument(row: DocumentRow): AssetDocument {
   return {
     id: row.id,
@@ -46,6 +57,8 @@ function mapDocument(row: DocumentRow): AssetDocument {
     sizeBytes: Number(row.size_bytes),
     storageKey: row.storage_key,
     createdAt: row.created_at,
+    sourceType: row.source_type,
+    sourceUrl: row.source_url ?? undefined,
     extractedAt: row.extracted_at ?? undefined,
     pageCount: row.page_count ?? undefined,
     extractionError: row.extraction_error ?? undefined,
@@ -55,7 +68,8 @@ function mapDocument(row: DocumentRow): AssetDocument {
 export async function getDocumentsForAsset(assetId: string, ownerId: string) {
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
-      d.size_bytes, d.storage_key, d.created_at, d.extracted_at, d.page_count, d.extraction_error
+      d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.extracted_at, d.page_count, d.extraction_error
     FROM documents d
     INNER JOIN assets a ON a.id = d.asset_id
     WHERE d.asset_id = ${assetId}
@@ -116,7 +130,8 @@ export async function searchDocumentChunks(assetId: string, ownerId: string, que
 export async function getDocumentForAsset(documentId: string, assetId: string, ownerId: string) {
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
-      d.size_bytes, d.storage_key, d.created_at, d.extracted_at, d.page_count, d.extraction_error
+      d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.extracted_at, d.page_count, d.extraction_error
     FROM documents d
     INNER JOIN assets a ON a.id = d.asset_id
     WHERE d.id = ${documentId}
@@ -127,17 +142,64 @@ export async function getDocumentForAsset(documentId: string, assetId: string, o
   return rows[0] ? mapDocument(rows[0]) : undefined;
 }
 
+export async function getDocumentPages(documentId: string, assetId: string, ownerId: string) {
+  const owned = await getDocumentForAsset(documentId, assetId, ownerId);
+  if (!owned) return undefined;
+  const rows = await database()<DocumentPageRow[]>`
+    SELECT p.page_number, p.text_content
+    FROM document_pages p
+    WHERE p.document_id = ${documentId}
+    ORDER BY p.page_number`;
+  return rows.map((row) => ({ pageNumber: row.page_number, text: row.text_content }));
+}
+
 export async function createDocumentForAsset(assetId: string, ownerId: string, document: NewAssetDocument) {
   const rows = await database()`
     INSERT INTO documents (
-      asset_id, owner_id, title, original_filename, content_type, size_bytes, storage_key
+      asset_id, owner_id, title, original_filename, content_type, size_bytes, storage_key,
+      source_type, source_url
     )
     SELECT a.id, a.owner_id, ${document.title}, ${document.originalFilename},
-      ${document.contentType}, ${document.sizeBytes}, ${document.storageKey}
+      ${document.contentType}, ${document.sizeBytes}, ${document.storageKey},
+      ${document.sourceType ?? "upload"}, ${document.sourceUrl ?? null}
     FROM assets a
     WHERE a.id = ${assetId} AND a.owner_id = ${ownerId}
     RETURNING id`;
+  return rows[0]?.id as string | undefined;
+}
+
+export async function updateDocumentTitle(
+  documentId: string,
+  assetId: string,
+  ownerId: string,
+  title: string,
+) {
+  const rows = await database()`
+    UPDATE documents d
+    SET title = ${title}
+    FROM assets a
+    WHERE d.id = ${documentId}
+      AND d.asset_id = ${assetId}
+      AND d.owner_id = ${ownerId}
+      AND a.id = d.asset_id
+      AND a.owner_id = ${ownerId}
+    RETURNING d.id`;
   return rows.length === 1;
+}
+
+export async function deleteDocumentRecord(documentId: string, assetId: string, ownerId: string) {
+  const rows = await database()<DocumentRow[]>`
+    DELETE FROM documents d
+    USING assets a
+    WHERE d.id = ${documentId}
+      AND d.asset_id = ${assetId}
+      AND d.owner_id = ${ownerId}
+      AND a.id = d.asset_id
+      AND a.owner_id = ${ownerId}
+    RETURNING d.id, d.asset_id, d.title, d.original_filename, d.content_type,
+      d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.extracted_at, d.page_count, d.extraction_error`;
+  return rows[0] ? mapDocument(rows[0]) : undefined;
 }
 
 export async function replaceDocumentPages(
