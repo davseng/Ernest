@@ -3,20 +3,53 @@
 import { FormEvent, useState } from "react";
 
 import { askErnest, type AskErnestState } from "@/app/assets/[id]/ask-actions";
+import { confirmErnestWrite } from "@/app/assets/[id]/ernest-write-actions";
+import type { ErnestWriteProposal } from "@/data/ernest-write-proposals";
 
 type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   text: string;
   sources?: AskErnestState["sources"];
+  proposal?: ErnestWriteProposal;
+  writeResult?: { ok: boolean; message: string };
 };
 
 const emptyState: AskErnestState = { question: "", answer: "", sources: [] };
+
+function ProposalDetails({ proposal }: { proposal: ErnestWriteProposal }) {
+  if (proposal.kind === "log") {
+    return (
+      <dl className="write-proposal-details">
+        <div><dt>Type</dt><dd>{proposal.log.entryType}</dd></div>
+        <div><dt>Date</dt><dd>{proposal.log.occurredAt}</dd></div>
+        <div><dt>Title</dt><dd>{proposal.log.title}</dd></div>
+        <div className="write-proposal-wide"><dt>Entry</dt><dd>{proposal.log.body}</dd></div>
+      </dl>
+    );
+  }
+  if (proposal.kind === "component_fact") {
+    return (
+      <dl className="write-proposal-details">
+        <div><dt>Component</dt><dd>{proposal.componentFact.componentName}</dd></div>
+        <div><dt>Field</dt><dd>{proposal.componentFact.field}</dd></div>
+        <div className="write-proposal-wide"><dt>Owner-provided value</dt><dd>{proposal.componentFact.value}</dd></div>
+      </dl>
+    );
+  }
+  return (
+    <dl className="write-proposal-details">
+      <div><dt>Asset field</dt><dd>{proposal.assetFact.field}</dd></div>
+      <div className="write-proposal-wide"><dt>Owner-provided value</dt><dd>{proposal.assetFact.value}</dd></div>
+    </dl>
+  );
+}
 
 export function ErnestChat({ assetId, assetName }: { assetId: string; assetName: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,6 +71,7 @@ export function ErnestChat({ assetId, assetName }: { assetId: string; assetName:
         role: "assistant",
         text: result.error || result.answer || "I couldn’t answer that right now.",
         sources: result.sources,
+        proposal: result.proposal,
       };
       setMessages((current) => [...current, assistantMessage]);
     } catch {
@@ -50,6 +84,29 @@ export function ErnestChat({ assetId, assetName }: { assetId: string; assetName:
     }
   }
 
+  async function saveProposal(messageId: string, proposal: ErnestWriteProposal) {
+    if (savingId) return;
+    setSavingId(messageId);
+    try {
+      const result = await confirmErnestWrite(assetId, proposal);
+      setMessages((current) => current.map((message) => message.id === messageId
+        ? { ...message, proposal: result.ok ? undefined : message.proposal, writeResult: result }
+        : message));
+    } catch {
+      setMessages((current) => current.map((message) => message.id === messageId
+        ? { ...message, writeResult: { ok: false, message: "I couldn’t save that. Please try again." } }
+        : message));
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  function dismissProposal(messageId: string) {
+    setMessages((current) => current.map((message) => message.id === messageId
+      ? { ...message, proposal: undefined, writeResult: { ok: true, message: "Not saved." } }
+      : message));
+  }
+
   return (
     <section className="ernest-chat" aria-label={`Conversation about ${assetName}`}>
       <div className="ernest-chat-scroll">
@@ -57,11 +114,11 @@ export function ErnestChat({ assetId, assetName }: { assetId: string; assetName:
           <div className="ernest-welcome">
             <div className="ernest-orb" aria-hidden="true">E</div>
             <h1>What can I help with on {assetName}?</h1>
-            <p>Ask about manuals, maintenance, equipment, troubleshooting, or anything Ernest already knows about this asset.</p>
+            <p>Ask questions, record maintenance, or tell Ernest something you want remembered about this asset.</p>
             <div className="ernest-prompts">
               <button type="button" onClick={() => setInput("What maintenance should I be thinking about next?")}>What maintenance is coming up?</button>
               <button type="button" onClick={() => setInput("What do we know about the engine?")}>What do we know about the engine?</button>
-              <button type="button" onClick={() => setInput("How do I use the windlass safely?")}>How do I use the windlass safely?</button>
+              <button type="button" onClick={() => setInput("I changed the engine oil today.")}>Record maintenance</button>
             </div>
           </div>
         ) : (
@@ -76,6 +133,30 @@ export function ErnestChat({ assetId, assetName }: { assetId: string; assetName:
                       <span key={`${source.documentTitle}-${source.pageNumber}`}>{source.documentTitle} · p. {source.pageNumber}</span>
                     ))}
                   </div>
+                ) : null}
+                {message.proposal ? (
+                  <div className="write-proposal">
+                    <div className="write-proposal-heading">
+                      <span>{message.proposal.kind === "log" ? "Proposed log entry" : "Proposed verified fact"}</span>
+                      <strong>Nothing is saved until you confirm.</strong>
+                    </div>
+                    <p>{message.proposal.summary}</p>
+                    <ProposalDetails proposal={message.proposal} />
+                    <div className="write-proposal-actions">
+                      <button
+                        className="write-confirm"
+                        type="button"
+                        disabled={savingId === message.id}
+                        onClick={() => saveProposal(message.id, message.proposal!)}
+                      >
+                        {savingId === message.id ? "Saving…" : "Confirm & save"}
+                      </button>
+                      <button className="write-cancel" type="button" onClick={() => dismissProposal(message.id)}>Don’t save</button>
+                    </div>
+                  </div>
+                ) : null}
+                {message.writeResult ? (
+                  <p className={message.writeResult.ok ? "write-result success" : "write-result error"}>{message.writeResult.message}</p>
                 ) : null}
               </article>
             ))}
@@ -107,7 +188,7 @@ export function ErnestChat({ assetId, assetName }: { assetId: string; assetName:
           />
           <button type="submit" disabled={pending || !input.trim()} aria-label="Send message">↑</button>
         </form>
-        <p className="ernest-composer-note">Ernest answers from verified knowledge and should say when it doesn’t know.</p>
+        <p className="ernest-composer-note">Ernest reads automatically. Durable writes always require your confirmation.</p>
       </div>
     </section>
   );
