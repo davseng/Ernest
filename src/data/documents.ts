@@ -43,9 +43,11 @@ type DocumentPageRow = {
   text_content: string;
 };
 
-const documentColumns = `d.id, d.asset_id, d.title, d.original_filename, d.content_type,
-      d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
-      d.extracted_at, d.page_count, d.extraction_error`;
+function sanitizePostgresText(text: string) {
+  // PostgreSQL text cannot contain U+0000. PDF text extraction can surface
+  // embedded NULs from fonts/encodings even when the visible text is valid.
+  return text.replace(/\u0000/g, "");
+}
 
 function mapDocument(row: DocumentRow): AssetDocument {
   return {
@@ -211,13 +213,23 @@ export async function replaceDocumentPages(
   const sql = database();
   const owned = await getDocumentForAsset(documentId, assetId, ownerId);
   if (!owned) return false;
-  const chunks = chunkExtractedPages(pages);
+
+  // Sanitize at the database boundary as a defense-in-depth guarantee. This
+  // protects both full-page text and chunks regardless of extractor behavior.
+  const sanitizedPages = pages.map((page) => ({
+    ...page,
+    text: sanitizePostgresText(page.text),
+  }));
+  const chunks = chunkExtractedPages(sanitizedPages).map((chunk) => ({
+    ...chunk,
+    text: sanitizePostgresText(chunk.text),
+  }));
 
   await sql.begin(async (tx) => {
     await tx`DELETE FROM document_chunks WHERE document_id = ${documentId}`;
     await tx`DELETE FROM document_pages WHERE document_id = ${documentId}`;
 
-    for (const page of pages) {
+    for (const page of sanitizedPages) {
       await tx`
         INSERT INTO document_pages (document_id, page_number, text_content)
         VALUES (${documentId}, ${page.pageNumber}, ${page.text})`;
@@ -231,7 +243,7 @@ export async function replaceDocumentPages(
 
     await tx`
       UPDATE documents
-      SET extracted_at = now(), page_count = ${pages.length}, extraction_error = NULL
+      SET extracted_at = now(), page_count = ${sanitizedPages.length}, extraction_error = NULL
       WHERE id = ${documentId} AND asset_id = ${assetId} AND owner_id = ${ownerId}`;
   });
 
@@ -244,9 +256,10 @@ export async function markDocumentExtractionError(
   ownerId: string,
   message: string,
 ) {
+  const safeMessage = sanitizePostgresText(message);
   const rows = await database()`
     UPDATE documents d
-    SET extraction_error = ${message}, extracted_at = NULL, page_count = NULL
+    SET extraction_error = ${safeMessage}, extracted_at = NULL, page_count = NULL
     FROM assets a
     WHERE d.id = ${documentId}
       AND d.asset_id = ${assetId}
