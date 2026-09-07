@@ -148,8 +148,8 @@ export async function approveEquipmentCandidate(
 ) {
   const sql = database();
   return sql.begin(async (tx) => {
-    const candidates = await tx<Array<{id:string}>>`
-      SELECT c.id FROM equipment_candidates c
+    const candidates = await tx<Array<{id:string; document_id:string}>>`
+      SELECT c.id, c.document_id FROM equipment_candidates c
       INNER JOIN assets a ON a.id=c.asset_id
       WHERE c.id=${candidateId} AND c.asset_id=${assetId} AND c.owner_id=${ownerId} AND c.status='pending'
         AND a.owner_id=${ownerId}
@@ -198,6 +198,11 @@ export async function approveEquipmentCandidate(
       WHERE s.id=${systemId} AND a.id=${assetId} AND a.owner_id=${ownerId}
       RETURNING id`;
     if (inserted.length !== 1) return false;
+
+    await tx`
+      INSERT INTO component_documents (component_id, document_id, asset_id, owner_id, relationship)
+      VALUES (${componentId}, ${candidates[0].document_id}, ${assetId}, ${ownerId}, 'reference')
+      ON CONFLICT (component_id, document_id) DO NOTHING`;
 
     await tx`
       UPDATE equipment_candidates
