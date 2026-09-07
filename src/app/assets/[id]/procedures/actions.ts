@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
-import { getDocumentPages } from "@/data/documents";
+import { getDocumentForAsset, getDocumentPages } from "@/data/documents";
+import { readDocument } from "@/data/document-storage";
+import { extractProcedureCandidatesFromPdf } from "@/data/procedure-vision";
 import {
   approveProcedureCandidate,
   extractProcedureCandidates,
@@ -46,85 +48,35 @@ function mergeCandidates(candidates: ExtractedProcedureCandidate[]) {
   return [...merged.values()];
 }
 
-function classifyStructuredChecklist(title: string): ProcedureType {
-  const value = title.toLowerCase();
-  if (/emergency|man overboard|\bmob\b|fire|flood|grounding|abandon|steering failure|distress/.test(value)) return "emergency";
-  return "checklist";
-}
+async function extractFromStoredDocument(assetId: string, documentId: string, ownerId: string) {
+  const document = await getDocumentForAsset(documentId, assetId, ownerId);
+  if (!document) return [];
 
-function extractStructuredChecklists(pages: Awaited<ReturnType<typeof getDocumentPages>>): ExtractedProcedureCandidate[] {
+  // PDFs are interpreted from the original file so layout, headings, checkboxes,
+  // indentation, columns, and page structure survive the extraction process.
+  if (document.contentType === "application/pdf") {
+    const bytes = await readDocument(document.storageKey);
+    const visual = await extractProcedureCandidatesFromPdf(bytes, document.originalFilename);
+    if (visual.length > 0) return visual;
+  }
+
+  // Fallback for non-PDF sources or PDFs where visual extraction returns nothing.
+  const pages = await getDocumentPages(documentId, assetId, ownerId);
   if (!pages?.length) return [];
 
-  const candidates: ExtractedProcedureCandidate[] = [];
-  let current: ExtractedProcedureCandidate | null = null;
-  let lastStepIndex = -1;
-
-  function finishCurrent() {
-    if (current && current.steps.length >= 2) candidates.push(current);
-    current = null;
-    lastStepIndex = -1;
+  const batches: typeof pages[] = [];
+  for (let start = 0; start < pages.length; start += 3) {
+    batches.push(pages.slice(start, start + 4));
   }
-
-  for (const page of pages) {
-    const lines = page.text.replace(/\r/g, "").split("\n");
-    for (const rawLine of lines) {
-      const line = rawLine.replace(/\u0000/g, "").trim();
-      if (!line) continue;
-
-      const numberedHeading = line.match(/^\s*\d+\.\s+(.{3,120})$/);
-      if (numberedHeading) {
-        finishCurrent();
-        current = {
-          pageNumber: page.pageNumber,
-          title: numberedHeading[1].trim(),
-          procedureType: classifyStructuredChecklist(numberedHeading[1]),
-          notes: null,
-          steps: [],
-        };
-        continue;
-      }
-
-      const item = line.match(/^(?:☐|□|☑|✓|✔|\[\s?\]|[-•▪◦])\s*(.+)$/);
-      if (item && current) {
-        current.steps.push({ instruction: item[1].trim(), note: null });
-        lastStepIndex = current.steps.length - 1;
-        continue;
-      }
-
-      // PDF extraction often wraps one checklist item across several physical lines.
-      // Only join continuation text after an explicit checklist marker has started a step.
-      if (current && lastStepIndex >= 0 && line.length <= 180) {
-        const previous = current.steps[lastStepIndex].instruction;
-        current.steps[lastStepIndex].instruction = `${previous} ${line}`.replace(/\s+/g, " ").trim();
-      }
-    }
-  }
-
-  finishCurrent();
-  return candidates;
+  const results = await Promise.all(batches.map((batch) => extractProcedureCandidates(batch)));
+  return mergeCandidates(results.flat());
 }
 
 export async function scanDocumentForProcedures(assetId: string, documentId: string) {
   const session = await auth();
   if (!session?.user?.id) return;
-  const pages = await getDocumentPages(documentId, assetId, session.user.id);
-  if (!pages?.length) return;
 
-  // Explicit checkbox/numbered checklists are safer and more complete when parsed
-  // deterministically. Use AI for manuals and prose-oriented procedures instead.
-  const structured = extractStructuredChecklists(pages);
-  let candidates: ExtractedProcedureCandidate[];
-
-  if (structured.length >= 2) {
-    candidates = structured;
-  } else {
-    const batches: typeof pages[] = [];
-    for (let start = 0; start < pages.length; start += 3) {
-      batches.push(pages.slice(start, start + 4));
-    }
-    const results = await Promise.all(batches.map((batch) => extractProcedureCandidates(batch)));
-    candidates = mergeCandidates(results.flat());
-  }
+  let candidates = await extractFromStoredDocument(assetId, documentId, session.user.id);
 
   // A rejected proposal should stay rejected on later rescans of the same source.
   const prior = await getProcedureCandidates(assetId, session.user.id);
