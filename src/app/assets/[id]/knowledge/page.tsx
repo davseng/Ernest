@@ -35,7 +35,8 @@ export default async function EquipmentKnowledgePage({ params }: { params: Promi
     system.components.map((component) => ({ ...component, systemName: system.name })),
   );
   const pending = candidates.filter((candidate) => candidate.status === "pending");
-  const linkedComponentIds = new Set(links.map((link) => link.componentId));
+  const manualComponentIds = new Set(links.filter((link) => link.relationship === "manual" || link.relationship === "service").map((link) => link.componentId));
+  const sourceComponentIds = new Set(links.map((link) => link.componentId));
   const identified = components.filter((component) => component.manufacturer || component.model).length;
 
   return (
@@ -50,12 +51,12 @@ export default async function EquipmentKnowledgePage({ params }: { params: Promi
           <div>
             <p className="eyebrow">Knowledge acquisition</p>
             <div className="title-row"><h1>Equipment Knowledge</h1><span className="type-pill">v0.5</span></div>
-            <p className="asset-summary detail-summary">Discover equipment from your documents, verify what is actually installed, then link the right manuals and references.</p>
+            <p className="asset-summary detail-summary">Discover equipment from your documents, verify what is actually installed, then close the remaining manual and identity gaps.</p>
           </div>
           <dl className="asset-facts">
             <div><dt>Verified components</dt><dd>{components.length}</dd></div>
             <div><dt>Pending review</dt><dd>{pending.length}</dd></div>
-            <div><dt>With linked docs</dt><dd>{linkedComponentIds.size}</dd></div>
+            <div><dt>With manuals/service docs</dt><dd>{manualComponentIds.size}</dd></div>
           </dl>
         </section>
 
@@ -143,12 +144,16 @@ export default async function EquipmentKnowledgePage({ params }: { params: Promi
             <div className="log-list">
               {components.map((component) => {
                 const componentLinks = links.filter((link) => link.componentId === component.id);
+                const hasManual = componentLinks.some((link) => link.relationship === "manual" || link.relationship === "service");
+                const hasSource = sourceComponentIds.has(component.id);
                 const identity = [component.manufacturer, component.model].filter(Boolean).join(" ");
                 return (
                   <article className="log-entry" key={component.id}>
-                    <div className="log-entry-meta"><span>{component.systemName}</span><span>{componentLinks.length ? "DOCUMENTED" : "NEEDS DOCUMENT"}</span></div>
+                    <div className="log-entry-meta"><span>{component.systemName}</span><span>{hasManual ? "MANUAL COVERED" : hasSource ? "SOURCE VERIFIED · NEEDS MANUAL" : "NEEDS DOCUMENTATION"}</span></div>
                     <h3>{component.name}</h3>
                     <p>{identity || "Manufacturer / model not recorded"}</p>
+                    {!component.manufacturer || !component.model ? <p><strong>Knowledge gap:</strong> manufacturer/model identity is incomplete.</p> : null}
+                    {!hasManual ? <p><strong>Knowledge gap:</strong> no manual or service document is linked yet.</p> : null}
                     {componentLinks.map((link) => (
                       <p key={`${link.componentId}:${link.documentId}`}>
                         <Link href={`/assets/${id}/documents/${link.documentId}`}>{link.documentTitle}</Link> · {link.relationship}{" "}
