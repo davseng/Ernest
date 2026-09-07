@@ -100,26 +100,30 @@ export default async function EquipmentKnowledgePage({ params }: { params: Promi
                   {candidate.location ? <p><strong>Source location:</strong> {candidate.location}</p> : null}
                   {candidate.notes ? <p><strong>Source note:</strong> {candidate.notes}</p> : null}
 
-                  {asset.systems.length ? (
-                    <details className="editor-card" open>
-                      <summary>Verify installed equipment</summary>
-                      <form className="compact-form" action={approveEquipment.bind(null, id, candidate.id)}>
-                        <label>System
-                          <select name="systemId" required defaultValue="">
-                            <option value="" disabled>Select a verified system</option>
+                  <details className="editor-card" open>
+                    <summary>Verify installed equipment</summary>
+                    <form className="compact-form" action={approveEquipment.bind(null, id, candidate.id)}>
+                      {asset.systems.length ? (
+                        <label>Use existing system <span>(optional)</span>
+                          <select name="systemId" defaultValue="">
+                            <option value="">Create/use category below</option>
                             {asset.systems.map((system) => <option key={system.id} value={system.id}>{system.name}</option>)}
                           </select>
                         </label>
-                        <label>Name<input name="name" required defaultValue={candidate.name} /></label>
-                        <label>Manufacturer<input name="manufacturer" defaultValue={candidate.manufacturer ?? ""} /></label>
-                        <label>Model<input name="model" defaultValue={candidate.model ?? ""} /></label>
-                        <label>Serial number<input name="serialNumber" defaultValue={candidate.serialNumber ?? ""} /></label>
-                        <label>Installed location<input name="location" defaultValue={candidate.location ?? ""} /></label>
-                        <label>Notes<textarea name="notes" rows={3} defaultValue={candidate.notes ?? ""} /></label>
-                        <button className="primary-button" type="submit">Verify and add component</button>
-                      </form>
-                    </details>
-                  ) : <p className="asset-summary">Add a system on the Asset page before approving this candidate.</p>}
+                      ) : null}
+                      <label>System / category
+                        <input name="newSystemName" defaultValue={candidate.systemHint ?? ""} placeholder="e.g. Propulsion, Navigation, Refrigeration" />
+                      </label>
+                      <p className="asset-summary">Choose an existing system above, or leave it blank and Ernest will create/reuse the category you enter here when you approve this item.</p>
+                      <label>Name<input name="name" required defaultValue={candidate.name} /></label>
+                      <label>Manufacturer<input name="manufacturer" defaultValue={candidate.manufacturer ?? ""} /></label>
+                      <label>Model<input name="model" defaultValue={candidate.model ?? ""} /></label>
+                      <label>Serial number<input name="serialNumber" defaultValue={candidate.serialNumber ?? ""} /></label>
+                      <label>Installed location<input name="location" defaultValue={candidate.location ?? ""} /></label>
+                      <label>Notes<textarea name="notes" rows={3} defaultValue={candidate.notes ?? ""} /></label>
+                      <button className="primary-button" type="submit">Approve and add equipment</button>
+                    </form>
+                  </details>
                   <form action={rejectEquipment.bind(null, id, candidate.id)}>
                     <button className="text-button" type="submit">Reject candidate</button>
                   </form>
