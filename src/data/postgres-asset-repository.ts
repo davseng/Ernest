@@ -34,11 +34,11 @@ function mapRows(rows: JoinedRow[]): Asset[] {
         registrationNumber: row.registration_number ?? undefined, systems: [] };
       assets.set(asset.id, asset);
     }
-    if (!row.system_id || !row.system_name || !row.system_description) continue;
+    if (!row.system_id || !row.system_name) continue;
     let system = systems.get(row.system_id);
     if (!system) {
       system = { id: row.system_id, assetId: row.asset_id, name: row.system_name,
-        description: row.system_description, components: [] };
+        description: row.system_description ?? "", components: [] };
       systems.set(system.id, system);
       asset.systems.push(system);
     }
