@@ -59,38 +59,43 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
       </div><details className="editor-card"><summary>Delete document</summary><p>This removes the private PDF plus its extracted pages and search chunks. This cannot be undone.</p><form action={removeDocument.bind(null,id,documentId)}><button className="delete-button">Delete document</button></form></details></section>
 
       <section className="systems-section">
-        <div className="section-heading"><p className="eyebrow">Document intelligence</p><h2>Maintenance candidates</h2><p>Ernest proposes; you approve, correct, or reject. Regeneration only replaces still-pending candidates.</p></div>
-        <form className="compact-form" action={generateMaintenanceCandidates.bind(null,id,documentId)}>
-          <label>Regeneration guidance<textarea name="guidance" defaultValue={guidance} maxLength={2000} rows={3} placeholder={'Example: Dates are written Month/Year. “Sep 18” means September 2018.'} /></label>
-          <p className="asset-summary">Guidance may explain how to read the document, but it cannot add facts that are not present.</p>
-          <button className="primary-button" disabled={pages.length===0}>{candidates.length?"Regenerate pending candidates":"Find maintenance events"}</button>
-          <p className="asset-summary">Analysis can take a little while. {pendingCount ? `${pendingCount} candidate${pendingCount===1?" is":"s are"} awaiting review.` : ""}</p>
-        </form>
+        <div className="section-heading"><p className="eyebrow">Document intelligence</p><h2>Maintenance evidence</h2><p>The extracted document is first-class maintenance knowledge. Ernest can search, cite, compare, and calculate from it without requiring every historical entry to fit a database schema.</p></div>
+        <div className="editor-card"><strong>Trust model</strong><p className="asset-summary">Document text remains source evidence with page provenance. AI interpretations and calculations are not silently promoted to verified facts. Structured records are optional and only become trusted after you approve or correct them.</p></div>
+        <details className="editor-card">
+          <summary>Optional structured suggestions{pendingCount ? ` · ${pendingCount} awaiting review` : ""}</summary>
+          <p>Use these only when a maintenance event is clear enough to be useful as a structured record. You do not need to normalize this document for Ernest to use it.</p>
+          <form className="compact-form" action={generateMaintenanceCandidates.bind(null,id,documentId)}>
+            <label>Interpretation guidance<textarea name="guidance" defaultValue={guidance} maxLength={2000} rows={3} placeholder={'Example: Dates are written Month/Year. “Sep 18” means September 2018.'} /></label>
+            <p className="asset-summary">Guidance may explain how to read the document, but it cannot add facts that are not present.</p>
+            <button className="primary-button" disabled={pages.length===0}>{candidates.length?"Regenerate pending suggestions":"Suggest structured events"}</button>
+            <p className="asset-summary">Analysis can take a little while. Approved and rejected decisions survive regeneration.</p>
+          </form>
 
-        {candidates.length ? <div className="log-list">{candidates.map((c)=><article className="log-entry" key={c.id}>
-          <div className="log-entry-meta"><span>PAGE {c.pageNumber}</span><span>{c.status.toUpperCase()}</span></div>
-          <h3>{c.action}</h3>
-          <p>{[c.dateText || c.occurredOn,c.engineHours?`${c.engineHours} engine hrs`:null].filter(Boolean).join(" · ") || "Date / hours not stated"}</p>
-          {c.partsConsumables?<p><strong>Parts / consumables:</strong> {c.partsConsumables}</p>:null}
-          {c.notes?<p><strong>Notes:</strong> {c.notes}</p>:null}
-          <p className="asset-summary">Source: {document.title}, p. {c.pageNumber}</p>
-          {c.status === "pending" ? <div className="candidate-actions">
-            <form action={approveMaintenanceCandidate.bind(null,id,documentId,c.id)}><button className="primary-button">Approve</button></form>
-            <details className="editor-card"><summary>Edit</summary><form className="compact-form" action={editAndApproveMaintenanceCandidate.bind(null,id,documentId,c.id)}>
-              <label>Date as written<input name="dateText" defaultValue={c.dateText ?? ""} placeholder="Sep 18" /></label>
-              <label>Exact calendar date, if known<input name="occurredOn" type="date" defaultValue={c.occurredOn ?? ""} /></label>
-              <label>Engine hours<input name="engineHours" inputMode="decimal" defaultValue={c.engineHours ?? ""} /></label>
-              <label>Action<input name="action" defaultValue={c.action} required /></label>
-              <label>Parts / consumables<textarea name="partsConsumables" rows={2} defaultValue={c.partsConsumables ?? ""} /></label>
-              <label>Notes<textarea name="notes" rows={2} defaultValue={c.notes ?? ""} /></label>
-              <button className="primary-button">Save & approve</button>
-            </form></details>
-            <form action={rejectMaintenanceCandidate.bind(null,id,documentId,c.id)}><button className="delete-button">Reject</button></form>
-          </div> : null}
-        </article>)}</div>:<p className="empty-log">No candidates generated yet.</p>}
+          {candidates.length ? <div className="log-list">{candidates.map((c)=><article className="log-entry" key={c.id}>
+            <div className="log-entry-meta"><span>PAGE {c.pageNumber}</span><span>{c.status.toUpperCase()}</span></div>
+            <h3>{c.action}</h3>
+            <p>{[c.dateText || c.occurredOn,c.engineHours?`${c.engineHours} engine hrs`:null].filter(Boolean).join(" · ") || "Date / hours not stated"}</p>
+            {c.partsConsumables?<p><strong>Parts / consumables:</strong> {c.partsConsumables}</p>:null}
+            {c.notes?<p><strong>Notes:</strong> {c.notes}</p>:null}
+            <p className="asset-summary">Evidence: {document.title}, p. {c.pageNumber}</p>
+            {c.status === "pending" ? <div className="candidate-actions">
+              <form action={approveMaintenanceCandidate.bind(null,id,documentId,c.id)}><button className="primary-button">Approve</button></form>
+              <details className="editor-card"><summary>Edit before approving</summary><form className="compact-form" action={editAndApproveMaintenanceCandidate.bind(null,id,documentId,c.id)}>
+                <label>Date as written<input name="dateText" defaultValue={c.dateText ?? ""} placeholder="Sep 18" /></label>
+                <label>Exact calendar date, only if known<input name="occurredOn" type="date" defaultValue={c.occurredOn ?? ""} /></label>
+                <label>Engine hours<input name="engineHours" inputMode="decimal" defaultValue={c.engineHours ?? ""} /></label>
+                <label>Action<input name="action" defaultValue={c.action} required /></label>
+                <label>Parts / consumables<textarea name="partsConsumables" rows={2} defaultValue={c.partsConsumables ?? ""} /></label>
+                <label>Notes<textarea name="notes" rows={2} defaultValue={c.notes ?? ""} /></label>
+                <button className="primary-button">Save & approve</button>
+              </form></details>
+              <form action={rejectMaintenanceCandidate.bind(null,id,documentId,c.id)}><button className="delete-button">Reject</button></form>
+            </div> : null}
+          </article>)}</div>:<p className="empty-log">No structured suggestions. That is fine — Ernest can use the document evidence directly.</p>}
+        </details>
       </section>
 
-      <section className="systems-section"><div className="section-heading"><p className="eyebrow">What Ernest knows</p><h2>Extracted text</h2><p>{pages.length} pages · {weakPages} weak after OCR fallback</p></div>{pages.length===0?<p className="empty-log">No extracted text is available. Run extraction above.</p>:<div className="log-list">{pageQuality.map((page)=><article className="log-entry" key={page.pageNumber}><div className="log-entry-meta"><span>PAGE {page.pageNumber}</span><span>{page.quality.label}</span></div>{page.text.trim()?<pre className="document-text-page">{page.text}</pre>:<p className="empty-log">No readable text was recovered from this page.</p>}</article>)}</div>}</section>
+      <section className="systems-section"><div className="section-heading"><p className="eyebrow">Source evidence</p><h2>Extracted text</h2><p>{pages.length} pages · {weakPages} weak after OCR fallback</p></div>{pages.length===0?<p className="empty-log">No extracted text is available. Run extraction above.</p>:<div className="log-list">{pageQuality.map((page)=><article className="log-entry" key={page.pageNumber}><div className="log-entry-meta"><span>PAGE {page.pageNumber}</span><span>{page.quality.label}</span></div>{page.text.trim()?<pre className="document-text-page">{page.text}</pre>:<p className="empty-log">No readable text was recovered from this page.</p>}</article>)}</div>}</section>
     </main>
   </div>;
 }
