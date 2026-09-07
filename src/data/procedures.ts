@@ -27,6 +27,25 @@ function clean(value: unknown) {
   return typeof value === "string" && value.trim() ? value.replace(/\u0000/g, "").trim() : null;
 }
 
+function parseStoredSteps(value: unknown): Array<{ instruction: string; note: string | null }> {
+  let parsed = value;
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed.flatMap((step) => {
+    if (!step || typeof step !== "object") return [];
+    const row = step as Record<string, unknown>;
+    const instruction = clean(row.instruction);
+    if (!instruction) return [];
+    return [{ instruction, note: clean(row.note) }];
+  });
+}
+
 export type ProcedureType = "routine" | "checklist" | "emergency";
 export type ProcedureStep = { id?: string; position: number; instruction: string; note: string | null };
 export type ProcedureRecord = { id:string; title:string; procedureType:ProcedureType; notes:string|null; sourceDocumentId:string|null; sourceDocumentTitle:string|null; sourcePage:number|null; steps:ProcedureStep[] };
@@ -79,14 +98,7 @@ export async function extractProcedureCandidates(pages: ExtractedDocumentPage[])
     const title = clean(row.title);
     const procedureType = clean(row.procedureType) as ProcedureType | null;
     if (!Number.isInteger(pageNumber) || pageNumber < 1 || !title || !procedureType || !["routine", "checklist", "emergency"].includes(procedureType)) return [];
-    const stepsRaw = Array.isArray(row.steps) ? row.steps : [];
-    const steps = stepsRaw.flatMap((step) => {
-      if (!step || typeof step !== "object") return [];
-      const s = step as Record<string, unknown>;
-      const instruction = clean(s.instruction);
-      if (!instruction) return [];
-      return [{ instruction, note: clean(s.note) }];
-    });
+    const steps = parseStoredSteps(row.steps);
     if (steps.length < 2) return [];
     return [{ pageNumber, title, procedureType, notes: clean(row.notes), steps }];
   });
@@ -115,7 +127,7 @@ export async function getProcedureCandidates(assetId: string, ownerId: string) {
       CASE c.procedure_type WHEN 'emergency' THEN 0 WHEN 'checklist' THEN 1 ELSE 2 END,
       lower(c.title), c.page_number`;
 
-  return rows.map((r) => ({ id:r.id, documentId:r.document_id, documentTitle:r.document_title, pageNumber:r.page_number, title:r.title, procedureType:r.procedure_type, notes:r.notes, steps:Array.isArray(r.steps_json) ? (r.steps_json as Array<{instruction:string;note:string|null}>) : [], status:r.status, verifiedProcedureId:r.verified_procedure_id } satisfies ProcedureCandidate));
+  return rows.map((r) => ({ id:r.id, documentId:r.document_id, documentTitle:r.document_title, pageNumber:r.page_number, title:r.title, procedureType:r.procedure_type, notes:r.notes, steps:parseStoredSteps(r.steps_json), status:r.status, verifiedProcedureId:r.verified_procedure_id } satisfies ProcedureCandidate));
 }
 
 export async function getProcedures(assetId: string, ownerId: string) {
