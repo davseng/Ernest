@@ -28,9 +28,10 @@ export async function approveEquipment(assetId: string, candidateId: string, for
   const session = await auth();
   if (!session?.user?.id) return;
   const systemId = String(formData.get("systemId") ?? "").trim();
+  const newSystemName = String(formData.get("newSystemName") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
-  if (!systemId || !name) return;
-  await approveEquipmentCandidate(candidateId, assetId, session.user.id, systemId, {
+  if ((!systemId && !newSystemName) || !name) return;
+  await approveEquipmentCandidate(candidateId, assetId, session.user.id, { systemId: systemId || undefined, newSystemName: newSystemName || undefined }, {
     name,
     manufacturer: String(formData.get("manufacturer") ?? "").trim(),
     model: String(formData.get("model") ?? "").trim(),
