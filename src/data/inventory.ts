@@ -21,6 +21,13 @@ export type InventoryItem = {
   locations: string[];
 };
 
+export type InventoryLocation = {
+  code: string;
+  label: string | null;
+  notes: string | null;
+  itemCount: number;
+};
+
 export async function getInventoryItems(assetId: string, ownerId: string): Promise<InventoryItem[]> {
   const rows = await database()<Array<{
     id: string;
@@ -58,7 +65,7 @@ export async function getInventoryItems(assetId: string, ownerId: string): Promi
   }));
 }
 
-export async function getInventoryLocations(assetId: string, ownerId: string) {
+export async function getInventoryLocations(assetId: string, ownerId: string): Promise<InventoryLocation[]> {
   const rows = await database()<Array<{code:string;label:string|null;notes:string|null;item_count:number}>>`
     SELECT l.code, l.label, l.notes, count(il.item_id)::int AS item_count
     FROM inventory_locations l
@@ -68,4 +75,65 @@ export async function getInventoryLocations(assetId: string, ownerId: string) {
     ORDER BY lower(l.code), l.code;
   `;
   return rows.map((row) => ({ code: row.code, label: row.label, notes: row.notes, itemCount: row.item_count }));
+}
+
+export async function addInventoryItem(
+  assetId: string,
+  ownerId: string,
+  input: { name: string; quantity?: string | null; details?: string | null; locationCode?: string | null },
+) {
+  const db = database();
+  const name = input.name.trim();
+  if (!name) return false;
+  const quantity = input.quantity?.trim() ? Number(input.quantity) : null;
+  if (input.quantity?.trim() && !Number.isFinite(quantity)) return false;
+  return db.begin(async (tx) => {
+    const [item] = await tx<Array<{id:string}>>`
+      INSERT INTO inventory_items (asset_id, owner_id, name, quantity, details, source_label)
+      VALUES (${assetId}, ${ownerId}, ${name}, ${quantity}, ${input.details?.trim() || null}, 'Owner provided')
+      RETURNING id
+    `;
+    if (!item) return false;
+    if (input.locationCode) {
+      const [location] = await tx<Array<{id:string}>>`
+        SELECT id FROM inventory_locations
+        WHERE asset_id=${assetId} AND owner_id=${ownerId} AND lower(code)=lower(${input.locationCode.trim()})
+        LIMIT 1
+      `;
+      if (!location) throw new Error("Inventory location not found");
+      await tx`INSERT INTO inventory_item_locations (item_id, location_id) VALUES (${item.id}, ${location.id}) ON CONFLICT DO NOTHING`;
+    }
+    return true;
+  });
+}
+
+export async function updateInventoryItem(
+  assetId: string,
+  ownerId: string,
+  itemId: string,
+  input: { name?: string | null; quantity?: string | null; details?: string | null; locationCode?: string | null },
+) {
+  const db = database();
+  return db.begin(async (tx) => {
+    const [existing] = await tx<Array<{id:string}>>`
+      SELECT id FROM inventory_items WHERE id=${itemId} AND asset_id=${assetId} AND owner_id=${ownerId} LIMIT 1
+    `;
+    if (!existing) return false;
+    if (input.name?.trim()) await tx`UPDATE inventory_items SET name=${input.name.trim()}, updated_at=now() WHERE id=${itemId}`;
+    if (input.quantity !== undefined && input.quantity !== null && input.quantity.trim()) {
+      const quantity = Number(input.quantity);
+      if (!Number.isFinite(quantity)) return false;
+      await tx`UPDATE inventory_items SET quantity=${quantity}, updated_at=now() WHERE id=${itemId}`;
+    }
+    if (input.details !== undefined && input.details !== null) await tx`UPDATE inventory_items SET details=${input.details.trim() || null}, updated_at=now() WHERE id=${itemId}`;
+    if (input.locationCode) {
+      const [location] = await tx<Array<{id:string}>>`
+        SELECT id FROM inventory_locations WHERE asset_id=${assetId} AND owner_id=${ownerId} AND lower(code)=lower(${input.locationCode.trim()}) LIMIT 1
+      `;
+      if (!location) throw new Error("Inventory location not found");
+      await tx`DELETE FROM inventory_item_locations WHERE item_id=${itemId}`;
+      await tx`INSERT INTO inventory_item_locations (item_id, location_id) VALUES (${itemId}, ${location.id})`;
+    }
+    return true;
+  });
 }

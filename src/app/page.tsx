@@ -40,20 +40,26 @@ export default async function Home({
     <div className="app-shell conversational-shell">
       <header className="site-header conversational-header">
         <div className="conversation-header-left">
-          <Link className="brand" href="/" aria-label="Ernest home"><span className="brand-mark" aria-hidden="true">E</span>Ernest</Link>
+          <Link className="brand" href={`/?asset=${selectedAsset.id}`} aria-label="Ernest home"><span className="brand-mark" aria-hidden="true">E</span>Ernest</Link>
           <AssetSwitcher
             assets={assets.map((asset) => ({ id: asset.id, name: asset.name, type: asset.type }))}
             selectedAssetId={selectedAsset.id}
           />
         </div>
-        <nav className="conversation-nav" aria-label="Asset tools">
-          <Link href={`/assets/${selectedAsset.id}/procedures`}>Procedures</Link>
-          <Link href={`/assets/${selectedAsset.id}/inventory`}>Inventory</Link>
-          <Link href={`/assets/${selectedAsset.id}/knowledge`}>Equipment</Link>
-          <Link href={`/assets/${selectedAsset.id}/documents`}>Documents</Link>
-          <Link href={`/assets/${selectedAsset.id}`}>Asset</Link>
+        <div className="operate-header-actions">
+          <details className="manage-menu">
+            <summary aria-label="Open setup menu">☰</summary>
+            <div className="manage-menu-panel">
+              <p>Manage {selectedAsset.name}</p>
+              <Link href={`/assets/${selectedAsset.id}/knowledge`}>Equipment knowledge</Link>
+              <Link href={`/assets/${selectedAsset.id}/inventory`}>Inventory</Link>
+              <Link href={`/assets/${selectedAsset.id}/procedures`}>Procedures & checklists</Link>
+              <Link href={`/assets/${selectedAsset.id}/documents`}>Documents</Link>
+              <Link href={`/assets/${selectedAsset.id}`}>Asset setup</Link>
+            </div>
+          </details>
           <AccountMenu email={session.user.email} />
-        </nav>
+        </div>
       </header>
 
       <main className="conversation-main">
