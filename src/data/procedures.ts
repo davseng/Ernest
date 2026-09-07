@@ -32,14 +32,22 @@ export type ProcedureStep = { id?: string; position: number; instruction: string
 export type ProcedureRecord = { id:string; title:string; procedureType:ProcedureType; notes:string|null; sourceDocumentId:string|null; sourceDocumentTitle:string|null; sourcePage:number|null; steps:ProcedureStep[] };
 export type ProcedureCandidate = { id:string; documentId:string; documentTitle:string; pageNumber:number; title:string; procedureType:ProcedureType; notes:string|null; steps:Array<{instruction:string;note:string|null}>; status:"pending"|"approved"|"rejected"; verifiedProcedureId:string|null };
 
-export async function extractProcedureCandidates(pages: ExtractedDocumentPage[]) {
+export type ExtractedProcedureCandidate = {
+  pageNumber: number;
+  title: string;
+  procedureType: ProcedureType;
+  notes: string | null;
+  steps: Array<{ instruction: string; note: string | null }>;
+};
+
+export async function extractProcedureCandidates(pages: ExtractedDocumentPage[]): Promise<ExtractedProcedureCandidate[]> {
   const source = pages.map((p) => `PAGE ${p.pageNumber}\n${p.text}`).join("\n\n---\n\n");
   if (!source.trim()) return [];
 
   const response = await openai().responses.create({
     model: process.env.OPENAI_MODEL || "gpt-5.6-luna",
-    reasoning: { effort: "medium" },
-    max_output_tokens: 12000,
+    reasoning: { effort: "low" },
+    max_output_tokens: 7000,
     instructions: [
       "Extract procedural knowledge from the supplied vessel document text only.",
       "The unit of extraction is a COMPLETE PROCEDURE, not an individual checklist item.",
@@ -48,10 +56,10 @@ export async function extractProcedureCandidates(pages: ExtractedDocumentPage[])
       "NEVER turn an individual checklist action such as 'Turn on the chart plotter', 'Start the autopilot', 'Check the bilge', or similar item into its own procedure candidate when it appears beneath a broader checklist heading.",
       "Do not move descriptive qualifiers into the procedure title. Keep the action itself as the step instruction and put only source-supported qualifiers in the step note or procedure notes.",
       "Classify each complete procedure as emergency, checklist, or routine. Emergency means an immediate safety response such as fire, flooding, grounding, abandon ship, man overboard, steering failure, or similar urgent response. Checklist means a repeatable pre-departure, shutdown, unattended-boat, arrival, anchoring, safety, or inspection checklist. Routine means a non-emergency operating or maintenance procedure with ordered steps.",
-      "Completeness is critical: include EVERY supported action item as a separate step. If a checklist has 20 explicit action lines, the candidate should normally contain 20 steps unless some lines are clearly non-action notes.",
+      "Completeness is critical: include EVERY supported action item as a separate step.",
       "Do not summarize several checklist items into one step. Do not create one candidate per bullet or checkbox.",
       "A heading by itself is not a procedure. An isolated single action is not a procedure candidate for this scanner; it belongs as a step within its surrounding procedure when the source provides one.",
-      "If a procedure continues onto the next page, keep it as one candidate and include the continued steps. Use the page where the procedure begins as pageNumber.",
+      "If a procedure continues onto the next supplied page, keep it as one candidate and include the continued steps. Use the page where the procedure begins as pageNumber.",
       "Do not invent missing steps, warnings, limits, settings, quantities, or sequences. Do not combine separate procedures unless the source clearly presents them as one.",
       "Preserve source wording closely but remove purely decorative numbering or checkbox symbols.",
       "Before returning JSON, verify that every candidate represents a complete source-defined procedure and that no candidate title is merely one of that procedure's action items.",
@@ -84,7 +92,7 @@ export async function extractProcedureCandidates(pages: ExtractedDocumentPage[])
   });
 }
 
-export async function replaceProcedureCandidates(documentId: string, assetId: string, ownerId: string, candidates: Awaited<ReturnType<typeof extractProcedureCandidates>>) {
+export async function replaceProcedureCandidates(documentId: string, assetId: string, ownerId: string, candidates: ExtractedProcedureCandidate[]) {
   const sql = database();
   await sql.begin(async (tx) => {
     await tx`DELETE FROM procedure_candidates WHERE document_id=${documentId} AND asset_id=${assetId} AND owner_id=${ownerId} AND status='pending'`;
