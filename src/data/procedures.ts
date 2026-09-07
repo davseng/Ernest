@@ -61,19 +61,23 @@ export async function extractProcedureCandidates(pages: ExtractedDocumentPage[])
 
   const response = await openai().responses.create({
     model: process.env.OPENAI_MODEL || "gpt-5.6-luna",
-    reasoning: { effort: "low" },
+    reasoning: { effort: "medium" },
     max_output_tokens: 12000,
     instructions: [
       "Extract procedural knowledge from the supplied vessel document text only.",
-      "A procedure must contain an ordered sequence of explicit actions supported by the source.",
-      "Classify each as emergency, checklist, or routine. Emergency means an immediate safety response such as fire, flooding, grounding, abandon ship, man overboard, steering failure, or similar urgent response. Checklist means a repeatable pre-departure, shutdown, unattended-boat, arrival, anchoring, safety, or inspection checklist. Routine means a non-emergency operating or maintenance procedure with ordered steps.",
-      "Completeness is critical: when the source presents a checklist, numbered list, bullet list, checkbox list, or other explicit action sequence, include EVERY supported action item as a separate step in source order. Do not return only the procedure title or a representative sample of steps.",
-      "Do not summarize several checklist items into one step. If a checklist has 20 explicit action lines, the candidate should normally contain 20 steps unless some lines are clearly non-action notes.",
-      "A heading by itself is not a procedure. Do not create a candidate from a title unless the source also provides explicit supported action steps.",
+      "The unit of extraction is a COMPLETE PROCEDURE, not an individual checklist item.",
+      "A procedure must have a title/heading plus an ordered sequence of explicit actions supported by the source.",
+      "When a heading is followed by checkbox items, bullets, numbered actions, or short action lines, create ONE candidate whose title is the heading and whose steps are ALL of those action lines in source order until the next procedure heading.",
+      "NEVER turn an individual checklist action such as 'Turn on the chart plotter', 'Start the autopilot', 'Check the bilge', or similar item into its own procedure candidate when it appears beneath a broader checklist heading.",
+      "Do not move descriptive qualifiers into the procedure title. Keep the action itself as the step instruction and put only source-supported qualifiers in the step note or procedure notes.",
+      "Classify each complete procedure as emergency, checklist, or routine. Emergency means an immediate safety response such as fire, flooding, grounding, abandon ship, man overboard, steering failure, or similar urgent response. Checklist means a repeatable pre-departure, shutdown, unattended-boat, arrival, anchoring, safety, or inspection checklist. Routine means a non-emergency operating or maintenance procedure with ordered steps.",
+      "Completeness is critical: include EVERY supported action item as a separate step. If a checklist has 20 explicit action lines, the candidate should normally contain 20 steps unless some lines are clearly non-action notes.",
+      "Do not summarize several checklist items into one step. Do not create one candidate per bullet or checkbox.",
+      "A heading by itself is not a procedure. An isolated single action is not a procedure candidate for this scanner; it belongs as a step within its surrounding procedure when the source provides one.",
       "If a procedure continues onto the next page, keep it as one candidate and include the continued steps. Use the page where the procedure begins as pageNumber.",
       "Do not invent missing steps, warnings, limits, settings, quantities, or sequences. Do not combine separate procedures unless the source clearly presents them as one.",
-      "Keep each candidate tied to the page where the procedure begins or is principally supported.",
       "Preserve source wording closely but remove purely decorative numbering or checkbox symbols.",
+      "Before returning JSON, verify that every candidate represents a complete source-defined procedure and that no candidate title is merely one of that procedure's action items.",
       "Return JSON only: {\"procedures\":[{\"pageNumber\":1,\"title\":\"title\",\"procedureType\":\"routine|checklist|emergency\",\"notes\":\"source-supported context or null\",\"steps\":[{\"instruction\":\"action\",\"note\":\"source-supported qualifier or null\"}]}]}",
     ].join(" "),
     input: `DOCUMENT TEXT:\n${source}`,
@@ -98,7 +102,7 @@ export async function extractProcedureCandidates(pages: ExtractedDocumentPage[])
       if (!instruction) return [];
       return [{ instruction, note: clean(s.note) }];
     });
-    if (steps.length === 0) return [];
+    if (steps.length < 2) return [];
     return [{ pageNumber, title, procedureType, notes: clean(row.notes), steps }];
   });
 }
@@ -120,7 +124,7 @@ export async function getProcedureCandidates(assetId: string, ownerId: string) {
     id:string; document_id:string; document_title:string; page_number:number; title:string; procedure_type:ProcedureType;
     notes:string|null; steps_json: unknown; status:"pending"|"approved"|"rejected"; verified_procedure_id:string|null;
   }>>`
-    SELECT c.id, c.document_id, d.title AS document_title, c.page_number, c.title, c.procedure_type,
+    SELECT c.id, c.document_id, d.title AS document_title, c.page_number, c.procedure_type,
       c.notes, c.steps_json, c.status, c.verified_procedure_id
     FROM procedure_candidates c
     INNER JOIN documents d ON d.id=c.document_id
