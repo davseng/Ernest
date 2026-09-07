@@ -143,7 +143,7 @@ export async function approveEquipmentCandidate(
   candidateId: string,
   assetId: string,
   ownerId: string,
-  systemId: string,
+  systemChoice: { systemId?: string; newSystemName?: string },
   edits: { name:string; manufacturer:string; model:string; serialNumber?:string; location:string; notes:string },
 ) {
   const sql = database();
@@ -151,11 +151,43 @@ export async function approveEquipmentCandidate(
     const candidates = await tx<Array<{id:string}>>`
       SELECT c.id FROM equipment_candidates c
       INNER JOIN assets a ON a.id=c.asset_id
-      INNER JOIN systems s ON s.asset_id=a.id
       WHERE c.id=${candidateId} AND c.asset_id=${assetId} AND c.owner_id=${ownerId} AND c.status='pending'
-        AND a.owner_id=${ownerId} AND s.id=${systemId}
+        AND a.owner_id=${ownerId}
       FOR UPDATE`;
     if (candidates.length !== 1) return false;
+
+    let systemId = systemChoice.systemId?.trim() || "";
+    if (systemId) {
+      const ownedSystems = await tx<Array<{id:string}>>`
+        SELECT s.id FROM systems s
+        INNER JOIN assets a ON a.id=s.asset_id
+        WHERE s.id=${systemId} AND a.id=${assetId} AND a.owner_id=${ownerId}`;
+      if (ownedSystems.length !== 1) return false;
+    } else {
+      const newSystemName = systemChoice.newSystemName?.trim() || "";
+      if (!newSystemName) return false;
+
+      const existing = await tx<Array<{id:string}>>`
+        SELECT s.id FROM systems s
+        INNER JOIN assets a ON a.id=s.asset_id
+        WHERE a.id=${assetId} AND a.owner_id=${ownerId} AND lower(s.name)=lower(${newSystemName})
+        ORDER BY s.position
+        LIMIT 1`;
+
+      if (existing[0]?.id) {
+        systemId = existing[0].id;
+      } else {
+        systemId = randomUUID();
+        const createdSystem = await tx`
+          INSERT INTO systems (id, asset_id, name, description, position)
+          SELECT ${systemId}, a.id, ${newSystemName}, 'Equipment category created during candidate verification.',
+            COALESCE((SELECT MAX(position)+1 FROM systems WHERE asset_id=a.id), 0)
+          FROM assets a
+          WHERE a.id=${assetId} AND a.owner_id=${ownerId}
+          RETURNING id`;
+        if (createdSystem.length !== 1) return false;
+      }
+    }
 
     const componentId = randomUUID();
     const inserted = await tx`
