@@ -24,10 +24,62 @@ function emptyAskErnestState(): AskErnestState {
   };
 }
 
+function inventorySearchTokens(question: string) {
+  const stopWords = new Set([
+    "a", "an", "and", "are", "do", "does", "for", "have", "i", "in", "is", "it", "me", "my", "of", "on", "the", "to", "what", "where", "which", "with",
+  ]);
+
+  return Array.from(new Set(
+    question
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .split(/\s+/)
+      .filter((token) => token.length >= 2 && !stopWords.has(token)),
+  ));
+}
+
+function relevantInventory(
+  question: string,
+  inventory: Awaited<ReturnType<typeof getInventoryItems>>,
+) {
+  const tokens = inventorySearchTokens(question);
+  if (tokens.length === 0) return [];
+
+  return inventory
+    .map((item) => {
+      const name = item.name.toLowerCase();
+      const details = (item.details ?? "").toLowerCase();
+      const locations = item.locations.join(" ").toLowerCase();
+      let score = 0;
+      for (const token of tokens) {
+        if (name.includes(token)) score += 4;
+        if (details.includes(token)) score += 2;
+        if (locations.split(/\s+/).includes(token)) score += 3;
+      }
+      if (tokens.every((token) => name.includes(token))) score += 8;
+      return { item, score };
+    })
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name))
+    .slice(0, 12)
+    .map(({ item }) => item);
+}
+
+function inventoryLine(item: Awaited<ReturnType<typeof getInventoryItems>>[number]) {
+  const parts = [
+    item.name,
+    item.locations.length ? `storage location code ${item.locations.join(", ")}` : "storage location not recorded",
+    item.quantity ? `quantity ${item.quantity}` : "",
+    item.details ? `details: ${item.details}` : "",
+  ].filter(Boolean);
+  return `- ${parts.join(" · ")}`;
+}
+
 function verifiedAssetContext(
   asset: NonNullable<Awaited<ReturnType<typeof getAsset>>>,
   logs: Awaited<ReturnType<typeof getLogEntries>>,
   inventory: Awaited<ReturnType<typeof getInventoryItems>>,
+  question: string,
 ) {
   const lines = [
     "ASSET RECORD:",
@@ -54,16 +106,15 @@ function verifiedAssetContext(
   }
 
   if (inventory.length > 0) {
-    lines.push("\nVERIFIED INVENTORY:");
-    for (const item of inventory) {
-      const parts = [
-        item.name,
-        item.locations.length ? `location ${item.locations.join(", ")}` : "location not recorded",
-        item.quantity ? `quantity ${item.quantity}` : "",
-        item.details ? `details: ${item.details}` : "",
-      ].filter(Boolean);
-      lines.push(`- ${parts.join(" · ")}`);
+    const matches = relevantInventory(question, inventory);
+    if (matches.length > 0) {
+      lines.push("\nRELEVANT VERIFIED INVENTORY MATCHES:");
+      lines.push("Location codes below are the owner's exact storage-location codes. When asked where an item is, report the recorded code exactly and do not say the location is unknown if a code is present.");
+      for (const item of matches) lines.push(inventoryLine(item));
     }
+
+    lines.push("\nVERIFIED INVENTORY:");
+    for (const item of inventory) lines.push(inventoryLine(item));
   }
 
   const recentLogs = logs.slice(0, 20);
@@ -121,7 +172,7 @@ export async function askErnest(
       return { question, answer: proposalAnswer(proposal), sources: [], proposal };
     }
 
-    const answer = await answerErnestQuestion(question, context, verifiedAssetContext(asset, logs, inventory));
+    const answer = await answerErnestQuestion(question, context, verifiedAssetContext(asset, logs, inventory, question));
     const seen = new Set<string>();
     const sources = context
       .filter((page) => {
