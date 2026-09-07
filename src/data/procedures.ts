@@ -28,32 +28,9 @@ function clean(value: unknown) {
 }
 
 export type ProcedureType = "routine" | "checklist" | "emergency";
-
 export type ProcedureStep = { id?: string; position: number; instruction: string; note: string | null };
-
-export type ProcedureRecord = {
-  id: string;
-  title: string;
-  procedureType: ProcedureType;
-  notes: string | null;
-  sourceDocumentId: string | null;
-  sourceDocumentTitle: string | null;
-  sourcePage: number | null;
-  steps: ProcedureStep[];
-};
-
-export type ProcedureCandidate = {
-  id: string;
-  documentId: string;
-  documentTitle: string;
-  pageNumber: number;
-  title: string;
-  procedureType: ProcedureType;
-  notes: string | null;
-  steps: Array<{ instruction: string; note: string | null }>;
-  status: "pending" | "approved" | "rejected";
-  verifiedProcedureId: string | null;
-};
+export type ProcedureRecord = { id:string; title:string; procedureType:ProcedureType; notes:string|null; sourceDocumentId:string|null; sourceDocumentTitle:string|null; sourcePage:number|null; steps:ProcedureStep[] };
+export type ProcedureCandidate = { id:string; documentId:string; documentTitle:string; pageNumber:number; title:string; procedureType:ProcedureType; notes:string|null; steps:Array<{instruction:string;note:string|null}>; status:"pending"|"approved"|"rejected"; verifiedProcedureId:string|null };
 
 export async function extractProcedureCandidates(pages: ExtractedDocumentPage[]) {
   const source = pages.map((p) => `PAGE ${p.pageNumber}\n${p.text}`).join("\n\n---\n\n");
@@ -66,7 +43,7 @@ export async function extractProcedureCandidates(pages: ExtractedDocumentPage[])
     instructions: [
       "Extract procedural knowledge from the supplied vessel document text only.",
       "The unit of extraction is a COMPLETE PROCEDURE, not an individual checklist item.",
-      "A procedure must have a title/heading plus an ordered sequence of explicit actions supported by the source.",
+      "A procedure must have a title or heading plus an ordered sequence of explicit actions supported by the source.",
       "When a heading is followed by checkbox items, bullets, numbered actions, or short action lines, create ONE candidate whose title is the heading and whose steps are ALL of those action lines in source order until the next procedure heading.",
       "NEVER turn an individual checklist action such as 'Turn on the chart plotter', 'Start the autopilot', 'Check the bilge', or similar item into its own procedure candidate when it appears beneath a broader checklist heading.",
       "Do not move descriptive qualifiers into the procedure title. Keep the action itself as the step instruction and put only source-supported qualifiers in the step note or procedure notes.",
@@ -112,19 +89,15 @@ export async function replaceProcedureCandidates(documentId: string, assetId: st
   await sql.begin(async (tx) => {
     await tx`DELETE FROM procedure_candidates WHERE document_id=${documentId} AND asset_id=${assetId} AND owner_id=${ownerId} AND status='pending'`;
     for (const candidate of candidates) {
-      await tx`
-        INSERT INTO procedure_candidates (asset_id, owner_id, document_id, page_number, title, procedure_type, notes, steps_json)
+      await tx`INSERT INTO procedure_candidates (asset_id, owner_id, document_id, page_number, title, procedure_type, notes, steps_json)
         VALUES (${assetId}, ${ownerId}, ${documentId}, ${candidate.pageNumber}, ${candidate.title}, ${candidate.procedureType}, ${candidate.notes}, ${JSON.stringify(candidate.steps)}::jsonb)`;
     }
   });
 }
 
 export async function getProcedureCandidates(assetId: string, ownerId: string) {
-  const rows = await database()<Array<{
-    id:string; document_id:string; document_title:string; page_number:number; title:string; procedure_type:ProcedureType;
-    notes:string|null; steps_json: unknown; status:"pending"|"approved"|"rejected"; verified_procedure_id:string|null;
-  }>>`
-    SELECT c.id, c.document_id, d.title AS document_title, c.page_number, c.procedure_type,
+  const rows = await database()<Array<{ id:string; document_id:string; document_title:string; page_number:number; title:string; procedure_type:ProcedureType; notes:string|null; steps_json:unknown; status:"pending"|"approved"|"rejected"; verified_procedure_id:string|null }>>`
+    SELECT c.id, c.document_id, d.title AS document_title, c.page_number, c.title, c.procedure_type,
       c.notes, c.steps_json, c.status, c.verified_procedure_id
     FROM procedure_candidates c
     INNER JOIN documents d ON d.id=c.document_id
@@ -134,19 +107,11 @@ export async function getProcedureCandidates(assetId: string, ownerId: string) {
       CASE c.procedure_type WHEN 'emergency' THEN 0 WHEN 'checklist' THEN 1 ELSE 2 END,
       lower(c.title), c.page_number`;
 
-  return rows.map((r) => ({
-    id:r.id, documentId:r.document_id, documentTitle:r.document_title, pageNumber:r.page_number,
-    title:r.title, procedureType:r.procedure_type, notes:r.notes,
-    steps:Array.isArray(r.steps_json) ? (r.steps_json as Array<{instruction:string;note:string|null}>) : [],
-    status:r.status, verifiedProcedureId:r.verified_procedure_id,
-  } satisfies ProcedureCandidate));
+  return rows.map((r) => ({ id:r.id, documentId:r.document_id, documentTitle:r.document_title, pageNumber:r.page_number, title:r.title, procedureType:r.procedure_type, notes:r.notes, steps:Array.isArray(r.steps_json) ? (r.steps_json as Array<{instruction:string;note:string|null}>) : [], status:r.status, verifiedProcedureId:r.verified_procedure_id } satisfies ProcedureCandidate));
 }
 
 export async function getProcedures(assetId: string, ownerId: string) {
-  const rows = await database()<Array<{
-    id:string; title:string; procedure_type:ProcedureType; notes:string|null; source_document_id:string|null;
-    document_title:string|null; source_page:number|null; step_id:string|null; step_position:number|null; instruction:string|null; step_note:string|null;
-  }>>`
+  const rows = await database()<Array<{ id:string; title:string; procedure_type:ProcedureType; notes:string|null; source_document_id:string|null; document_title:string|null; source_page:number|null; step_id:string|null; step_position:number|null; instruction:string|null; step_note:string|null }>>`
     SELECT p.id, p.title, p.procedure_type, p.notes, p.source_document_id, d.title AS document_title, p.source_page,
       s.id AS step_id, s.position AS step_position, s.instruction, s.note AS step_note
     FROM procedures p
@@ -161,59 +126,45 @@ export async function getProcedures(assetId: string, ownerId: string) {
   for (const row of rows) {
     let procedure = map.get(row.id);
     if (!procedure) {
-      procedure = {
-        id:row.id, title:row.title, procedureType:row.procedure_type, notes:row.notes,
-        sourceDocumentId:row.source_document_id, sourceDocumentTitle:row.document_title, sourcePage:row.source_page, steps:[],
-      };
+      procedure = { id:row.id, title:row.title, procedureType:row.procedure_type, notes:row.notes, sourceDocumentId:row.source_document_id, sourceDocumentTitle:row.document_title, sourcePage:row.source_page, steps:[] };
       map.set(row.id, procedure);
     }
-    if (row.step_id && row.step_position !== null && row.instruction) {
-      procedure.steps.push({ id:row.step_id, position:row.step_position, instruction:row.instruction, note:row.step_note });
-    }
+    if (row.step_id && row.step_position !== null && row.instruction) procedure.steps.push({ id:row.step_id, position:row.step_position, instruction:row.instruction, note:row.step_note });
   }
   return [...map.values()];
 }
 
 export async function rejectProcedureCandidate(candidateId: string, assetId: string, ownerId: string) {
-  const rows = await database()`
-    UPDATE procedure_candidates c SET status='rejected', reviewed_at=now()
+  const rows = await database()`UPDATE procedure_candidates c SET status='rejected', reviewed_at=now()
     FROM assets a
-    WHERE c.id=${candidateId} AND c.asset_id=${assetId} AND c.owner_id=${ownerId}
-      AND a.id=c.asset_id AND a.owner_id=${ownerId}
+    WHERE c.id=${candidateId} AND c.asset_id=${assetId} AND c.owner_id=${ownerId} AND a.id=c.asset_id AND a.owner_id=${ownerId}
     RETURNING c.id`;
   return rows.length === 1;
 }
 
-export async function approveProcedureCandidate(candidateId: string, assetId: string, ownerId: string, edits: {
-  title:string; procedureType:ProcedureType; notes:string; steps:Array<{instruction:string; note:string|null}>;
-}) {
+export async function approveProcedureCandidate(candidateId: string, assetId: string, ownerId: string, edits: { title:string; procedureType:ProcedureType; notes:string; steps:Array<{instruction:string; note:string|null}> }) {
   const sql = database();
   return sql.begin(async (tx) => {
     const candidates = await tx<Array<{id:string; document_id:string; page_number:number}>>`
       SELECT c.id, c.document_id, c.page_number FROM procedure_candidates c
       INNER JOIN assets a ON a.id=c.asset_id
-      WHERE c.id=${candidateId} AND c.asset_id=${assetId} AND c.owner_id=${ownerId} AND c.status='pending'
-        AND a.owner_id=${ownerId}
+      WHERE c.id=${candidateId} AND c.asset_id=${assetId} AND c.owner_id=${ownerId} AND c.status='pending' AND a.owner_id=${ownerId}
       FOR UPDATE`;
     if (candidates.length !== 1 || edits.steps.length === 0) return false;
 
     const procedureId = randomUUID();
-    const inserted = await tx`
-      INSERT INTO procedures (id, asset_id, owner_id, title, procedure_type, notes, source_document_id, source_page)
+    const inserted = await tx`INSERT INTO procedures (id, asset_id, owner_id, title, procedure_type, notes, source_document_id, source_page)
       VALUES (${procedureId}, ${assetId}, ${ownerId}, ${edits.title}, ${edits.procedureType}, ${edits.notes || null}, ${candidates[0].document_id}, ${candidates[0].page_number})
       RETURNING id`;
     if (inserted.length !== 1) return false;
 
     for (let i = 0; i < edits.steps.length; i++) {
       const step = edits.steps[i];
-      await tx`
-        INSERT INTO procedure_steps (id, procedure_id, position, instruction, note)
+      await tx`INSERT INTO procedure_steps (id, procedure_id, position, instruction, note)
         VALUES (${randomUUID()}, ${procedureId}, ${i}, ${step.instruction}, ${step.note})`;
     }
 
-    await tx`
-      UPDATE procedure_candidates
-      SET status='approved', verified_procedure_id=${procedureId}, reviewed_at=now()
+    await tx`UPDATE procedure_candidates SET status='approved', verified_procedure_id=${procedureId}, reviewed_at=now()
       WHERE id=${candidateId} AND asset_id=${assetId} AND owner_id=${ownerId}`;
     return true;
   });
