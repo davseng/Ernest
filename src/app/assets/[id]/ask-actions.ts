@@ -5,6 +5,7 @@ import { answerErnestQuestion } from "@/data/ask-ernest";
 import { getAsset } from "@/data/assets";
 import { getErnestDocumentContext } from "@/data/document-context";
 import { proposeErnestWrite, type ErnestWriteProposal } from "@/data/ernest-write-proposals";
+import { getInventoryItems } from "@/data/inventory";
 import { getLogEntries } from "@/data/log-entries";
 
 export type AskErnestState = {
@@ -26,6 +27,7 @@ function emptyAskErnestState(): AskErnestState {
 function verifiedAssetContext(
   asset: NonNullable<Awaited<ReturnType<typeof getAsset>>>,
   logs: Awaited<ReturnType<typeof getLogEntries>>,
+  inventory: Awaited<ReturnType<typeof getInventoryItems>>,
 ) {
   const lines = [
     "ASSET RECORD:",
@@ -48,6 +50,19 @@ function verifiedAssetContext(
       if (component.serialNumber) lines.push(`Serial number: ${component.serialNumber}`);
       if (component.location) lines.push(`Location: ${component.location}`);
       if (component.notes) lines.push(`Notes: ${component.notes}`);
+    }
+  }
+
+  if (inventory.length > 0) {
+    lines.push("\nVERIFIED INVENTORY:");
+    for (const item of inventory) {
+      const parts = [
+        item.name,
+        item.locations.length ? `location ${item.locations.join(", ")}` : "location not recorded",
+        item.quantity ? `quantity ${item.quantity}` : "",
+        item.details ? `details: ${item.details}` : "",
+      ].filter(Boolean);
+      lines.push(`- ${parts.join(" · ")}`);
     }
   }
 
@@ -90,9 +105,10 @@ export async function askErnest(
   }
 
   try {
-    const [asset, logs, context] = await Promise.all([
+    const [asset, logs, inventory, context] = await Promise.all([
       getAsset(assetId, session.user.id),
       getLogEntries(assetId, session.user.id),
+      getInventoryItems(assetId, session.user.id),
       getErnestDocumentContext(assetId, session.user.id, question),
     ]);
 
@@ -105,7 +121,7 @@ export async function askErnest(
       return { question, answer: proposalAnswer(proposal), sources: [], proposal };
     }
 
-    const answer = await answerErnestQuestion(question, context, verifiedAssetContext(asset, logs));
+    const answer = await answerErnestQuestion(question, context, verifiedAssetContext(asset, logs, inventory));
     const seen = new Set<string>();
     const sources = context
       .filter((page) => {
