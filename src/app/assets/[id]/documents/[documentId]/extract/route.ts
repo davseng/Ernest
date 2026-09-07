@@ -7,7 +7,30 @@ import {
   replaceDocumentPages,
 } from "@/data/documents";
 import { readDocument } from "@/data/document-storage";
-import { extractPdfPages } from "@/data/pdf-text";
+import { ocrPdfPages } from "@/data/pdf-ocr";
+import { extractPdfPages, type ExtractedPage } from "@/data/pdf-text";
+
+function usefulCharacterCount(text: string) {
+  return (text.match(/[A-Za-z0-9]/g) ?? []).length;
+}
+
+function needsOcr(page: ExtractedPage) {
+  return usefulCharacterCount(page.text) < 80;
+}
+
+function mergeOcrPages(nativePages: ExtractedPage[], ocrPages: ExtractedPage[]) {
+  const ocrByPage = new Map(ocrPages.map((page) => [page.pageNumber, page]));
+  return nativePages.map((nativePage) => {
+    const ocrPage = ocrByPage.get(nativePage.pageNumber);
+    if (!ocrPage) return nativePage;
+
+    // Keep the more informative representation. This prevents a poor OCR pass
+    // from replacing embedded text that was already more useful.
+    return usefulCharacterCount(ocrPage.text) > usefulCharacterCount(nativePage.text)
+      ? ocrPage
+      : nativePage;
+  });
+}
 
 export async function POST(request: Request, context: {
   params: Promise<{ id: string; documentId: string }>;
@@ -24,8 +47,21 @@ export async function POST(request: Request, context: {
   let stage = "read-storage";
   try {
     const bytes = await readDocument(document.storageKey);
+
+    // PDF.js may transfer/detach the ArrayBuffer it receives while parsing.
+    // Give native extraction its own copy so the original bytes remain intact
+    // for OCR fallback later in the same request.
     stage = "pdf-extract";
-    const pages = await extractPdfPages(bytes);
+    const nativePages = await extractPdfPages(bytes.slice());
+    const weakPageNumbers = nativePages.filter(needsOcr).map((page) => page.pageNumber);
+
+    let pages = nativePages;
+    if (weakPageNumbers.length > 0) {
+      stage = "ocr-fallback";
+      const ocrPages = await ocrPdfPages(bytes, document.originalFilename, weakPageNumbers);
+      pages = mergeOcrPages(nativePages, ocrPages);
+    }
+
     stage = "database-write";
     const stored = await replaceDocumentPages(documentId, assetId, session.user.id, pages);
     if (!stored) return new NextResponse("Not found", { status: 404 });
