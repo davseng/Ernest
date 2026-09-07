@@ -47,6 +47,8 @@ export default async function Home({
           />
         </div>
         <nav className="conversation-nav" aria-label="Asset tools">
+          <Link href={`/assets/${selectedAsset.id}/inventory`}>Inventory</Link>
+          <Link href={`/assets/${selectedAsset.id}/knowledge`}>Equipment</Link>
           <Link href={`/assets/${selectedAsset.id}/documents`}>Documents</Link>
           <Link href={`/assets/${selectedAsset.id}`}>Asset</Link>
           <AccountMenu email={session.user.email} />
