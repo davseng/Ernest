@@ -45,22 +45,23 @@ export default async function ProceduresPage({ params }: { params: Promise<{ id:
           <p className="eyebrow">{asset.name}</p>
           <h1>Procedures</h1>
           <p>Trusted checklists, operating procedures, and emergency actions. Source-backed procedures remain tied to the document page they came from.</p>
+          {pending.length > 0 && <p><strong>{pending.length} procedure {pending.length === 1 ? "candidate needs" : "candidates need"} review.</strong></p>}
         </section>
 
         {emergencies.length > 0 && (
-          <section className="card" style={{ borderWidth: 2 }}>
-            <p className="eyebrow">Emergency</p>
-            <h2>Immediate actions</h2>
-            <p>Open the applicable procedure and follow the source-backed sequence. Do not delay access by requiring completion of prior steps.</p>
+          <section className="card" style={{ border: "3px solid currentColor" }} aria-labelledby="emergency-heading">
+            <p className="eyebrow">Emergency · immediate use</p>
+            <h2 id="emergency-heading">Emergency procedures</h2>
+            <p><strong>Open the applicable procedure and follow the source-backed sequence shown.</strong> All steps remain visible; Ernest does not require one step to be checked before showing the next.</p>
             <div className="stack">
               {emergencies.map((procedure) => (
                 <details key={procedure.id} open>
                   <summary><strong>{procedure.title}</strong></summary>
                   {procedure.notes && <p>{procedure.notes}</p>}
-                  <ol>
+                  <ol style={{ fontSize: "1.05rem", lineHeight: 1.6 }}>
                     {procedure.steps.map((step) => <li key={step.id ?? step.position}>{step.instruction}{step.note ? ` — ${step.note}` : ""}</li>)}
                   </ol>
-                  {procedure.sourceDocumentTitle && <p className="muted">Source: {procedure.sourceDocumentTitle}{procedure.sourcePage ? ` · page ${procedure.sourcePage}` : ""}</p>}
+                  {procedure.sourceDocumentTitle && <p className="muted"><strong>Source:</strong> {procedure.sourceDocumentTitle}{procedure.sourcePage ? ` · page ${procedure.sourcePage}` : ""}</p>}
                 </details>
               ))}
             </div>
@@ -68,20 +69,24 @@ export default async function ProceduresPage({ params }: { params: Promise<{ id:
         )}
 
         <section className="card">
+          <p className="eyebrow">Run aboard</p>
           <h2>Checklists</h2>
           {checklists.length === 0 ? <p className="muted">No verified checklists yet.</p> : checklists.map((procedure) => (
             <details key={procedure.id}>
-              <summary><strong>{procedure.title}</strong></summary>
+              <summary><strong>{procedure.title}</strong> <span className="muted">· {procedure.steps.length} steps</span></summary>
               {procedure.notes && <p>{procedure.notes}</p>}
-              <div className="stack">
-                {procedure.steps.map((step) => (
-                  <label key={step.id ?? step.position} style={{ display: "flex", gap: ".65rem", alignItems: "flex-start" }}>
-                    <input type="checkbox" />
-                    <span>{step.instruction}{step.note ? ` — ${step.note}` : ""}</span>
-                  </label>
-                ))}
-              </div>
-              {procedure.sourceDocumentTitle && <p className="muted">Source: {procedure.sourceDocumentTitle}{procedure.sourcePage ? ` · page ${procedure.sourcePage}` : ""}</p>}
+              <form>
+                <div className="stack" style={{ marginTop: ".75rem" }}>
+                  {procedure.steps.map((step) => (
+                    <label key={step.id ?? step.position} style={{ display: "flex", gap: ".8rem", alignItems: "flex-start", padding: ".35rem 0", fontSize: "1.02rem", lineHeight: 1.45 }}>
+                      <input type="checkbox" style={{ width: "1.25rem", height: "1.25rem", marginTop: ".1rem", flex: "0 0 auto" }} />
+                      <span>{step.instruction}{step.note ? ` — ${step.note}` : ""}</span>
+                    </label>
+                  ))}
+                </div>
+                <button type="reset" style={{ marginTop: ".8rem" }}>Clear checks</button>
+              </form>
+              {procedure.sourceDocumentTitle && <p className="muted"><strong>Source:</strong> {procedure.sourceDocumentTitle}{procedure.sourcePage ? ` · page ${procedure.sourcePage}` : ""}</p>}
             </details>
           ))}
         </section>
@@ -90,33 +95,37 @@ export default async function ProceduresPage({ params }: { params: Promise<{ id:
           <h2>Routine procedures</h2>
           {routines.length === 0 ? <p className="muted">No verified routine procedures yet.</p> : routines.map((procedure) => (
             <details key={procedure.id}>
-              <summary><strong>{procedure.title}</strong></summary>
+              <summary><strong>{procedure.title}</strong> <span className="muted">· {procedure.steps.length} steps</span></summary>
               {procedure.notes && <p>{procedure.notes}</p>}
               <ol>{procedure.steps.map((step) => <li key={step.id ?? step.position}>{step.instruction}{step.note ? ` — ${step.note}` : ""}</li>)}</ol>
-              {procedure.sourceDocumentTitle && <p className="muted">Source: {procedure.sourceDocumentTitle}{procedure.sourcePage ? ` · page ${procedure.sourcePage}` : ""}</p>}
+              {procedure.sourceDocumentTitle && <p className="muted"><strong>Source:</strong> {procedure.sourceDocumentTitle}{procedure.sourcePage ? ` · page ${procedure.sourcePage}` : ""}</p>}
             </details>
           ))}
         </section>
 
         <section className="card">
           <h2>Find procedures in documents</h2>
-          <p>Scan an already-extracted document. Ernest only proposes ordered actions that the document itself supports.</p>
+          <p>Scan an already-extracted document. Ernest uses the original PDF layout when available and only proposes actions supported by the source.</p>
           <div className="stack">
             {documents.filter((document) => document.extractedAt).map((document) => (
               <form key={document.id} action={scanDocumentForProcedures.bind(null, asset.id, document.id)}>
-                <button type="submit">Scan {document.title}</button>
+                <button type="submit">Find procedures in {document.title}</button>
               </form>
             ))}
           </div>
         </section>
 
-        <section className="card">
-          <h2>Review candidates</h2>
+        <section className="card" aria-labelledby="review-heading">
+          <p className="eyebrow">Human verification</p>
+          <h2 id="review-heading">Review candidates{pending.length > 0 ? ` (${pending.length})` : ""}</h2>
+          <p>Nothing becomes trusted procedure knowledge until you review and approve it. Edit any title, type, notes, or steps before approval.</p>
           {pending.length === 0 ? <p className="muted">No procedure candidates waiting for review.</p> : (
             <div className="stack">
               {pending.map((candidate) => (
-                <article key={candidate.id} className="card">
-                  <p className="eyebrow">{candidate.procedureType} · {candidate.documentTitle} · page {candidate.pageNumber}</p>
+                <article key={candidate.id} className="card" style={{ borderWidth: 2 }}>
+                  <p className="eyebrow">Needs review · {candidate.procedureType}</p>
+                  <h3>{candidate.title}</h3>
+                  <p className="muted">Source: {candidate.documentTitle} · page {candidate.pageNumber} · {candidate.steps.length} proposed steps</p>
                   <form action={approveProcedure.bind(null, asset.id, candidate.id)} className="stack">
                     <label>Title<input name="title" defaultValue={candidate.title} required /></label>
                     <label>Type
@@ -128,10 +137,10 @@ export default async function ProceduresPage({ params }: { params: Promise<{ id:
                     </label>
                     <label>Notes<textarea name="notes" defaultValue={candidate.notes ?? ""} rows={2} /></label>
                     <label>Steps — one per line<textarea name="steps" defaultValue={candidate.steps.map((step) => step.instruction).join("\n")} rows={Math.min(Math.max(candidate.steps.length + 1, 4), 14)} required /></label>
-                    <button type="submit">Approve procedure</button>
+                    <button type="submit">Approve as trusted procedure</button>
                   </form>
                   <form action={rejectProcedure.bind(null, asset.id, candidate.id)}>
-                    <button type="submit">Reject</button>
+                    <button type="submit">Reject candidate</button>
                   </form>
                 </article>
               ))}
