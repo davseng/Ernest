@@ -41,8 +41,8 @@ export default async function DocumentsPage({ params }: { params: Promise<{ id: 
         <section className="asset-header">
           <div>
             <p className="eyebrow">Knowledge</p>
-            <div className="title-row"><h1>Document Library</h1><span className="type-pill">v0.2</span></div>
-            <p className="asset-summary detail-summary">Add, inspect, reprocess, rename, and remove the documents Ernest uses for {asset.name}.</p>
+            <div className="title-row"><h1>Document Library</h1><span className="type-pill">v0.8</span></div>
+            <p className="asset-summary detail-summary">Add, inspect, reprocess, rename, and remove the documents Ernest uses for {asset.name}. Originals remain private and are opened through short-lived authorized links.</p>
           </div>
           <dl className="asset-facts">
             <div><dt>Documents</dt><dd>{documents.length}</dd></div>
@@ -73,7 +73,10 @@ export default async function DocumentsPage({ params }: { params: Promise<{ id: 
                   <h3><Link href={`/assets/${id}/documents/${document.id}`}>{document.title}</Link></h3>
                   <p>{document.originalFilename}</p>
                   <small>{formatBytes(document.sizeBytes)} · {status(document)}</small>
-                  {document.sourceUrl ? <p><a href={document.sourceUrl} target="_blank" rel="noreferrer">Original source</a></p> : null}
+                  <p>
+                    <a href={`/assets/${id}/documents/${document.id}/original`} target="_blank" rel="noreferrer">Open original PDF ↗</a>
+                    {document.sourceUrl ? <> · <a href={document.sourceUrl} target="_blank" rel="noreferrer">Original web source ↗</a></> : null}
+                  </p>
                   <Link className="edit-asset-link" href={`/assets/${id}/documents/${document.id}`}>Manage document →</Link>
                 </article>
               ))}
