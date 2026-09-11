@@ -63,6 +63,7 @@ export default async function Home({
               <Link href={`/assets/${selectedAsset.id}/inventory`}>Inventory</Link>
               <Link href={`/assets/${selectedAsset.id}/procedures`}>Procedures & checklists</Link>
               <Link href={`/assets/${selectedAsset.id}/documents`}>Documents</Link>
+              <Link href={`/assets/${selectedAsset.id}/photos`}>Photos</Link>
               <Link href={`/assets/${selectedAsset.id}`}>Asset setup</Link>
             </div>
           </details>
