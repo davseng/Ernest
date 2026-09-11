@@ -5,15 +5,61 @@ import { auth } from "@/auth";
 import { AccountMenu } from "@/components/account-menu";
 import { getAsset } from "@/data/assets";
 import { getDocumentsForAsset } from "@/data/documents";
-import { getProcedureCandidates, getProcedures } from "@/data/procedures";
-import { approveProcedure, rejectProcedure, scanDocumentForProcedures } from "./actions";
+import { getProcedureCandidates, getProcedures, type ProcedureRecord } from "@/data/procedures";
+import {
+  addProcedure,
+  approveProcedure,
+  editProcedure,
+  rejectProcedure,
+  removeProcedure,
+  scanDocumentForProcedures,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProceduresPage({ params }: { params: Promise<{ id: string }> }) {
+function ProcedureEditor({ assetId, procedure }: { assetId: string; procedure: ProcedureRecord }) {
+  return <details className="editor-card">
+    <summary>Edit procedure</summary>
+    <form action={editProcedure.bind(null, assetId, procedure.id)} className="stack">
+      <label>Title<input name="title" defaultValue={procedure.title} required /></label>
+      <label>Type
+        <select name="procedureType" defaultValue={procedure.procedureType}>
+          <option value="emergency">Emergency</option>
+          <option value="checklist">Checklist</option>
+          <option value="routine">Routine</option>
+        </select>
+      </label>
+      <label>Notes<textarea name="notes" defaultValue={procedure.notes ?? ""} rows={2} /></label>
+      <label>Steps — one per line<textarea name="steps" defaultValue={procedure.steps.map((step) => step.instruction).join("\n")} rows={Math.min(Math.max(procedure.steps.length + 1, 4), 16)} required /></label>
+      <button type="submit">Save procedure changes</button>
+    </form>
+    <details className="editor-card" style={{ marginTop: ".75rem" }}>
+      <summary>Delete procedure</summary>
+      <p className="muted">This removes the trusted procedure and its steps. Source documents are not deleted.</p>
+      <form action={removeProcedure.bind(null, assetId, procedure.id)} className="stack">
+        <label>Confirm deletion
+          <select name="confirm" defaultValue="" required>
+            <option value="" disabled>Choose…</option>
+            <option value="yes">Delete {procedure.title}</option>
+          </select>
+        </label>
+        <button type="submit">Delete procedure</button>
+      </form>
+    </details>
+  </details>;
+}
+
+export default async function ProceduresPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ status?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   const { id } = await params;
+  const { status } = await searchParams;
   const [asset, documents, procedures, candidates] = await Promise.all([
     getAsset(id, session.user.id),
     getDocumentsForAsset(id, session.user.id),
@@ -48,45 +94,41 @@ export default async function ProceduresPage({ params }: { params: Promise<{ id:
           {pending.length > 0 && <p><strong>{pending.length} procedure {pending.length === 1 ? "candidate needs" : "candidates need"} review.</strong></p>}
         </section>
 
+        {status ? <p className="operation-status" role="status">✓ {status}</p> : null}
+
         {emergencies.length > 0 && (
-          <section className="card" style={{ border: "3px solid currentColor" }} aria-labelledby="emergency-heading">
+          <section id="emergency" className="card" style={{ border: "3px solid currentColor" }} aria-labelledby="emergency-heading">
             <p className="eyebrow">Emergency · immediate use</p>
             <h2 id="emergency-heading">Emergency procedures</h2>
             <p><strong>Open the applicable procedure and follow the source-backed sequence shown.</strong> All steps remain visible; Ernest does not require one step to be checked before showing the next.</p>
             <div className="stack">
               {emergencies.map((procedure) => (
-                <details key={procedure.id} open>
+                <details key={procedure.id}>
                   <summary><strong>{procedure.title}</strong></summary>
                   {procedure.notes && <p>{procedure.notes}</p>}
                   <ol style={{ fontSize: "1.05rem", lineHeight: 1.6 }}>
                     {procedure.steps.map((step) => <li key={step.id ?? step.position}>{step.instruction}{step.note ? ` — ${step.note}` : ""}</li>)}
                   </ol>
                   {procedure.sourceDocumentTitle && <p className="muted"><strong>Source:</strong> {procedure.sourceDocumentTitle}{procedure.sourcePage ? ` · page ${procedure.sourcePage}` : ""}</p>}
+                  <ProcedureEditor assetId={asset.id} procedure={procedure} />
                 </details>
               ))}
             </div>
           </section>
         )}
 
-        <section className="card">
+        <section id="checklists" className="card">
           <p className="eyebrow">Run aboard</p>
           <h2>Checklists</h2>
+          <p className="muted">Open Run checklist for a full-screen phone/tablet mode. Checking items changes only the current run, never the master checklist.</p>
           {checklists.length === 0 ? <p className="muted">No verified checklists yet.</p> : checklists.map((procedure) => (
             <details key={procedure.id}>
               <summary><strong>{procedure.title}</strong> <span className="muted">· {procedure.steps.length} steps</span></summary>
               {procedure.notes && <p>{procedure.notes}</p>}
-              <form>
-                <div className="stack" style={{ marginTop: ".75rem" }}>
-                  {procedure.steps.map((step) => (
-                    <label key={step.id ?? step.position} style={{ display: "flex", gap: ".8rem", alignItems: "flex-start", padding: ".35rem 0", fontSize: "1.02rem", lineHeight: 1.45 }}>
-                      <input type="checkbox" style={{ width: "1.25rem", height: "1.25rem", marginTop: ".1rem", flex: "0 0 auto" }} />
-                      <span>{step.instruction}{step.note ? ` — ${step.note}` : ""}</span>
-                    </label>
-                  ))}
-                </div>
-                <button type="reset" style={{ marginTop: ".8rem" }}>Clear checks</button>
-              </form>
+              <p><Link className="primary-button" href={`/assets/${asset.id}/procedures/${procedure.id}/run`}>Run checklist →</Link></p>
+              <ol>{procedure.steps.map((step) => <li key={step.id ?? step.position}>{step.instruction}{step.note ? ` — ${step.note}` : ""}</li>)}</ol>
               {procedure.sourceDocumentTitle && <p className="muted"><strong>Source:</strong> {procedure.sourceDocumentTitle}{procedure.sourcePage ? ` · page ${procedure.sourcePage}` : ""}</p>}
+              <ProcedureEditor assetId={asset.id} procedure={procedure} />
             </details>
           ))}
         </section>
@@ -99,8 +141,31 @@ export default async function ProceduresPage({ params }: { params: Promise<{ id:
               {procedure.notes && <p>{procedure.notes}</p>}
               <ol>{procedure.steps.map((step) => <li key={step.id ?? step.position}>{step.instruction}{step.note ? ` — ${step.note}` : ""}</li>)}</ol>
               {procedure.sourceDocumentTitle && <p className="muted"><strong>Source:</strong> {procedure.sourceDocumentTitle}{procedure.sourcePage ? ` · page ${procedure.sourcePage}` : ""}</p>}
+              <ProcedureEditor assetId={asset.id} procedure={procedure} />
             </details>
           ))}
+        </section>
+
+        <section className="card">
+          <p className="eyebrow">Owner-created</p>
+          <h2>Add a procedure</h2>
+          <p>Create a checklist, routine, or emergency procedure directly. This is owner-provided knowledge; Ernest does not invent the steps.</p>
+          <details className="editor-card">
+            <summary>Create procedure</summary>
+            <form action={addProcedure.bind(null, asset.id)} className="stack">
+              <label>Title<input name="title" required /></label>
+              <label>Type
+                <select name="procedureType" defaultValue="checklist">
+                  <option value="checklist">Checklist</option>
+                  <option value="routine">Routine</option>
+                  <option value="emergency">Emergency</option>
+                </select>
+              </label>
+              <label>Notes<textarea name="notes" rows={2} /></label>
+              <label>Steps — one per line<textarea name="steps" rows={8} required /></label>
+              <button type="submit">Save new procedure</button>
+            </form>
+          </details>
         </section>
 
         <section className="card">
