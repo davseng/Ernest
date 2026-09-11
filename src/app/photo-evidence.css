@@ -1,0 +1,16 @@
+.photo-evidence-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+.photo-evidence-card { overflow:hidden; border:1px solid var(--line); border-radius:16px; background:white; }
+.photo-evidence-preview { display:block; min-height:220px; background:#eef2ef; text-decoration:none; }
+.photo-evidence-preview img { display:block; width:100%; height:260px; object-fit:cover; }
+.photo-format-placeholder { display:grid; min-height:260px; place-items:center; color:var(--muted); text-align:center; font-weight:800; letter-spacing:.06em; }
+.photo-format-placeholder small { display:block; margin-top:6px; font-weight:600; letter-spacing:0; }
+.photo-evidence-body { padding:16px; }
+.photo-evidence-body h3 { margin:8px 0 4px; }
+.photo-evidence-actions { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:14px; }
+.photo-evidence-actions form { margin:0; }
+.photo-evidence-actions .delete-button { padding:8px 10px; }
+@media (max-width:760px) {
+  .photo-evidence-grid { grid-template-columns:1fr; }
+  .photo-evidence-preview img, .photo-format-placeholder { height:auto; min-height:220px; }
+  .photo-evidence-actions { align-items:flex-start; flex-direction:column; }
+}
