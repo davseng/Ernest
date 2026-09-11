@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { deleteComponent, updateComponent } from "@/data/assets";
@@ -19,6 +20,10 @@ function revalidateEquipment(assetId: string) {
   revalidatePath(`/assets/${assetId}/knowledge`);
   revalidatePath(`/assets/${assetId}`);
   revalidatePath("/");
+}
+
+function equipmentDestination(assetId: string) {
+  return `/assets/${encodeURIComponent(assetId)}/knowledge`;
 }
 
 export async function scanDocumentForEquipment(assetId: string, documentId: string) {
@@ -56,12 +61,12 @@ export async function editEquipment(
   formData: FormData,
 ) {
   const session = await auth();
-  if (!session?.user?.id) return;
+  if (!session?.user?.id) redirect("/sign-in");
 
   const name = String(formData.get("name") ?? "").trim();
-  if (!name) return;
+  if (!name) throw new Error("Equipment name is required.");
 
-  await updateComponent(assetId, systemId, componentId, session.user.id, {
+  const updated = await updateComponent(assetId, systemId, componentId, session.user.id, {
     name,
     manufacturer: String(formData.get("manufacturer") ?? "").trim(),
     model: String(formData.get("model") ?? "").trim(),
@@ -70,7 +75,9 @@ export async function editEquipment(
     notes: String(formData.get("notes") ?? "").trim(),
   });
 
+  if (!updated) notFound();
   revalidateEquipment(assetId);
+  redirect(equipmentDestination(assetId));
 }
 
 export async function deleteEquipment(
@@ -80,11 +87,13 @@ export async function deleteEquipment(
   formData: FormData,
 ) {
   const session = await auth();
-  if (!session?.user?.id) return;
+  if (!session?.user?.id) redirect("/sign-in");
   if (String(formData.get("confirm") ?? "") !== "yes") return;
 
-  await deleteComponent(assetId, systemId, componentId, session.user.id);
+  const deleted = await deleteComponent(assetId, systemId, componentId, session.user.id);
+  if (!deleted) notFound();
   revalidateEquipment(assetId);
+  redirect(equipmentDestination(assetId));
 }
 
 export async function rejectEquipment(assetId: string, candidateId: string) {
