@@ -9,6 +9,8 @@ import { getEquipmentCandidates } from "@/data/equipment-candidates";
 import { getComponentDocumentLinks } from "@/data/equipment-knowledge";
 import {
   approveEquipment,
+  deleteEquipment,
+  editEquipment,
   linkEquipmentDocument,
   rejectEquipment,
   scanDocumentForEquipment,
@@ -49,9 +51,9 @@ export default async function EquipmentKnowledgePage({ params }: { params: Promi
         <Link className="back-link" href={`/assets/${id}`}>← {asset.name}</Link>
         <section className="asset-header">
           <div>
-            <p className="eyebrow">Knowledge acquisition</p>
-            <div className="title-row"><h1>Equipment Knowledge</h1><span className="type-pill">v0.5</span></div>
-            <p className="asset-summary detail-summary">Discover equipment from your documents, verify what is actually installed, then close the remaining manual and identity gaps.</p>
+            <p className="eyebrow">Installed equipment</p>
+            <div className="title-row"><h1>Equipment</h1><span className="type-pill">v0.8</span></div>
+            <p className="asset-summary detail-summary">Keep the installed equipment record accurate, connect it to source documents, and review equipment discovered from evidence.</p>
           </div>
           <dl className="asset-facts">
             <div><dt>Verified components</dt><dd>{components.length}</dd></div>
@@ -154,6 +156,20 @@ export default async function EquipmentKnowledgePage({ params }: { params: Promi
                     <p>{identity || "Manufacturer / model not recorded"}</p>
                     {!component.manufacturer || !component.model ? <p><strong>Knowledge gap:</strong> manufacturer/model identity is incomplete.</p> : null}
                     {!hasManual ? <p><strong>Knowledge gap:</strong> no manual or service document is linked yet.</p> : null}
+
+                    <details className="editor-card">
+                      <summary>Edit equipment</summary>
+                      <form className="compact-form" action={editEquipment.bind(null, id, component.systemId, component.id)}>
+                        <label>Name<input name="name" required defaultValue={component.name} /></label>
+                        <label>Manufacturer<input name="manufacturer" defaultValue={component.manufacturer} /></label>
+                        <label>Model<input name="model" defaultValue={component.model} /></label>
+                        <label>Serial number<input name="serialNumber" defaultValue={component.serialNumber ?? ""} /></label>
+                        <label>Installed location<input name="location" defaultValue={component.location} /></label>
+                        <label>Notes<textarea name="notes" rows={3} defaultValue={component.notes} /></label>
+                        <button className="primary-button" type="submit">Save equipment changes</button>
+                      </form>
+                    </details>
+
                     {componentLinks.map((link) => (
                       <p key={`${link.componentId}:${link.documentId}`}>
                         <Link href={`/assets/${id}/documents/${link.documentId}`}>{link.documentTitle}</Link> · {link.relationship}{" "}
@@ -173,6 +189,15 @@ export default async function EquipmentKnowledgePage({ params }: { params: Promi
                         </form>
                       </details>
                     ) : null}
+
+                    <details className="editor-card">
+                      <summary>Delete equipment</summary>
+                      <p className="asset-summary">This removes the installed-equipment record and its document links. The source documents themselves are kept.</p>
+                      <form className="compact-form" action={deleteEquipment.bind(null, id, component.systemId, component.id)}>
+                        <label><span>Confirm deletion</span><select name="confirm" required defaultValue=""><option value="" disabled>Choose…</option><option value="yes">Delete {component.name}</option></select></label>
+                        <button className="text-button" type="submit">Delete equipment</button>
+                      </form>
+                    </details>
                   </article>
                 );
               })}
