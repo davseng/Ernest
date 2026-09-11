@@ -59,19 +59,28 @@ export function DocumentUploadPanel({ assetId }: { assetId: string }) {
       const file = selected[index];
       try {
         patchStatus(index, { state: "uploading", message: "Preparing secure upload…" });
+        // Use one canonical content type for signed R2 PUTs. Safari/iPad and desktop
+        // browsers can report PDF MIME types differently; signing and sending the
+        // same value also keeps the CORS preflight deterministic.
         const prepared = await prepareDirectUpload(assetId, {
           filename: file.name,
-          contentType: file.type || "application/pdf",
+          contentType: "application/pdf",
           sizeBytes: file.size,
         });
 
         patchStatus(index, { state: "uploading", message: "Uploading to private storage…" });
-        const response = await fetch(prepared.uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": prepared.contentType },
-          body: file,
-        });
-        if (!response.ok) throw new Error(`Storage upload failed (${response.status}).`);
+        let response: Response;
+        try {
+          response = await fetch(prepared.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": prepared.contentType },
+            body: file,
+          });
+        } catch (networkError) {
+          console.error(networkError);
+          throw new Error("Browser could not reach private storage. This is usually an R2 CORS/origin issue for this Preview.");
+        }
+        if (!response.ok) throw new Error(`Private storage rejected the upload (${response.status}).`);
 
         patchStatus(index, { state: "uploading", message: "Saving document record…" });
         await completeDirectUpload(assetId, {
