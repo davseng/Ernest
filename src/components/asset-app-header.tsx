@@ -1,15 +1,13 @@
 import Link from "next/link";
 
 import { AccountMenu } from "@/components/account-menu";
+import { AssetSwitcher } from "@/components/asset-switcher";
 
-export function AssetAppHeader({
-  assetId,
-  assetName,
-  email,
-}: {
+export function AssetAppHeader({ assetId, assetName, email, assets }: {
   assetId: string;
   assetName: string;
   email?: string | null;
+  assets?: { id: string; name: string; type: string }[];
 }) {
   const chatHref = `/?asset=${assetId}`;
   return (
@@ -19,7 +17,7 @@ export function AssetAppHeader({
           <span className="brand-mark" aria-hidden="true">E</span>
           <span className="brand-word">Ernest</span>
         </Link>
-        <span className="asset-context" title={assetName}>{assetName}</span>
+        {assets?.length ? <AssetSwitcher assets={assets} selectedAssetId={assetId} /> : <span className="asset-context" title={assetName}>{assetName}</span>}
       </div>
       <nav className="asset-app-actions" aria-label={`${assetName} navigation`}>
         <Link className="chat-return" href={chatHref}>Chat</Link>
