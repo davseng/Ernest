@@ -6,13 +6,14 @@ import { AccountMenu } from "@/components/account-menu";
 import { AssetSwitcher } from "@/components/asset-switcher";
 import { ErnestChat } from "@/components/ernest-chat";
 import { getAssets } from "@/data/assets";
+import { getConversationMessages, listConversations } from "@/data/conversations";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home({
   searchParams,
 }: {
-  searchParams?: Promise<{ asset?: string }>;
+  searchParams?: Promise<{ asset?: string; chat?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
@@ -35,6 +36,13 @@ export default async function Home({
   }
 
   const selectedAsset = assets.find((asset) => asset.id === query?.asset) ?? assets[0];
+  const recentConversations = await listConversations(selectedAsset.id, session.user.id);
+  const selectedConversation = query?.chat
+    ? recentConversations.find((conversation) => conversation.id === query.chat)
+    : undefined;
+  const initialMessages = selectedConversation
+    ? await getConversationMessages(selectedConversation.id, selectedAsset.id, session.user.id)
+    : [];
 
   return (
     <div className="app-shell conversational-shell">
@@ -63,7 +71,27 @@ export default async function Home({
       </header>
 
       <main className="conversation-main">
-        <ErnestChat assetId={selectedAsset.id} assetName={selectedAsset.name} />
+        <ErnestChat
+          assetId={selectedAsset.id}
+          assetName={selectedAsset.name}
+          initialConversationId={selectedConversation?.id}
+          initialMessages={initialMessages.map((message) => ({
+            id: message.id,
+            role: message.role,
+            text: message.text,
+            sources: message.sources?.map((source) => ({
+              documentTitle: source.documentTitle,
+              pageNumber: source.pageNumber,
+            })),
+            proposal: message.proposal,
+            writeResult: message.writeResult,
+          }))}
+          recentConversations={recentConversations.map((conversation) => ({
+            id: conversation.id,
+            title: conversation.title,
+            updatedAt: conversation.updatedAt.toISOString(),
+          }))}
+        />
       </main>
     </div>
   );
