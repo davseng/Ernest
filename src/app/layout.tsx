@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import "./globals.css";
 import "./conversation.css";
+import "./recent-chats.css";
 
 export const metadata: Metadata = {
   title: "Ernest — Asset assistant",
