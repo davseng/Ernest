@@ -69,16 +69,21 @@ export function ErnestChat({
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [thinkHarder, setThinkHarder] = useState(false);
+  const [thinkingHarderNow, setThinkingHarderNow] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const question = input.trim();
     if (!question || pending) return;
 
+    const useThinkHarder = thinkHarder;
     const prior = conversationContext(messages);
     const tempUserId = crypto.randomUUID();
     setMessages((current) => [...current, { id: tempUserId, role: "user", text: question }]);
     setInput("");
+    setThinkHarder(false);
+    setThinkingHarderNow(useThinkHarder);
     setPending(true);
 
     try {
@@ -113,6 +118,7 @@ export function ErnestChat({
       const formData = new FormData();
       formData.set("question", question);
       formData.set("conversation", prior);
+      formData.set("thinkHarder", useThinkHarder ? "true" : "false");
       const result = await askErnest(assetId, emptyState, formData);
       const assistantText = result.error || result.answer || "I couldn’t answer that right now.";
       const savedAssistant = await saveConversationMessage(assetId, activeConversationId, {
@@ -144,6 +150,7 @@ export function ErnestChat({
       }]);
     } finally {
       setPending(false);
+      setThinkingHarderNow(false);
     }
   }
 
@@ -186,6 +193,7 @@ export function ErnestChat({
     setConversationId(undefined);
     setMessages([]);
     setInput("");
+    setThinkHarder(false);
     const url = new URL(window.location.href);
     url.searchParams.set("asset", assetId);
     url.searchParams.delete("chat");
@@ -241,9 +249,15 @@ export function ErnestChat({
           </div> : null}
           {message.writeResult ? <p className={message.writeResult.ok ? "write-result success" : "write-result error"}>{message.writeResult.message}</p> : null}
         </article>)}
-        {pending ? <article className="chat-message assistant"><div className="chat-role">Ernest</div><div className="chat-bubble thinking"><span>Thinking</span><span>…</span></div></article> : null}
+        {pending ? <article className="chat-message assistant"><div className="chat-role">Ernest</div><div className="chat-bubble thinking"><span>{thinkingHarderNow ? "Thinking harder" : "Thinking"}</span><span>…</span></div></article> : null}
       </div>}
     </div>
-    <div className="ernest-composer-wrap"><form className="ernest-composer" onSubmit={submit}><textarea aria-label={`Ask or tell Ernest about ${assetName}`} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder="Ask or tell Ernest anything…" rows={1} maxLength={500}/><button type="submit" disabled={pending || !input.trim()} aria-label="Send message">↑</button></form><p className="ernest-composer-note">Ernest can read your trusted knowledge. Changes require confirmation.</p></div>
+    <div className="ernest-composer-wrap">
+      <div className="ernest-composer-controls">
+        <button className={thinkHarder ? "think-harder-toggle active" : "think-harder-toggle"} type="button" aria-pressed={thinkHarder} disabled={pending} onClick={() => setThinkHarder((current) => !current)}>✦ Think harder</button>
+        {thinkHarder ? <span>For the next message only</span> : null}
+      </div>
+      <form className="ernest-composer" onSubmit={submit}><textarea aria-label={`Ask or tell Ernest about ${assetName}`} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder="Ask or tell Ernest anything…" rows={1} maxLength={500}/><button type="submit" disabled={pending || !input.trim()} aria-label="Send message">↑</button></form><p className="ernest-composer-note">Ernest can read your trusted knowledge. Changes require confirmation.</p>
+    </div>
   </section>;
 }
