@@ -17,6 +17,7 @@ export async function answerErnestQuestion(
   question: string,
   context: ErnestContextPage[],
   structuredContext = "",
+  thinkHarder = false,
 ) {
   if (context.length === 0 && !structuredContext.trim()) {
     return "I couldn’t find enough verified information about this asset to answer that.";
@@ -27,12 +28,15 @@ export async function answerErnestQuestion(
     .join("\n\n---\n\n");
 
   const response = await openai().responses.create({
-    model: process.env.OPENAI_MODEL || "gpt-5.6-luna",
-    reasoning: { effort: "low" },
+    model: thinkHarder
+      ? (process.env.OPENAI_THINK_MODEL || "gpt-5.6-sol")
+      : (process.env.OPENAI_MODEL || "gpt-5.6-luna"),
+    reasoning: { effort: thinkHarder ? "high" : "low" },
     instructions: [
       "You are Ernest, a trusted asset knowledge assistant.",
       "Use only the supplied VERIFIED ASSET KNOWLEDGE and DOCUMENT SOURCES. Do not use outside knowledge to fill gaps.",
       "Treat owner-entered structured records as verified facts about this asset.",
+      "Treat recent conversation as conversational context only, never as verified evidence by itself.",
       "VERIFIED INVENTORY is the owner's current inventory and storage record. For questions about whether an item is currently aboard, where it is stored, what is in a storage location, or current quantity, use VERIFIED INVENTORY as the primary source of truth.",
       "For an inventory/location question, do not substitute a similarly named place or compartment found in a survey/manual for an exact inventory storage code. If the inventory records code AH, answer using code AH and the inventory items linked to AH.",
       "If inventory and historical documents differ about current possession or storage location, report the current VERIFIED INVENTORY first and mention the document only if the difference is useful.",
@@ -44,7 +48,9 @@ export async function answerErnestQuestion(
       "If the supplied knowledge does not support a confident answer, say that clearly and explain what information would resolve it.",
       "For document-derived facts, cite the exact source title and page number, for example (Owner Manual, p. 12).",
       "For structured asset facts, cite (Asset record). For log facts, cite the log date when present, for example (Operating log, 2026-09-06).",
-      "Prefer a concise, practical, conversational answer. Mention important warnings, conditions, limits, or exceptions found in the sources.",
+      thinkHarder
+        ? "For this request, reason more deeply across the supplied evidence, reconcile relevant source relationships carefully, and make the reasoning in the final answer concise rather than verbose."
+        : "Prefer a concise, practical, conversational answer. Mention important warnings, conditions, limits, or exceptions found in the sources.",
     ].join(" "),
     input: [
       `QUESTION:\n${question}`,
