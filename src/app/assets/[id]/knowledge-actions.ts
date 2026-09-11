@@ -12,9 +12,15 @@ import {
   rejectEquipmentCandidate,
   replaceEquipmentCandidates,
 } from "@/data/equipment-candidates";
-import { linkDocumentToComponent, unlinkDocumentFromComponent } from "@/data/equipment-knowledge";
+import {
+  linkDocumentToComponent,
+  unlinkDocumentFromComponent,
+  updateComponentLifecycle,
+  type EquipmentLifecycleStatus,
+} from "@/data/equipment-knowledge";
 
 const relationships = new Set(["manual", "service", "reference", "other"]);
+const lifecycleStatuses = new Set<EquipmentLifecycleStatus>(["installed", "removed_replaced", "unknown"]);
 
 function revalidateEquipment(assetId: string) {
   revalidatePath(`/assets/${assetId}/knowledge`);
@@ -22,8 +28,9 @@ function revalidateEquipment(assetId: string) {
   revalidatePath("/");
 }
 
-function equipmentDestination(assetId: string) {
-  return `/assets/${encodeURIComponent(assetId)}/knowledge`;
+function equipmentDestination(assetId: string, status?: string) {
+  const base = `/assets/${encodeURIComponent(assetId)}/knowledge`;
+  return status ? `${base}?status=${encodeURIComponent(status)}` : base;
 }
 
 export async function scanDocumentForEquipment(assetId: string, documentId: string) {
@@ -77,7 +84,22 @@ export async function editEquipment(
 
   if (!updated) notFound();
   revalidateEquipment(assetId);
-  redirect(equipmentDestination(assetId));
+  redirect(equipmentDestination(assetId, "equipment-saved"));
+}
+
+export async function changeEquipmentLifecycle(assetId: string, componentId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/sign-in");
+
+  const status = String(formData.get("lifecycleStatus") ?? "") as EquipmentLifecycleStatus;
+  if (!lifecycleStatuses.has(status)) throw new Error("Choose a valid equipment lifecycle status.");
+  const changedOn = String(formData.get("lifecycleChangedOn") ?? "").trim() || null;
+  const notes = String(formData.get("lifecycleNotes") ?? "").trim() || null;
+
+  const updated = await updateComponentLifecycle(assetId, session.user.id, componentId, status, changedOn, notes);
+  if (!updated) notFound();
+  revalidateEquipment(assetId);
+  redirect(equipmentDestination(assetId, `lifecycle-${status}`));
 }
 
 export async function deleteEquipment(
@@ -93,7 +115,7 @@ export async function deleteEquipment(
   const deleted = await deleteComponent(assetId, systemId, componentId, session.user.id);
   if (!deleted) notFound();
   revalidateEquipment(assetId);
-  redirect(equipmentDestination(assetId));
+  redirect(equipmentDestination(assetId, "equipment-deleted"));
 }
 
 export async function rejectEquipment(assetId: string, candidateId: string) {
