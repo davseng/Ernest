@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import "./conversation.css";
 import "./recent-chats.css";
+import "./operate-v08.css";
 
 export const metadata: Metadata = {
   title: "Ernest — Asset assistant",
