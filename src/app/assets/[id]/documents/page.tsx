@@ -17,18 +17,27 @@ function formatBytes(bytes: number) {
 }
 
 function status(document: Awaited<ReturnType<typeof getDocumentsForAsset>>[number]) {
-  if (document.extractionError) return "Extraction failed";
-  if (document.extractedAt) return `Extracted · ${document.pageCount ?? 0} pages`;
-  return "Not extracted";
+  if (document.extractionError) return "Needs attention · extraction failed";
+  if (document.extractedAt) return `Ready · ${document.pageCount ?? 0} pages`;
+  return "Needs processing";
 }
 
-export default async function DocumentsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DocumentsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
+}) {
   const { id } = await params;
+  const query = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   const asset = await getAsset(id, session.user.id);
   if (!asset) notFound();
   const documents = await getDocumentsForAsset(id, session.user.id);
+  const inbox = documents.filter((document) => !document.extractedAt || document.extractionError);
+  const ready = documents.filter((document) => document.extractedAt && !document.extractionError);
 
   return (
     <div className="app-shell">
@@ -40,31 +49,58 @@ export default async function DocumentsPage({ params }: { params: Promise<{ id: 
         <Link className="back-link" href={`/assets/${id}`}><span aria-hidden="true">←</span> {asset.name}</Link>
         <section className="asset-header">
           <div>
-            <p className="eyebrow">Knowledge</p>
-            <div className="title-row"><h1>Document Library</h1><span className="type-pill">v0.8</span></div>
-            <p className="asset-summary detail-summary">Add, inspect, reprocess, rename, and remove the documents Ernest uses for {asset.name}. Originals remain private and are opened through short-lived authorized links.</p>
+            <p className="eyebrow">Knowledge intake</p>
+            <div className="title-row"><h1>Document Vault</h1><span className="type-pill">v0.8</span></div>
+            <p className="asset-summary detail-summary">Put documents into Ernest first; organize and process them afterward. Originals remain private and unchanged in storage.</p>
           </div>
           <dl className="asset-facts">
             <div><dt>Documents</dt><dd>{documents.length}</dd></div>
-            <div><dt>Ready</dt><dd>{documents.filter((document) => document.extractedAt).length}</dd></div>
-            <div><dt>Needs attention</dt><dd>{documents.filter((document) => document.extractionError).length}</dd></div>
+            <div><dt>Vault inbox</dt><dd>{inbox.length}</dd></div>
+            <div><dt>Ready</dt><dd>{ready.length}</dd></div>
           </dl>
         </section>
+
+        {query.saved === "deleted" ? <p className="write-result success">✓ Document deleted. The vault and search index have been updated.</p> : null}
 
         <DocumentUploadPanel assetId={id} />
         <DocumentUrlImportForm assetId={id} />
 
         <section className="systems-section">
           <div className="section-heading">
-            <p className="eyebrow">Library</p>
-            <h2>Documents</h2>
-            <p>{documents.length} {documents.length === 1 ? "document" : "documents"}</p>
+            <p className="eyebrow">Vault inbox</p>
+            <h2>Needs processing or review</h2>
+            <p>{inbox.length ? `${inbox.length} document${inbox.length === 1 ? "" : "s"} can stay here until you are ready to process them.` : "Nothing is waiting. Your document inbox is clear."}</p>
           </div>
-          {documents.length === 0 ? (
-            <p className="empty-log">No documents yet. Add a manual, survey, invoice, listing, or service record.</p>
+          {inbox.length === 0 ? <p className="empty-log">New uploads will appear here automatically. No classification is required during upload.</p> : (
+            <div className="log-list">
+              {inbox.map((document) => (
+                <article className="log-entry vault-inbox-entry" key={document.id}>
+                  <div className="log-entry-meta">
+                    <span>{document.extractionError ? "NEEDS ATTENTION" : "NEW · NEEDS PROCESSING"}</span>
+                    <time dateTime={document.createdAt.toISOString()}>{document.createdAt.toLocaleString()}</time>
+                  </div>
+                  <h3><Link href={`/assets/${id}/documents/${document.id}`}>{document.title}</Link></h3>
+                  <p>{document.originalFilename}</p>
+                  <small>{formatBytes(document.sizeBytes)} · {status(document)}</small>
+                  <p><a href={`/assets/${id}/documents/${document.id}/original`} target="_blank" rel="noreferrer">Open preserved original ↗</a></p>
+                  <Link className="edit-asset-link" href={`/assets/${id}/documents/${document.id}`}>{document.extractionError ? "Review problem →" : "Process document →"}</Link>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="systems-section">
+          <div className="section-heading">
+            <p className="eyebrow">Ready knowledge</p>
+            <h2>Processed documents</h2>
+            <p>{ready.length} {ready.length === 1 ? "document is" : "documents are"} searchable and available as source evidence.</p>
+          </div>
+          {ready.length === 0 ? (
+            <p className="empty-log">No processed documents yet. Open an item in the vault inbox when you are ready to extract it.</p>
           ) : (
             <div className="log-list">
-              {documents.map((document) => (
+              {ready.map((document) => (
                 <article className="log-entry" key={document.id}>
                   <div className="log-entry-meta">
                     <span>{document.sourceType === "url" ? "URL" : "UPLOAD"}</span>
