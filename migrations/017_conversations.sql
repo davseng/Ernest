@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS conversations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  asset_id uuid NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  asset_id text NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
   owner_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title text NOT NULL DEFAULT 'New chat',
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -16,7 +16,7 @@ CREATE INDEX IF NOT EXISTS conversations_owner_asset_updated_idx
 CREATE TABLE IF NOT EXISTS conversation_messages (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id uuid NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-  asset_id uuid NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  asset_id text NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
   owner_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role text NOT NULL CHECK (role IN ('user', 'assistant')),
   text_content text NOT NULL,
