@@ -29,8 +29,15 @@ function extractionQuality(text: string) {
   return { label: "Good", weak: false };
 }
 
-export default async function DocumentDetailPage({ params }: { params: Promise<{ id: string; documentId: string }> }) {
+export default async function DocumentDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string; documentId: string }>;
+  searchParams: Promise<{ saved?: string }>;
+}) {
   const { id, documentId } = await params;
+  const query = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   const asset = await getAsset(id, session.user.id);
@@ -49,13 +56,14 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
   return <div className="app-shell">
     <header className="site-header"><Link className="brand" href="/"><span className="brand-mark">E</span>Ernest</Link><AccountMenu email={session.user.email} /></header>
     <main className="page-wrap detail-wrap">
-      <Link className="back-link" href={`/assets/${id}/documents`}>← Document Library</Link>
-      <section className="asset-header"><div><p className="eyebrow">Document</p><div className="title-row"><h1>{document.title}</h1><span className="type-pill">PDF</span></div><p className="asset-summary detail-summary">{document.originalFilename}</p></div><dl className="asset-facts"><div><dt>Size</dt><dd>{formatBytes(document.sizeBytes)}</dd></div><div><dt>Source</dt><dd>{document.sourceType === "url" ? "URL" : "Upload"}</dd></div><div><dt>Pages</dt><dd>{document.pageCount ?? "—"}</dd></div><div><dt>Status</dt><dd>{document.extractionError ? "Extraction failed" : document.extractedAt ? "Ready" : "Not extracted"}</dd></div></dl></section>
-      {document.sourceUrl ? <p><a className="edit-asset-link" href={document.sourceUrl} target="_blank" rel="noreferrer">Open original source ↗</a></p> : null}
+      <Link className="back-link" href={`/assets/${id}/documents`}>← Document Vault</Link>
+      <section className="asset-header"><div><p className="eyebrow">Document</p><div className="title-row"><h1>{document.title}</h1><span className="type-pill">PDF</span></div><p className="asset-summary detail-summary">{document.originalFilename}</p></div><dl className="asset-facts"><div><dt>Size</dt><dd>{formatBytes(document.sizeBytes)}</dd></div><div><dt>Source</dt><dd>{document.sourceType === "url" ? "URL" : "Upload"}</dd></div><div><dt>Pages</dt><dd>{document.pageCount ?? "—"}</dd></div><div><dt>Status</dt><dd>{document.extractionError ? "Needs attention" : document.extractedAt ? "Ready" : "Needs processing"}</dd></div></dl></section>
+      {query.saved === "title" ? <p className="write-result success">✓ Document title saved.</p> : null}
+      <p><a className="edit-asset-link" href={`/assets/${id}/documents/${documentId}/original`} target="_blank" rel="noreferrer">Open preserved original PDF ↗</a>{document.sourceUrl ? <> · <a className="edit-asset-link" href={document.sourceUrl} target="_blank" rel="noreferrer">Original web source ↗</a></> : null}</p>
 
       <section className="systems-section"><div className="section-heading"><p className="eyebrow">Manage</p><h2>Document controls</h2></div><div className="log-layout">
         <form className="compact-form" action={renameDocument.bind(null,id,documentId)}><h3>Rename</h3><label>Title<input name="title" defaultValue={document.title} maxLength={200} required /></label><button className="primary-button">Save title</button></form>
-        <div className="compact-form"><h3>Text processing</h3><p>{document.extractedAt ? `Last extracted ${document.extractedAt.toLocaleString()}.` : "Text has not been extracted yet."}</p>{document.extractedAt && weakPages > 0 ? <p className="error-notice">{weakPages} page{weakPages===1?"":"s"} still have weak or no readable text after extraction.</p>:null}{document.extractionError?<p className="error-notice">{document.extractionError}</p>:null}<form action={`/assets/${encodeURIComponent(id)}/documents/${encodeURIComponent(documentId)}/extract`} method="post"><button className="primary-button">{document.extractedAt?"Re-extract text":"Extract text"}</button></form></div>
+        <div className="compact-form"><h3>Text processing</h3><p>{document.extractedAt ? `Last extracted ${document.extractedAt.toLocaleString()}.` : "This preserved original is in the vault and has not been processed yet."}</p>{document.extractedAt && weakPages > 0 ? <p className="error-notice">{weakPages} page{weakPages===1?"":"s"} still have weak or no readable text after extraction.</p>:null}{document.extractionError?<p className="error-notice">{document.extractionError}</p>:null}<form action={`/assets/${encodeURIComponent(id)}/documents/${encodeURIComponent(documentId)}/extract`} method="post"><button className="primary-button">{document.extractedAt?"Re-extract text":"Extract text"}</button></form><p className="asset-summary">Processing makes this document searchable and usable as evidence. You can leave it unprocessed in the vault as long as you want.</p></div>
       </div><details className="editor-card"><summary>Delete document</summary><p>This removes the private PDF plus its extracted pages and search chunks. This cannot be undone.</p><form action={removeDocument.bind(null,id,documentId)}><button className="delete-button">Delete document</button></form></details></section>
 
       <section className="systems-section">
@@ -95,7 +103,7 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
         </details>
       </section>
 
-      <section className="systems-section"><div className="section-heading"><p className="eyebrow">Source evidence</p><h2>Extracted text</h2><p>{pages.length} pages · {weakPages} weak after OCR fallback</p></div>{pages.length===0?<p className="empty-log">No extracted text is available. Run extraction above.</p>:<div className="log-list">{pageQuality.map((page)=><article className="log-entry" key={page.pageNumber}><div className="log-entry-meta"><span>PAGE {page.pageNumber}</span><span>{page.quality.label}</span></div>{page.text.trim()?<pre className="document-text-page">{page.text}</pre>:<p className="empty-log">No readable text was recovered from this page.</p>}</article>)}</div>}</section>
+      <section className="systems-section"><div className="section-heading"><p className="eyebrow">Source evidence</p><h2>Extracted text</h2><p>{pages.length} pages · {weakPages} weak after OCR fallback</p></div>{pages.length===0?<p className="empty-log">No extracted text is available. Run extraction above when you are ready to process this document.</p>:<div className="log-list">{pageQuality.map((page)=><article className="log-entry" key={page.pageNumber}><div className="log-entry-meta"><span>PAGE {page.pageNumber}</span><span>{page.quality.label}</span></div>{page.text.trim()?<pre className="document-text-page">{page.text}</pre>:<p className="empty-log">No readable text was recovered from this page.</p>}</article>)}</div>}</section>
     </main>
   </div>;
 }
