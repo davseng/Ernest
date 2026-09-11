@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
+import { deleteComponent, updateComponent } from "@/data/assets";
 import { getDocumentPages } from "@/data/documents";
 import {
   approveEquipmentCandidate,
@@ -13,6 +14,12 @@ import {
 import { linkDocumentToComponent, unlinkDocumentFromComponent } from "@/data/equipment-knowledge";
 
 const relationships = new Set(["manual", "service", "reference", "other"]);
+
+function revalidateEquipment(assetId: string) {
+  revalidatePath(`/assets/${assetId}/knowledge`);
+  revalidatePath(`/assets/${assetId}`);
+  revalidatePath("/");
+}
 
 export async function scanDocumentForEquipment(assetId: string, documentId: string) {
   const session = await auth();
@@ -39,8 +46,45 @@ export async function approveEquipment(assetId: string, candidateId: string, for
     location: String(formData.get("location") ?? "").trim(),
     notes: String(formData.get("notes") ?? "").trim(),
   });
-  revalidatePath(`/assets/${assetId}/knowledge`);
-  revalidatePath(`/assets/${assetId}`);
+  revalidateEquipment(assetId);
+}
+
+export async function editEquipment(
+  assetId: string,
+  systemId: string,
+  componentId: string,
+  formData: FormData,
+) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return;
+
+  await updateComponent(assetId, systemId, componentId, session.user.id, {
+    name,
+    manufacturer: String(formData.get("manufacturer") ?? "").trim(),
+    model: String(formData.get("model") ?? "").trim(),
+    serialNumber: String(formData.get("serialNumber") ?? "").trim() || undefined,
+    location: String(formData.get("location") ?? "").trim(),
+    notes: String(formData.get("notes") ?? "").trim(),
+  });
+
+  revalidateEquipment(assetId);
+}
+
+export async function deleteEquipment(
+  assetId: string,
+  systemId: string,
+  componentId: string,
+  formData: FormData,
+) {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  if (String(formData.get("confirm") ?? "") !== "yes") return;
+
+  await deleteComponent(assetId, systemId, componentId, session.user.id);
+  revalidateEquipment(assetId);
 }
 
 export async function rejectEquipment(assetId: string, candidateId: string) {
