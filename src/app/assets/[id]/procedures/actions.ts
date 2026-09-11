@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { getDocumentForAsset, getDocumentPages } from "@/data/documents";
@@ -8,11 +9,15 @@ import { readDocument } from "@/data/document-storage";
 import { extractProcedureCandidatesFromPdf } from "@/data/procedure-vision";
 import {
   approveProcedureCandidate,
+  createProcedure,
+  deleteProcedure,
   extractProcedureCandidates,
   getProcedureCandidates,
   rejectProcedureCandidate,
   replaceProcedureCandidates,
+  updateProcedure,
   type ExtractedProcedureCandidate,
+  type ProcedureEdits,
   type ProcedureType,
 } from "@/data/procedures";
 
@@ -48,37 +53,48 @@ function mergeCandidates(candidates: ExtractedProcedureCandidate[]) {
   return [...merged.values()];
 }
 
+function procedureEdits(formData: FormData): ProcedureEdits | null {
+  const title = String(formData.get("title") ?? "").trim();
+  const procedureType = String(formData.get("procedureType") ?? "checklist") as ProcedureType;
+  const notes = String(formData.get("notes") ?? "").trim();
+  const steps = String(formData.get("steps") ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((instruction) => ({ instruction, note: null }));
+  if (!title || !["routine", "checklist", "emergency"].includes(procedureType) || steps.length === 0) return null;
+  return { title, procedureType, notes, steps };
+}
+
+function proceduresUrl(assetId: string, status?: string) {
+  const base = `/assets/${encodeURIComponent(assetId)}/procedures`;
+  return status ? `${base}?status=${encodeURIComponent(status)}` : base;
+}
+
 async function extractFromStoredDocument(assetId: string, documentId: string, ownerId: string) {
   const document = await getDocumentForAsset(documentId, assetId, ownerId);
   if (!document) return [];
 
-  // PDFs are interpreted from the original file so layout, headings, checkboxes,
-  // indentation, columns, and page structure survive the extraction process.
   if (document.contentType === "application/pdf") {
     const bytes = await readDocument(document.storageKey);
     const visual = await extractProcedureCandidatesFromPdf(bytes, document.originalFilename);
     if (visual.length > 0) return visual;
   }
 
-  // Fallback for non-PDF sources or PDFs where visual extraction returns nothing.
   const pages = await getDocumentPages(documentId, assetId, ownerId);
   if (!pages?.length) return [];
 
   const batches: typeof pages[] = [];
-  for (let start = 0; start < pages.length; start += 3) {
-    batches.push(pages.slice(start, start + 4));
-  }
+  for (let start = 0; start < pages.length; start += 3) batches.push(pages.slice(start, start + 4));
   const results = await Promise.all(batches.map((batch) => extractProcedureCandidates(batch)));
   return mergeCandidates(results.flat());
 }
 
 export async function scanDocumentForProcedures(assetId: string, documentId: string) {
   const session = await auth();
-  if (!session?.user?.id) return;
+  if (!session?.user?.id) redirect("/sign-in");
 
   let candidates = await extractFromStoredDocument(assetId, documentId, session.user.id);
-
-  // A rejected proposal should stay rejected on later rescans of the same source.
   const prior = await getProcedureCandidates(assetId, session.user.id);
   const rejectedKeys = new Set(
     prior
@@ -91,30 +107,57 @@ export async function scanDocumentForProcedures(assetId: string, documentId: str
 
   await replaceProcedureCandidates(documentId, assetId, session.user.id, candidates);
   revalidatePath(`/assets/${assetId}/procedures`);
+  redirect(proceduresUrl(assetId, `Scan complete · ${candidates.length} candidate${candidates.length === 1 ? "" : "s"} found`));
 }
 
 export async function approveProcedure(assetId: string, candidateId: string, formData: FormData) {
   const session = await auth();
-  if (!session?.user?.id) return;
-
-  const title = String(formData.get("title") ?? "").trim();
-  const procedureType = String(formData.get("procedureType") ?? "checklist") as ProcedureType;
-  const notes = String(formData.get("notes") ?? "").trim();
-  const stepsText = String(formData.get("steps") ?? "");
-  const steps = stepsText
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((instruction) => ({ instruction, note: null }));
-
-  if (!title || !["routine", "checklist", "emergency"].includes(procedureType) || steps.length === 0) return;
-  await approveProcedureCandidate(candidateId, assetId, session.user.id, { title, procedureType, notes, steps });
+  if (!session?.user?.id) redirect("/sign-in");
+  const edits = procedureEdits(formData);
+  if (!edits) redirect(proceduresUrl(assetId, "Could not save · title and at least one step are required"));
+  const saved = await approveProcedureCandidate(candidateId, assetId, session.user.id, edits);
+  if (!saved) notFound();
   revalidatePath(`/assets/${assetId}/procedures`);
+  redirect(proceduresUrl(assetId, `Saved · ${edits.title}`));
+}
+
+export async function addProcedure(assetId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/sign-in");
+  const edits = procedureEdits(formData);
+  if (!edits) redirect(proceduresUrl(assetId, "Could not save · title and at least one step are required"));
+  const saved = await createProcedure(assetId, session.user.id, edits);
+  if (!saved) notFound();
+  revalidatePath(`/assets/${assetId}/procedures`);
+  redirect(proceduresUrl(assetId, `Saved · ${edits.title}`));
+}
+
+export async function editProcedure(assetId: string, procedureId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/sign-in");
+  const edits = procedureEdits(formData);
+  if (!edits) redirect(proceduresUrl(assetId, "Could not save · title and at least one step are required"));
+  const saved = await updateProcedure(procedureId, assetId, session.user.id, edits);
+  if (!saved) notFound();
+  revalidatePath(`/assets/${assetId}/procedures`);
+  redirect(proceduresUrl(assetId, `Saved · ${edits.title}`));
+}
+
+export async function removeProcedure(assetId: string, procedureId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/sign-in");
+  if (String(formData.get("confirm") ?? "") !== "yes") redirect(proceduresUrl(assetId, "Deletion cancelled"));
+  const deleted = await deleteProcedure(procedureId, assetId, session.user.id);
+  if (!deleted) notFound();
+  revalidatePath(`/assets/${assetId}/procedures`);
+  redirect(proceduresUrl(assetId, "Deleted · procedure removed"));
 }
 
 export async function rejectProcedure(assetId: string, candidateId: string) {
   const session = await auth();
-  if (!session?.user?.id) return;
-  await rejectProcedureCandidate(candidateId, assetId, session.user.id);
+  if (!session?.user?.id) redirect("/sign-in");
+  const rejected = await rejectProcedureCandidate(candidateId, assetId, session.user.id);
+  if (!rejected) notFound();
   revalidatePath(`/assets/${assetId}/procedures`);
+  redirect(proceduresUrl(assetId, "Candidate rejected"));
 }
