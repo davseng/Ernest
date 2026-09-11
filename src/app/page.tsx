@@ -51,7 +51,7 @@ export default async function Home({
             <summary aria-label="Open setup menu">☰</summary>
             <div className="manage-menu-panel">
               <p>Manage {selectedAsset.name}</p>
-              <Link href={`/assets/${selectedAsset.id}/knowledge`}>Equipment knowledge</Link>
+              <Link href={`/assets/${selectedAsset.id}/knowledge`}>Equipment</Link>
               <Link href={`/assets/${selectedAsset.id}/inventory`}>Inventory</Link>
               <Link href={`/assets/${selectedAsset.id}/procedures`}>Procedures & checklists</Link>
               <Link href={`/assets/${selectedAsset.id}/documents`}>Documents</Link>
