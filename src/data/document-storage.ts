@@ -85,6 +85,21 @@ export async function createDocumentUploadUrl(key: string, contentType: string) 
   );
 }
 
+export async function createDocumentReadUrl(key: string, filename?: string) {
+  const config = storageConfig();
+  return getSignedUrl(
+    storageClient(),
+    new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      ResponseContentDisposition: filename
+        ? `inline; filename="${filename.replace(/["\\\r\n]/g, "_")}"`
+        : "inline",
+    }),
+    { expiresIn: 10 * 60 },
+  );
+}
+
 export async function inspectDocument(key: string) {
   const config = storageConfig();
   const response = await storageClient().send(new HeadObjectCommand({
