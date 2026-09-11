@@ -1,0 +1,127 @@
+.asset-app-header-left,
+.asset-app-actions {
+  display: flex;
+  align-items: center;
+}
+
+.asset-app-header-left { min-width: 0; gap: 14px; }
+.asset-app-actions { gap: 10px; }
+
+.asset-context {
+  max-width: 260px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-return,
+.asset-app-actions > details > summary {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.chat-return { padding: 0 16px; color: var(--teal); }
+.asset-app-actions > details > summary { width: 44px; list-style: none; }
+.asset-app-actions > details > summary::-webkit-details-marker { display: none; }
+
+.asset-app-actions .manage-menu,
+.asset-app-actions .account-popover { position: relative; }
+
+.asset-app-actions .manage-menu-panel,
+.account-popover-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 245px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: 0 14px 40px rgba(26,54,52,.14);
+}
+
+.asset-app-actions .manage-menu-panel p,
+.account-popover-panel > span {
+  display: block;
+  margin: 4px 8px 8px;
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.asset-app-actions .manage-menu-panel a {
+  display: flex;
+  min-height: 44px;
+  padding: 10px 9px;
+  align-items: center;
+  border-radius: 8px;
+  font-size: .88rem;
+  text-decoration: none;
+}
+.asset-app-actions .manage-menu-panel a:hover { background: var(--canvas); }
+
+.account-popover-panel { min-width: 220px; }
+.account-popover-panel form { margin: 0; }
+.account-popover-panel button {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Touch baseline for management screens. */
+.primary-button,
+.delete-button,
+.compact-form button,
+.record-form button,
+.editor-card button,
+.log-form button,
+button[type="submit"] {
+  min-height: 44px;
+}
+
+.compact-form input,
+.compact-form select,
+.compact-form textarea,
+.record-form input,
+.record-form select,
+.record-form textarea,
+.editor-card input,
+.editor-card select,
+.editor-card textarea {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+.delete-button { padding-left: 14px; padding-right: 14px; }
+
+@media (max-width: 760px) {
+  .asset-app-header { padding: 0 12px; }
+  .asset-app-header-left { gap: 8px; }
+  .brand-word { display: none; }
+  .asset-context { max-width: min(38vw, 210px); font-size: .76rem; }
+  .asset-app-actions { gap: 6px; }
+  .chat-return { padding: 0 12px; }
+  .asset-app-actions .manage-menu-panel,
+  .account-popover-panel { position: fixed; top: 68px; right: 12px; left: 12px; min-width: 0; }
+}
