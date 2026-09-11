@@ -10,49 +10,27 @@ import { getConversationMessages, listConversations } from "@/data/conversations
 
 export const dynamic = "force-dynamic";
 
-export default async function Home({
-  searchParams,
-}: {
-  searchParams?: Promise<{ asset?: string; chat?: string }>;
-}) {
+export default async function Home({ searchParams }: { searchParams?: Promise<{ asset?: string; chat?: string }> }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   const assets = await getAssets(session.user.id);
   const query = searchParams ? await searchParams : undefined;
 
   if (assets.length === 0) {
-    return (
-      <div className="app-shell">
-        <header className="site-header conversational-header">
-          <Link className="brand" href="/" aria-label="Ernest home"><span className="brand-mark" aria-hidden="true">E</span>Ernest</Link>
-          <AccountMenu email={session.user.email} />
-        </header>
-        <main className="empty-conversation-home">
-          <h1>Ernest needs an asset to get started.</h1>
-          <p>Add an asset first, then Ernest can organize its knowledge and become the day-to-day interface for it.</p>
-        </main>
-      </div>
-    );
+    return <div className="app-shell"><header className="site-header conversational-header"><Link className="brand" href="/" aria-label="Ernest home"><span className="brand-mark" aria-hidden="true">E</span>Ernest</Link><AccountMenu email={session.user.email} /></header><main className="empty-conversation-home"><h1>Ernest needs an asset to get started.</h1><p>Add an asset first, then Ernest can organize its knowledge and become the day-to-day interface for it.</p></main></div>;
   }
 
   const selectedAsset = assets.find((asset) => asset.id === query?.asset) ?? assets[0];
   const recentConversations = await listConversations(selectedAsset.id, session.user.id);
-  const selectedConversation = query?.chat
-    ? recentConversations.find((conversation) => conversation.id === query.chat)
-    : undefined;
-  const initialMessages = selectedConversation
-    ? await getConversationMessages(selectedConversation.id, selectedAsset.id, session.user.id)
-    : [];
+  const selectedConversation = query?.chat ? recentConversations.find((conversation) => conversation.id === query.chat) : undefined;
+  const initialMessages = selectedConversation ? await getConversationMessages(selectedConversation.id, selectedAsset.id, session.user.id) : [];
 
   return (
     <div className="app-shell conversational-shell">
       <header className="site-header conversational-header">
         <div className="conversation-header-left">
           <Link className="brand" href={`/?asset=${selectedAsset.id}`} aria-label="Ernest home"><span className="brand-mark" aria-hidden="true">E</span>Ernest</Link>
-          <AssetSwitcher
-            assets={assets.map((asset) => ({ id: asset.id, name: asset.name, type: asset.type }))}
-            selectedAssetId={selectedAsset.id}
-          />
+          <AssetSwitcher assets={assets.map((asset) => ({ id: asset.id, name: asset.name, type: asset.type }))} selectedAssetId={selectedAsset.id} />
         </div>
         <div className="operate-header-actions">
           <details className="manage-menu">
@@ -65,33 +43,18 @@ export default async function Home({
               <Link href={`/assets/${selectedAsset.id}/documents`}>Documents</Link>
               <Link href={`/assets/${selectedAsset.id}/photos`}>Photos</Link>
               <Link href={`/assets/${selectedAsset.id}`}>Asset setup</Link>
+              <a href={`/assets/${selectedAsset.id}/export`}>Download backup</a>
             </div>
           </details>
           <AccountMenu email={session.user.email} />
         </div>
       </header>
-
       <main className="conversation-main">
         <ErnestChat
-          assetId={selectedAsset.id}
-          assetName={selectedAsset.name}
+          assetId={selectedAsset.id} assetName={selectedAsset.name}
           initialConversationId={selectedConversation?.id}
-          initialMessages={initialMessages.map((message) => ({
-            id: message.id,
-            role: message.role,
-            text: message.text,
-            sources: message.sources?.map((source) => ({
-              documentTitle: source.documentTitle,
-              pageNumber: source.pageNumber,
-            })),
-            proposal: message.proposal,
-            writeResult: message.writeResult,
-          }))}
-          recentConversations={recentConversations.map((conversation) => ({
-            id: conversation.id,
-            title: conversation.title,
-            updatedAt: conversation.updatedAt.toISOString(),
-          }))}
+          initialMessages={initialMessages.map((message) => ({ id: message.id, role: message.role, text: message.text, sources: message.sources?.map((source) => ({ documentTitle: source.documentTitle, pageNumber: source.pageNumber })), proposal: message.proposal, writeResult: message.writeResult }))}
+          recentConversations={recentConversations.map((conversation) => ({ id: conversation.id, title: conversation.title, updatedAt: conversation.updatedAt.toISOString() }))}
         />
       </main>
     </div>
