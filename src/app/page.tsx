@@ -35,6 +35,7 @@ export default async function Home({ searchParams }: { searchParams?: Promise<{ 
       />
       <main className="conversation-main">
         <ErnestChat
+          key={`${selectedAsset.id}:${selectedConversation?.id ?? "new"}`}
           assetId={selectedAsset.id} assetName={selectedAsset.name}
           initialConversationId={selectedConversation?.id}
           initialMessages={initialMessages.map((message) => ({ id: message.id, role: message.role, text: message.text, sources: message.sources?.map((source) => ({ documentTitle: source.documentTitle, pageNumber: source.pageNumber })), proposal: message.proposal, writeResult: message.writeResult }))}
