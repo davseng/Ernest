@@ -13,5 +13,6 @@ export async function GET(_request:Request,{params}:{params:Promise<{id:string;p
   const photo=await getPhoto(photoId,id,session.user.id);
   if(!photo)return new NextResponse("Not found",{status:404});
   const bytes=await readDocument(photo.storageKey);
-  return new NextResponse(bytes,{headers:{"Content-Type":photo.contentType,"Cache-Control":"private, max-age=60"}});
+  const body=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength) as ArrayBuffer;
+  return new NextResponse(body,{headers:{"Content-Type":photo.contentType,"Cache-Control":"private, max-age=60"}});
 }
