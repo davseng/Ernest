@@ -8,52 +8,38 @@
 .chat-return { padding: 0 16px; color: var(--teal); }
 .asset-app-actions > details > summary { width: 44px; list-style: none; }
 .asset-app-actions > details > summary::-webkit-details-marker { display: none; }
-.asset-app-actions .manage-menu,
-.asset-app-actions .account-popover { position: relative; }
-.asset-app-actions .manage-menu-panel,
-.account-popover-panel { position: absolute; z-index: 30; top: calc(100% + 8px); right: 0; min-width: 245px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); box-shadow: 0 14px 40px rgba(26,54,52,.14); }
-.asset-app-actions .manage-menu-panel p,
-.account-popover-panel > span { display: block; margin: 4px 8px 8px; color: var(--muted); font-size: .72rem; font-weight: 700; }
+.asset-app-actions .manage-menu,.asset-app-actions .account-popover { position: relative; }
+.asset-app-actions .manage-menu-panel,.account-popover-panel { position: absolute; z-index: 30; top: calc(100% + 8px); right: 0; min-width: 245px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); box-shadow: 0 14px 40px rgba(26,54,52,.14); }
+.asset-app-actions .manage-menu-panel p,.account-popover-panel > span { display: block; margin: 4px 8px 8px; color: var(--muted); font-size: .72rem; font-weight: 700; }
 .asset-app-actions .manage-menu-panel a { display: flex; min-height: 44px; padding: 10px 9px; align-items: center; border-radius: 8px; font-size: .88rem; text-decoration: none; }
 .asset-app-actions .manage-menu-panel a:hover { background: var(--canvas); }
 .account-popover-panel { min-width: 220px; }
 .account-popover-panel form { margin: 0; }
 .account-popover-panel button { width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; }
 
-/* Touch baseline for management screens. */
-.primary-button,
-.delete-button,
-.compact-form button,
-.record-form button,
-.editor-card button,
-.log-form button,
-button[type="submit"],
-.secondary-action { min-height: 44px; }
-.compact-form input,
-.compact-form select,
-.compact-form textarea,
-.record-form input,
-.record-form select,
-.record-form textarea,
-.editor-card input,
-.editor-card select,
-.editor-card textarea,
-.equipment-search-form input,
-.equipment-search-form select { min-height: 44px; font-size: 16px; }
-.secondary-action { display: inline-flex; padding: 0 14px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; font-size: .84rem; font-weight: 700; text-decoration: none; cursor: pointer; }
+.primary-button,.delete-button,.compact-form button,.record-form button,.editor-card button,.log-form button,button[type="submit"],.secondary-action,.secondary-button { min-height: 44px; }
+.compact-form input,.compact-form select,.compact-form textarea,.record-form input,.record-form select,.record-form textarea,.editor-card input,.editor-card select,.editor-card textarea,.equipment-search-form input,.equipment-search-form select { min-height: 44px; font-size: 16px; }
+.secondary-action,.secondary-button { display: inline-flex; padding: 0 14px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; font-size: .84rem; font-weight: 700; text-decoration: none; cursor: pointer; }
 .delete-button { padding-left: 14px; padding-right: 14px; }
+.record-action-row,.setup-system-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; align-items: center; }
+.record-editor { margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.record-editor > summary { min-height: 48px; display: flex; padding: 10px 14px; align-items: center; font-weight: 700; cursor: pointer; }
+.record-editor-panel { padding: 0 14px 16px; }
+.danger-zone,.destructive-zone { margin-top: 20px; padding: 18px; border: 1px solid #e3c2c2; border-radius: 10px; background: #fffafa; }
+.danger-zone > p,.destructive-zone > p { color: var(--muted); }
+.setup-facts { max-width: 760px; }
+.write-proposal-procedure > p { margin: 14px 0 8px; }
+.write-proposal-procedure ol { margin: 0; padding-left: 1.4rem; }
+.write-proposal-procedure li { margin: 0 0 8px; line-height: 1.45; }
 
-/* Equipment registry: browse first, edit one record at a time. */
 .equipment-toolbar { padding: 28px 0 0; }
 .equipment-search-form { display: grid; grid-template-columns: minmax(0, 2fr) minmax(180px, .8fr) auto auto; gap: 12px; align-items: end; }
 .equipment-search-form label { display: grid; gap: 7px; color: var(--ink); font-size: .76rem; font-weight: 700; }
-.equipment-search-form input,
-.equipment-search-form select { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; }
+.equipment-search-form input,.equipment-search-form select { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; }
 .equipment-registry-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .equipment-registry-card { display: block; min-height: 190px; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); text-decoration: none; }
 .equipment-registry-card:hover { border-color: #a8bbb4; box-shadow: 0 8px 24px rgba(26,54,52,.06); }
-.equipment-registry-card-top,
-.equipment-registry-card-bottom { display: flex; gap: 12px; align-items: center; justify-content: space-between; color: var(--muted); font-size: .72rem; }
+.equipment-registry-card-top,.equipment-registry-card-bottom { display: flex; gap: 12px; align-items: center; justify-content: space-between; color: var(--muted); font-size: .72rem; }
 .equipment-registry-card-top span:first-child { color: var(--teal); font-weight: 700; text-transform: uppercase; }
 .equipment-registry-card h3 { margin: 24px 0 6px; font-size: 1.05rem; }
 .equipment-registry-card p { margin: 0 0 8px; color: var(--muted); }
@@ -72,23 +58,8 @@ button[type="submit"],
 .editor-actions { display: flex; gap: 10px; align-items: center; }
 .equipment-source-row { display: flex; gap: 16px; align-items: center; justify-content: space-between; }
 .equipment-source-row p { margin-top: 5px; }
-.destructive-zone { margin-top: 18px; padding: 22px; border: 1px solid #e3c2c2; border-radius: 12px; background: #fffafa; }
-.destructive-zone > p { color: var(--muted); }
 .danger-form { margin-top: 14px; }
 
-@media (max-width: 760px) {
-  .asset-app-header { padding: 0 12px; }
-  .asset-app-header-left { gap: 8px; }
-  .brand-word { display: none; }
-  .asset-context { max-width: min(38vw, 210px); font-size: .76rem; }
-  .asset-app-actions { gap: 6px; }
-  .chat-return { padding: 0 12px; }
-  .asset-app-actions .manage-menu-panel,
-  .account-popover-panel { position: fixed; top: 68px; right: 12px; left: 12px; min-width: 0; }
-  .equipment-search-form { grid-template-columns: 1fr; }
-  .equipment-registry-grid { grid-template-columns: 1fr; }
-  .equipment-registry-card { min-height: 0; }
-  .editor-actions { align-items: stretch; flex-direction: column; }
-  .editor-actions > * { width: 100%; }
-  .equipment-source-row { align-items: stretch; flex-direction: column; }
+@media (max-width:760px){
+  .asset-app-header{padding:0 12px}.asset-app-header-left{gap:8px}.brand-word{display:none}.asset-context{max-width:min(38vw,210px);font-size:.76rem}.asset-app-actions{gap:6px}.chat-return{padding:0 12px}.asset-app-actions .manage-menu-panel,.account-popover-panel{position:fixed;top:68px;right:12px;left:12px;min-width:0}.equipment-search-form{grid-template-columns:1fr}.equipment-registry-grid{grid-template-columns:1fr}.equipment-registry-card{min-height:0}.editor-actions,.equipment-source-row{align-items:stretch;flex-direction:column}.editor-actions>*{width:100%}.record-action-row,.setup-system-actions{align-items:stretch;flex-direction:column}.record-action-row>* ,.setup-system-actions>*{width:100%}.setup-facts{grid-template-columns:1fr}.setup-facts div+div{padding:14px 0 0;border-left:0;border-top:1px solid var(--line)}
 }
