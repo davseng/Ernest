@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { AccountMenu } from "@/components/account-menu";
+import { AssetAppHeader } from "@/components/asset-app-header";
 import { DocumentUploadPanel } from "@/components/document-upload-panel";
 import { DocumentUrlImportForm } from "@/components/document-url-import-form";
 import { getAsset } from "@/data/assets";
@@ -22,10 +22,7 @@ function status(document: Awaited<ReturnType<typeof getDocumentsForAsset>>[numbe
   return "Needs processing";
 }
 
-export default async function DocumentsPage({
-  params,
-  searchParams,
-}: {
+export default async function DocumentsPage({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ saved?: string }>;
 }) {
@@ -41,21 +38,16 @@ export default async function DocumentsPage({
 
   return (
     <div className="app-shell">
-      <header className="site-header">
-        <Link className="brand" href="/" aria-label="Ernest home"><span className="brand-mark" aria-hidden="true">E</span>Ernest</Link>
-        <AccountMenu email={session.user.email} />
-      </header>
+      <AssetAppHeader assetId={id} assetName={asset.name} email={session.user.email} />
       <main className="page-wrap detail-wrap">
-        <Link className="back-link" href={`/assets/${id}`}><span aria-hidden="true">←</span> {asset.name}</Link>
         <section className="asset-header">
           <div>
-            <p className="eyebrow">Knowledge intake</p>
-            <div className="title-row"><h1>Document Vault</h1><span className="type-pill">v0.8</span></div>
-            <p className="asset-summary detail-summary">Put documents into Ernest first; organize and process them afterward. Originals remain private and unchanged in storage.</p>
+            <p className="eyebrow">Documents</p>
+            <div className="title-row"><h1>Document Vault</h1><span className="type-pill">{documents.length}</span></div>
+            <p className="asset-summary detail-summary">Add documents first. Ernest keeps the originals private and lets you process or organize them when you are ready.</p>
           </div>
           <dl className="asset-facts">
-            <div><dt>Documents</dt><dd>{documents.length}</dd></div>
-            <div><dt>Vault inbox</dt><dd>{inbox.length}</dd></div>
+            <div><dt>Inbox</dt><dd>{inbox.length}</dd></div>
             <div><dt>Ready</dt><dd>{ready.length}</dd></div>
           </dl>
         </section>
@@ -66,58 +58,31 @@ export default async function DocumentsPage({
         <DocumentUrlImportForm assetId={id} />
 
         <section className="systems-section">
-          <div className="section-heading">
-            <p className="eyebrow">Vault inbox</p>
-            <h2>Needs processing or review</h2>
-            <p>{inbox.length ? `${inbox.length} document${inbox.length === 1 ? "" : "s"} can stay here until you are ready to process them.` : "Nothing is waiting. Your document inbox is clear."}</p>
-          </div>
-          {inbox.length === 0 ? <p className="empty-log">New uploads will appear here automatically. No classification is required during upload.</p> : (
-            <div className="log-list">
-              {inbox.map((document) => (
-                <article className="log-entry vault-inbox-entry" key={document.id}>
-                  <div className="log-entry-meta">
-                    <span>{document.extractionError ? "NEEDS ATTENTION" : "NEW · NEEDS PROCESSING"}</span>
-                    <time dateTime={document.createdAt.toISOString()}>{document.createdAt.toLocaleString()}</time>
-                  </div>
-                  <h3><Link href={`/assets/${id}/documents/${document.id}`}>{document.title}</Link></h3>
-                  <p>{document.originalFilename}</p>
-                  <small>{formatBytes(document.sizeBytes)} · {status(document)}</small>
-                  <p><a href={`/assets/${id}/documents/${document.id}/original`} target="_blank" rel="noreferrer">Open preserved original ↗</a></p>
-                  <Link className="edit-asset-link" href={`/assets/${id}/documents/${document.id}`}>{document.extractionError ? "Review problem →" : "Process document →"}</Link>
-                </article>
-              ))}
-            </div>
-          )}
+          <div className="section-heading"><p className="eyebrow">Inbox</p><h2>Needs processing or review</h2><p>{inbox.length ? `${inbox.length} document${inbox.length === 1 ? "" : "s"} waiting.` : "Nothing is waiting."}</p></div>
+          {inbox.length === 0 ? <p className="empty-log">New uploads appear here automatically.</p> : <div className="log-list">
+            {inbox.map((document) => <article className="log-entry vault-inbox-entry" key={document.id}>
+              <div className="log-entry-meta"><span>{document.extractionError ? "NEEDS ATTENTION" : "NEW · NEEDS PROCESSING"}</span><time dateTime={document.createdAt.toISOString()}>{document.createdAt.toLocaleString()}</time></div>
+              <h3><Link href={`/assets/${id}/documents/${document.id}`}>{document.title}</Link></h3>
+              <p>{document.originalFilename}</p>
+              <small>{formatBytes(document.sizeBytes)} · {status(document)}</small>
+              <p><a href={`/assets/${id}/documents/${document.id}/original`} target="_blank" rel="noreferrer">Open preserved original ↗</a></p>
+              <Link className="edit-asset-link" href={`/assets/${id}/documents/${document.id}`}>{document.extractionError ? "Review problem →" : "Process document →"}</Link>
+            </article>)}
+          </div>}
         </section>
 
         <section className="systems-section">
-          <div className="section-heading">
-            <p className="eyebrow">Ready knowledge</p>
-            <h2>Processed documents</h2>
-            <p>{ready.length} {ready.length === 1 ? "document is" : "documents are"} searchable and available as source evidence.</p>
-          </div>
-          {ready.length === 0 ? (
-            <p className="empty-log">No processed documents yet. Open an item in the vault inbox when you are ready to extract it.</p>
-          ) : (
-            <div className="log-list">
-              {ready.map((document) => (
-                <article className="log-entry" key={document.id}>
-                  <div className="log-entry-meta">
-                    <span>{document.sourceType === "url" ? "URL" : "UPLOAD"}</span>
-                    <time dateTime={document.createdAt.toISOString()}>{document.createdAt.toLocaleString()}</time>
-                  </div>
-                  <h3><Link href={`/assets/${id}/documents/${document.id}`}>{document.title}</Link></h3>
-                  <p>{document.originalFilename}</p>
-                  <small>{formatBytes(document.sizeBytes)} · {status(document)}</small>
-                  <p>
-                    <a href={`/assets/${id}/documents/${document.id}/original`} target="_blank" rel="noreferrer">Open original PDF ↗</a>
-                    {document.sourceUrl ? <> · <a href={document.sourceUrl} target="_blank" rel="noreferrer">Original web source ↗</a></> : null}
-                  </p>
-                  <Link className="edit-asset-link" href={`/assets/${id}/documents/${document.id}`}>Manage document →</Link>
-                </article>
-              ))}
-            </div>
-          )}
+          <div className="section-heading"><p className="eyebrow">Ready knowledge</p><h2>Processed documents</h2><p>{ready.length} searchable source{ready.length === 1 ? "" : "s"}.</p></div>
+          {ready.length === 0 ? <p className="empty-log">No processed documents yet.</p> : <div className="log-list">
+            {ready.map((document) => <article className="log-entry" key={document.id}>
+              <div className="log-entry-meta"><span>{document.sourceType === "url" ? "URL" : "UPLOAD"}</span><time dateTime={document.createdAt.toISOString()}>{document.createdAt.toLocaleString()}</time></div>
+              <h3><Link href={`/assets/${id}/documents/${document.id}`}>{document.title}</Link></h3>
+              <p>{document.originalFilename}</p>
+              <small>{formatBytes(document.sizeBytes)} · {status(document)}</small>
+              <p><a href={`/assets/${id}/documents/${document.id}/original`} target="_blank" rel="noreferrer">Open original PDF ↗</a>{document.sourceUrl ? <> · <a href={document.sourceUrl} target="_blank" rel="noreferrer">Original web source ↗</a></> : null}</p>
+              <Link className="edit-asset-link" href={`/assets/${id}/documents/${document.id}`}>Manage document →</Link>
+            </article>)}
+          </div>}
         </section>
       </main>
     </div>

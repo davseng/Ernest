@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { AccountMenu } from "@/components/account-menu";
-import { AssetSwitcher } from "@/components/asset-switcher";
+import { AssetAppHeader } from "@/components/asset-app-header";
 import { ErnestChat } from "@/components/ernest-chat";
 import { getAssets } from "@/data/assets";
 import { getConversationMessages, listConversations } from "@/data/conversations";
@@ -27,30 +27,15 @@ export default async function Home({ searchParams }: { searchParams?: Promise<{ 
 
   return (
     <div className="app-shell conversational-shell">
-      <header className="site-header conversational-header">
-        <div className="conversation-header-left">
-          <Link className="brand" href={`/?asset=${selectedAsset.id}`} aria-label="Ernest home"><span className="brand-mark" aria-hidden="true">E</span>Ernest</Link>
-          <AssetSwitcher assets={assets.map((asset) => ({ id: asset.id, name: asset.name, type: asset.type }))} selectedAssetId={selectedAsset.id} />
-        </div>
-        <div className="operate-header-actions">
-          <details className="manage-menu">
-            <summary aria-label="Open setup menu">☰</summary>
-            <div className="manage-menu-panel">
-              <p>Manage {selectedAsset.name}</p>
-              <Link href={`/assets/${selectedAsset.id}/knowledge`}>Equipment</Link>
-              <Link href={`/assets/${selectedAsset.id}/inventory`}>Inventory</Link>
-              <Link href={`/assets/${selectedAsset.id}/procedures`}>Procedures & checklists</Link>
-              <Link href={`/assets/${selectedAsset.id}/documents`}>Documents</Link>
-              <Link href={`/assets/${selectedAsset.id}/photos`}>Photos</Link>
-              <Link href={`/assets/${selectedAsset.id}`}>Asset setup</Link>
-              <a href={`/assets/${selectedAsset.id}/export`}>Download backup</a>
-            </div>
-          </details>
-          <AccountMenu email={session.user.email} />
-        </div>
-      </header>
+      <AssetAppHeader
+        assetId={selectedAsset.id}
+        assetName={selectedAsset.name}
+        email={session.user.email}
+        assets={assets.map((asset) => ({ id: asset.id, name: asset.name, type: asset.type }))}
+      />
       <main className="conversation-main">
         <ErnestChat
+          key={`${selectedAsset.id}:${selectedConversation?.id ?? "new"}`}
           assetId={selectedAsset.id} assetName={selectedAsset.name}
           initialConversationId={selectedConversation?.id}
           initialMessages={initialMessages.map((message) => ({ id: message.id, role: message.role, text: message.text, sources: message.sources?.map((source) => ({ documentTitle: source.documentTitle, pageNumber: source.pageNumber })), proposal: message.proposal, writeResult: message.writeResult }))}

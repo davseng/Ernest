@@ -7,6 +7,7 @@ import "./recent-chats.css";
 import "./operate-v08.css";
 import "./vault.css";
 import "./photo-evidence.css";
+import "./usability-v08.css";
 
 export const metadata: Metadata = {
   title: "Ernest — Asset assistant",

@@ -33,6 +33,16 @@ function equipmentDestination(assetId: string, status?: string) {
   return status ? `${base}?status=${encodeURIComponent(status)}` : base;
 }
 
+function requestedDestination(assetId: string, formData: FormData, status: string) {
+  const requested = String(formData.get("returnTo") ?? "").trim();
+  const allowedPrefix = `/assets/${assetId}/knowledge/`;
+  if (requested.startsWith(allowedPrefix) && !requested.includes("//")) {
+    const separator = requested.includes("?") ? "&" : "?";
+    return `${requested}${separator}status=${encodeURIComponent(status)}`;
+  }
+  return equipmentDestination(assetId, status);
+}
+
 export async function scanDocumentForEquipment(assetId: string, documentId: string) {
   const session = await auth();
   if (!session?.user?.id) return;
@@ -61,15 +71,9 @@ export async function approveEquipment(assetId: string, candidateId: string, for
   revalidateEquipment(assetId);
 }
 
-export async function editEquipment(
-  assetId: string,
-  systemId: string,
-  componentId: string,
-  formData: FormData,
-) {
+export async function editEquipment(assetId: string, systemId: string, componentId: string, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
-
   const name = String(formData.get("name") ?? "").trim();
   if (!name) throw new Error("Equipment name is required.");
 
@@ -81,16 +85,14 @@ export async function editEquipment(
     location: String(formData.get("location") ?? "").trim(),
     notes: String(formData.get("notes") ?? "").trim(),
   });
-
   if (!updated) notFound();
   revalidateEquipment(assetId);
-  redirect(equipmentDestination(assetId, "equipment-saved"));
+  redirect(requestedDestination(assetId, formData, "equipment-saved"));
 }
 
 export async function changeEquipmentLifecycle(assetId: string, componentId: string, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
-
   const status = String(formData.get("lifecycleStatus") ?? "") as EquipmentLifecycleStatus;
   if (!lifecycleStatuses.has(status)) throw new Error("Choose a valid equipment lifecycle status.");
   const changedOn = String(formData.get("lifecycleChangedOn") ?? "").trim() || null;
@@ -99,19 +101,13 @@ export async function changeEquipmentLifecycle(assetId: string, componentId: str
   const updated = await updateComponentLifecycle(assetId, session.user.id, componentId, status, changedOn, notes);
   if (!updated) notFound();
   revalidateEquipment(assetId);
-  redirect(equipmentDestination(assetId, `lifecycle-${status}`));
+  redirect(requestedDestination(assetId, formData, `lifecycle-${status}`));
 }
 
-export async function deleteEquipment(
-  assetId: string,
-  systemId: string,
-  componentId: string,
-  formData: FormData,
-) {
+export async function deleteEquipment(assetId: string, systemId: string, componentId: string, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   if (String(formData.get("confirm") ?? "") !== "yes") return;
-
   const deleted = await deleteComponent(assetId, systemId, componentId, session.user.id);
   if (!deleted) notFound();
   revalidateEquipment(assetId);
@@ -132,23 +128,15 @@ export async function linkEquipmentDocument(assetId: string, formData: FormData)
   const documentId = String(formData.get("documentId") ?? "");
   const relationship = String(formData.get("relationship") ?? "manual");
   if (!componentId || !documentId || !relationships.has(relationship)) return;
-  await linkDocumentToComponent(
-    assetId,
-    session.user.id,
-    componentId,
-    documentId,
-    relationship as "manual" | "service" | "reference" | "other",
-  );
+  await linkDocumentToComponent(assetId, session.user.id, componentId, documentId, relationship as "manual" | "service" | "reference" | "other");
   revalidatePath(`/assets/${assetId}/knowledge`);
+  revalidatePath(`/assets/${assetId}/knowledge/${componentId}`);
 }
 
-export async function unlinkEquipmentDocument(
-  assetId: string,
-  componentId: string,
-  documentId: string,
-) {
+export async function unlinkEquipmentDocument(assetId: string, componentId: string, documentId: string) {
   const session = await auth();
   if (!session?.user?.id) return;
   await unlinkDocumentFromComponent(assetId, session.user.id, componentId, documentId);
   revalidatePath(`/assets/${assetId}/knowledge`);
+  revalidatePath(`/assets/${assetId}/knowledge/${componentId}`);
 }
