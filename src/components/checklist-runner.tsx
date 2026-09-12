@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import type { ProcedureType } from "@/data/procedures";
+
 type RunnerStep = { id?: string; position: number; instruction: string; note: string | null };
 
 export function ChecklistRunner({
   assetId,
   assetName,
   title,
+  procedureType,
   notes,
   steps,
   sourceDocumentTitle,
@@ -17,6 +20,7 @@ export function ChecklistRunner({
   assetId: string;
   assetName: string;
   title: string;
+  procedureType: ProcedureType;
   notes: string | null;
   steps: RunnerStep[];
   sourceDocumentTitle: string | null;
@@ -25,6 +29,7 @@ export function ChecklistRunner({
   const [checked, setChecked] = useState<Set<number>>(() => new Set());
   const completed = checked.size;
   const percent = useMemo(() => steps.length ? Math.round((completed / steps.length) * 100) : 0, [completed, steps.length]);
+  const typeLabel = procedureType === "emergency" ? "emergency procedure" : procedureType === "routine" ? "routine procedure" : "checklist";
 
   function toggle(position: number) {
     setChecked((current) => {
@@ -35,13 +40,13 @@ export function ChecklistRunner({
   }
 
   function restart() {
-    if (checked.size === 0 || window.confirm("Restart this checklist run? The master checklist will not change.")) setChecked(new Set());
+    if (checked.size === 0 || window.confirm(`Restart this ${typeLabel} run? The master procedure will not change.`)) setChecked(new Set());
   }
 
   return <main className="checklist-runner">
     <header className="checklist-runner-header">
-      <div><p className="eyebrow">{assetName} · checklist run</p><h1>{title}</h1></div>
-      <Link href={`/assets/${assetId}/procedures#checklists`}>Exit</Link>
+      <div><p className="eyebrow">{assetName} · {typeLabel} run</p><h1>{title}</h1></div>
+      <Link href={`/assets/${assetId}/procedures`}>Exit</Link>
     </header>
 
     {notes ? <p className="checklist-runner-notes">{notes}</p> : null}
@@ -61,11 +66,11 @@ export function ChecklistRunner({
       })}
     </div>
 
-    {completed === steps.length && steps.length > 0 ? <div className="checklist-complete">✓ Checklist complete</div> : null}
+    {completed === steps.length && steps.length > 0 ? <div className="checklist-complete">✓ {typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} complete</div> : null}
 
     <footer className="checklist-runner-footer">
-      <button type="button" onClick={restart}>Restart checklist</button>
-      {sourceDocumentTitle ? <p>Source: {sourceDocumentTitle}{sourcePage ? ` · page ${sourcePage}` : ""}</p> : <p>Owner-created checklist</p>}
+      <button type="button" onClick={restart}>Restart {typeLabel}</button>
+      {sourceDocumentTitle ? <p>Source: {sourceDocumentTitle}{sourcePage ? ` · page ${sourcePage}` : ""}</p> : <p>Owner-created {typeLabel}</p>}
     </footer>
   </main>;
 }
