@@ -1,0 +1,41 @@
+.ernest-composer-controls {
+  display: flex;
+  width: min(780px, 100%);
+  margin: 0 auto 7px;
+  align-items: center;
+  gap: 8px;
+}
+
+.think-harder-toggle {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255,255,255,.88);
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.think-harder-toggle:hover,
+.think-harder-toggle.active {
+  border-color: #91aaa2;
+  color: var(--teal);
+  background: #f1f7f4;
+}
+
+.think-harder-toggle:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.ernest-composer-controls > span {
+  color: var(--muted);
+  font-size: .67rem;
+}
+
+@media (max-width: 760px) {
+  .ernest-composer-controls { margin-bottom: 5px; }
+  .think-harder-toggle { padding: 6px 9px; }
+}

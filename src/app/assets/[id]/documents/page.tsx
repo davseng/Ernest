@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { AccountMenu } from "@/components/account-menu";
+import { AssetAppHeader } from "@/components/asset-app-header";
 import { DocumentUploadPanel } from "@/components/document-upload-panel";
 import { DocumentUrlImportForm } from "@/components/document-url-import-form";
 import { getAsset } from "@/data/assets";
@@ -17,68 +17,72 @@ function formatBytes(bytes: number) {
 }
 
 function status(document: Awaited<ReturnType<typeof getDocumentsForAsset>>[number]) {
-  if (document.extractionError) return "Extraction failed";
-  if (document.extractedAt) return `Extracted · ${document.pageCount ?? 0} pages`;
-  return "Not extracted";
+  if (document.extractionError) return "Needs attention · extraction failed";
+  if (document.extractedAt) return `Ready · ${document.pageCount ?? 0} pages`;
+  return "Needs processing";
 }
 
-export default async function DocumentsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DocumentsPage({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ saved?: string }>;
+}) {
   const { id } = await params;
+  const query = await searchParams;
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   const asset = await getAsset(id, session.user.id);
   if (!asset) notFound();
   const documents = await getDocumentsForAsset(id, session.user.id);
+  const inbox = documents.filter((document) => !document.extractedAt || document.extractionError);
+  const ready = documents.filter((document) => document.extractedAt && !document.extractionError);
 
   return (
     <div className="app-shell">
-      <header className="site-header">
-        <Link className="brand" href="/" aria-label="Ernest home"><span className="brand-mark" aria-hidden="true">E</span>Ernest</Link>
-        <AccountMenu email={session.user.email} />
-      </header>
+      <AssetAppHeader assetId={id} assetName={asset.name} email={session.user.email} />
       <main className="page-wrap detail-wrap">
-        <Link className="back-link" href={`/assets/${id}`}><span aria-hidden="true">←</span> {asset.name}</Link>
         <section className="asset-header">
           <div>
-            <p className="eyebrow">Knowledge</p>
-            <div className="title-row"><h1>Document Library</h1><span className="type-pill">v0.2</span></div>
-            <p className="asset-summary detail-summary">Add, inspect, reprocess, rename, and remove the documents Ernest uses for {asset.name}.</p>
+            <p className="eyebrow">Documents</p>
+            <div className="title-row"><h1>Document Vault</h1><span className="type-pill">{documents.length}</span></div>
+            <p className="asset-summary detail-summary">Add documents first. Ernest keeps the originals private and lets you process or organize them when you are ready.</p>
           </div>
           <dl className="asset-facts">
-            <div><dt>Documents</dt><dd>{documents.length}</dd></div>
-            <div><dt>Ready</dt><dd>{documents.filter((document) => document.extractedAt).length}</dd></div>
-            <div><dt>Needs attention</dt><dd>{documents.filter((document) => document.extractionError).length}</dd></div>
+            <div><dt>Inbox</dt><dd>{inbox.length}</dd></div>
+            <div><dt>Ready</dt><dd>{ready.length}</dd></div>
           </dl>
         </section>
+
+        {query.saved === "deleted" ? <p className="write-result success">✓ Document deleted. The vault and search index have been updated.</p> : null}
 
         <DocumentUploadPanel assetId={id} />
         <DocumentUrlImportForm assetId={id} />
 
         <section className="systems-section">
-          <div className="section-heading">
-            <p className="eyebrow">Library</p>
-            <h2>Documents</h2>
-            <p>{documents.length} {documents.length === 1 ? "document" : "documents"}</p>
-          </div>
-          {documents.length === 0 ? (
-            <p className="empty-log">No documents yet. Add a manual, survey, invoice, listing, or service record.</p>
-          ) : (
-            <div className="log-list">
-              {documents.map((document) => (
-                <article className="log-entry" key={document.id}>
-                  <div className="log-entry-meta">
-                    <span>{document.sourceType === "url" ? "URL" : "UPLOAD"}</span>
-                    <time dateTime={document.createdAt.toISOString()}>{document.createdAt.toLocaleString()}</time>
-                  </div>
-                  <h3><Link href={`/assets/${id}/documents/${document.id}`}>{document.title}</Link></h3>
-                  <p>{document.originalFilename}</p>
-                  <small>{formatBytes(document.sizeBytes)} · {status(document)}</small>
-                  {document.sourceUrl ? <p><a href={document.sourceUrl} target="_blank" rel="noreferrer">Original source</a></p> : null}
-                  <Link className="edit-asset-link" href={`/assets/${id}/documents/${document.id}`}>Manage document →</Link>
-                </article>
-              ))}
-            </div>
-          )}
+          <div className="section-heading"><p className="eyebrow">Inbox</p><h2>Needs processing or review</h2><p>{inbox.length ? `${inbox.length} document${inbox.length === 1 ? "" : "s"} waiting.` : "Nothing is waiting."}</p></div>
+          {inbox.length === 0 ? <p className="empty-log">New uploads appear here automatically.</p> : <div className="log-list">
+            {inbox.map((document) => <article className="log-entry vault-inbox-entry" key={document.id}>
+              <div className="log-entry-meta"><span>{document.extractionError ? "NEEDS ATTENTION" : "NEW · NEEDS PROCESSING"}</span><time dateTime={document.createdAt.toISOString()}>{document.createdAt.toLocaleString()}</time></div>
+              <h3><Link href={`/assets/${id}/documents/${document.id}`}>{document.title}</Link></h3>
+              <p>{document.originalFilename}</p>
+              <small>{formatBytes(document.sizeBytes)} · {status(document)}</small>
+              <p><a href={`/assets/${id}/documents/${document.id}/original`} target="_blank" rel="noreferrer">Open preserved original ↗</a></p>
+              <Link className="edit-asset-link" href={`/assets/${id}/documents/${document.id}`}>{document.extractionError ? "Review problem →" : "Process document →"}</Link>
+            </article>)}
+          </div>}
+        </section>
+
+        <section className="systems-section">
+          <div className="section-heading"><p className="eyebrow">Ready knowledge</p><h2>Processed documents</h2><p>{ready.length} searchable source{ready.length === 1 ? "" : "s"}.</p></div>
+          {ready.length === 0 ? <p className="empty-log">No processed documents yet.</p> : <div className="log-list">
+            {ready.map((document) => <article className="log-entry" key={document.id}>
+              <div className="log-entry-meta"><span>{document.sourceType === "url" ? "URL" : "UPLOAD"}</span><time dateTime={document.createdAt.toISOString()}>{document.createdAt.toLocaleString()}</time></div>
+              <h3><Link href={`/assets/${id}/documents/${document.id}`}>{document.title}</Link></h3>
+              <p>{document.originalFilename}</p>
+              <small>{formatBytes(document.sizeBytes)} · {status(document)}</small>
+              <p><a href={`/assets/${id}/documents/${document.id}/original`} target="_blank" rel="noreferrer">Open original PDF ↗</a>{document.sourceUrl ? <> · <a href={document.sourceUrl} target="_blank" rel="noreferrer">Original web source ↗</a></> : null}</p>
+              <Link className="edit-asset-link" href={`/assets/${id}/documents/${document.id}`}>Manage document →</Link>
+            </article>)}
+          </div>}
         </section>
       </main>
     </div>

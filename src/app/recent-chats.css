@@ -1,0 +1,14 @@
+.ernest-welcome-toolbar { display:flex; justify-content:flex-end; margin-bottom:18px; }
+.recent-chats-menu { position:relative; }
+.recent-chats-menu > summary { list-style:none; padding:8px 11px; border:1px solid var(--line); border-radius:9px; color:var(--muted); background:white; font-size:.74rem; font-weight:700; cursor:pointer; }
+.recent-chats-menu > summary::-webkit-details-marker { display:none; }
+.recent-chats-menu[open] > summary,.recent-chats-menu > summary:hover { color:var(--ink); background:#f7faf8; }
+.recent-chats-panel { position:absolute; top:calc(100% + 8px); right:0; z-index:30; width:min(340px,calc(100vw - 28px)); padding:10px; border:1px solid var(--line); border-radius:13px; background:white; box-shadow:0 14px 42px rgba(22,45,43,.14); text-align:left; }
+.recent-chats-panel > strong { display:block; margin:5px 8px 8px; color:var(--muted); font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; }
+.recent-chats-panel > p { margin:10px 8px; color:var(--muted); font-size:.8rem; }
+.recent-chats-panel a { display:flex; padding:10px 9px; align-items:center; justify-content:space-between; gap:12px; border-radius:8px; color:var(--ink); text-decoration:none; }
+.recent-chats-panel a:hover { background:#f1f5f2; }
+.recent-chats-panel a span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.82rem; font-weight:650; }
+.recent-chats-panel a small { flex:none; color:var(--muted); font-size:.66rem; }
+.chat-thread-toolbar { gap:8px; }
+@media (max-width:760px) { .ernest-welcome-toolbar { margin-bottom:10px; } .recent-chats-panel { position:fixed; top:70px; left:14px; right:14px; width:auto; max-height:60vh; overflow:auto; } }

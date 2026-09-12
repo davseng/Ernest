@@ -9,82 +9,125 @@ import {
 } from "@/app/assets/[id]/document-actions";
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_BATCH_FILES = 12;
+
+type UploadStatus = {
+  name: string;
+  state: "waiting" | "uploading" | "done" | "error";
+  message?: string;
+};
 
 export function DocumentUploadPanel({ assetId }: { assetId: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const [progress, setProgress] = useState<string>();
+  const [uploads, setUploads] = useState<UploadStatus[]>([]);
+  const [summary, setSummary] = useState<string>();
+
+  function patchStatus(index: number, patch: Partial<UploadStatus>) {
+    setUploads((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+  }
 
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
     setError(undefined);
-    setProgress(undefined);
+    setSummary(undefined);
     const form = new FormData(formElement);
-    const title = String(form.get("title") ?? "").trim();
-    const file = form.get("file");
+    const selected = form.getAll("files").filter((entry): entry is File => entry instanceof File && entry.size > 0);
 
-    if (!(file instanceof File) || file.size === 0) {
-      setError("Choose a PDF to upload.");
+    if (selected.length === 0) {
+      setError("Choose one or more PDFs to upload.");
       return;
     }
-    if (file.size > MAX_FILE_BYTES) {
-      setError("PDF must be 20 MB or smaller.");
+    if (selected.length > MAX_BATCH_FILES) {
+      setError(`Upload up to ${MAX_BATCH_FILES} PDFs at a time.`);
+      return;
+    }
+
+    const invalid = selected.find((file) => file.size > MAX_FILE_BYTES || (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf"));
+    if (invalid) {
+      setError(invalid.size > MAX_FILE_BYTES ? `${invalid.name} is larger than 20 MB.` : `${invalid.name} is not a PDF.`);
       return;
     }
 
     setBusy(true);
-    try {
-      setProgress("Preparing secure upload…");
-      const prepared = await prepareDirectUpload(assetId, {
-        title,
-        filename: file.name,
-        contentType: file.type || "application/pdf",
-        sizeBytes: file.size,
-      });
+    setUploads(selected.map((file) => ({ name: file.name, state: "waiting" })));
+    let completed = 0;
 
-      setProgress("Uploading directly to private storage…");
-      const response = await fetch(prepared.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": prepared.contentType },
-        body: file,
-      });
-      if (!response.ok) {
-        throw new Error(`Storage upload failed (${response.status}).`);
+    for (let index = 0; index < selected.length; index += 1) {
+      const file = selected[index];
+      try {
+        patchStatus(index, { state: "uploading", message: "Preparing secure upload…" });
+        // Use one canonical content type for signed R2 PUTs. Safari/iPad and desktop
+        // browsers can report PDF MIME types differently; signing and sending the
+        // same value also keeps the CORS preflight deterministic.
+        const prepared = await prepareDirectUpload(assetId, {
+          filename: file.name,
+          contentType: "application/pdf",
+          sizeBytes: file.size,
+        });
+
+        patchStatus(index, { state: "uploading", message: "Uploading to private storage…" });
+        let response: Response;
+        try {
+          response = await fetch(prepared.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": prepared.contentType },
+            body: file,
+          });
+        } catch (networkError) {
+          console.error(networkError);
+          throw new Error("Browser could not reach private storage. This is usually an R2 CORS/origin issue for this Preview.");
+        }
+        if (!response.ok) throw new Error(`Private storage rejected the upload (${response.status}).`);
+
+        patchStatus(index, { state: "uploading", message: "Saving document record…" });
+        await completeDirectUpload(assetId, {
+          storageKey: prepared.storageKey,
+          title: prepared.title,
+          filename: file.name,
+          contentType: prepared.contentType,
+          expectedSizeBytes: file.size,
+        });
+        completed += 1;
+        patchStatus(index, { state: "done", message: `✓ Added as “${prepared.title}” · needs processing` });
+      } catch (uploadError) {
+        console.error(uploadError);
+        patchStatus(index, {
+          state: "error",
+          message: uploadError instanceof Error ? uploadError.message : "Upload failed.",
+        });
       }
+    }
 
-      setProgress("Finishing document record…");
-      await completeDirectUpload(assetId, {
-        storageKey: prepared.storageKey,
-        title: prepared.title,
-        filename: file.name,
-        contentType: prepared.contentType,
-        expectedSizeBytes: file.size,
-      });
+    setBusy(false);
+    if (completed > 0) {
+      setSummary(`✓ ${completed} of ${selected.length} ${selected.length === 1 ? "document" : "documents"} added to the vault.`);
       formElement.reset();
-      setProgress("Uploaded. Ready for text extraction.");
       router.refresh();
-    } catch (uploadError) {
-      console.error(uploadError);
-      setError(uploadError instanceof Error ? uploadError.message : "Upload failed. Please try again.");
-    } finally {
-      setBusy(false);
+    } else {
+      setError("No documents were added. Review the errors below and try again.");
     }
   }
 
   return (
     <details className="editor-card add-system" open>
-      <summary>Add a document</summary>
+      <summary>Add documents to the vault</summary>
       <div className="document-ingest-grid">
         <form className="compact-form" onSubmit={upload}>
-          <h3>Upload PDF</h3>
-          <label>Title<input name="title" maxLength={200} required /></label>
-          <label>PDF<input name="file" type="file" accept="application/pdf,.pdf" required /></label>
-          <p>PDF only · maximum 20 MB. The browser sends the file directly to private R2 storage.</p>
+          <h3>Drop in PDFs now. Organize later.</h3>
+          <label>PDFs<input name="files" type="file" accept="application/pdf,.pdf" multiple required /></label>
+          <p>Select up to {MAX_BATCH_FILES} PDFs at once · 20 MB maximum per file. Ernest uses each filename as the starting title, preserves the original privately, and puts new files into the processing inbox.</p>
           {error ? <p className="error-notice">{error}</p> : null}
-          {progress ? <p>{progress}</p> : null}
-          <button className="primary-button" type="submit" disabled={busy}>{busy ? "Uploading…" : "Upload PDF"}</button>
+          {summary ? <p className="write-result success">{summary}</p> : null}
+          {uploads.length ? <div className="vault-upload-list" aria-live="polite">{uploads.map((item, index) => (
+            <div className={`vault-upload-item ${item.state}`} key={`${item.name}-${index}`}>
+              <strong>{item.name}</strong>
+              <span>{item.message ?? (item.state === "waiting" ? "Waiting…" : item.state)}</span>
+            </div>
+          ))}</div> : null}
+          <button className="primary-button" type="submit" disabled={busy}>{busy ? "Adding documents…" : "Add PDFs to vault"}</button>
         </form>
       </div>
     </details>

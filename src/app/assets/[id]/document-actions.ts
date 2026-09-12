@@ -27,6 +27,11 @@ function safeFilename(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "document.pdf";
 }
 
+function titleFromFilename(filename: string) {
+  const base = filename.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  return (base || "Untitled document").slice(0, 200);
+}
+
 async function ownedAsset(assetId: string) {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
@@ -40,7 +45,7 @@ function storageKey(assetId: string, filename: string) {
 }
 
 function validatePdfMetadata(title: string, filename: string, contentType: string, sizeBytes: number) {
-  if (!title || title.length > 200) throw new Error("Enter a document title of 200 characters or fewer.");
+  if (!title || title.length > 200) throw new Error("Document title must be 200 characters or fewer.");
   if (!filename.toLowerCase().endsWith(".pdf") && contentType !== "application/pdf") {
     throw new Error("Document Library accepts PDF files only.");
   }
@@ -49,13 +54,13 @@ function validatePdfMetadata(title: string, filename: string, contentType: strin
 }
 
 export async function prepareDirectUpload(assetId: string, input: {
-  title: string;
+  title?: string;
   filename: string;
   contentType: string;
   sizeBytes: number;
 }) {
   await ownedAsset(assetId);
-  const title = input.title.trim();
+  const title = input.title?.trim() || titleFromFilename(input.filename);
   const contentType = input.contentType || "application/pdf";
   validatePdfMetadata(title, input.filename, contentType, input.sizeBytes);
   const key = storageKey(assetId, input.filename);
@@ -95,7 +100,7 @@ export async function completeDirectUpload(assetId: string, input: {
   }
   revalidatePath(`/assets/${assetId}`);
   revalidatePath(`/assets/${assetId}/documents`);
-  return { documentId: createdId };
+  return { documentId: createdId, title: input.title.trim() };
 }
 
 function assertPublicHttpsUrl(value: string) {
@@ -214,6 +219,7 @@ export async function renameDocument(assetId: string, documentId: string, formDa
   revalidatePath(`/assets/${assetId}`);
   revalidatePath(`/assets/${assetId}/documents`);
   revalidatePath(`/assets/${assetId}/documents/${documentId}`);
+  redirect(`/assets/${encodeURIComponent(assetId)}/documents/${encodeURIComponent(documentId)}?saved=title`);
 }
 
 export async function removeDocument(assetId: string, documentId: string) {
@@ -225,5 +231,5 @@ export async function removeDocument(assetId: string, documentId: string) {
   if (!deleted) notFound();
   revalidatePath(`/assets/${assetId}`);
   revalidatePath(`/assets/${assetId}/documents`);
-  redirect(`/assets/${encodeURIComponent(assetId)}/documents`);
+  redirect(`/assets/${encodeURIComponent(assetId)}/documents?saved=deleted`);
 }

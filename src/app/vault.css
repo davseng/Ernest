@@ -1,0 +1,13 @@
+.vault-upload-list { display:grid; gap:8px; margin:10px 0 14px; }
+.vault-upload-item { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:white; }
+.vault-upload-item strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.82rem; }
+.vault-upload-item span { color:var(--muted); font-size:.74rem; text-align:right; }
+.vault-upload-item.uploading { border-color:#b7cec4; background:#f7fbf8; }
+.vault-upload-item.done { border-color:#b7cec4; background:#f1f8f4; }
+.vault-upload-item.error { border-color:#d9b2b2; background:#fff7f7; }
+.vault-upload-item.error span { color:#8a2d2d; }
+.vault-inbox-entry { border-left:4px solid #c8d8d2; }
+@media (max-width:760px) {
+  .vault-upload-item { grid-template-columns:1fr; }
+  .vault-upload-item span { text-align:left; }
+}

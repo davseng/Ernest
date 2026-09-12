@@ -18,6 +18,15 @@ export type ComponentDocumentLink = {
   documentTitle: string;
 };
 
+export type EquipmentLifecycleStatus = "installed" | "removed_replaced" | "unknown";
+
+export type ComponentLifecycle = {
+  componentId: string;
+  status: EquipmentLifecycleStatus;
+  changedOn: string | null;
+  notes: string | null;
+};
+
 export async function getComponentDocumentLinks(assetId: string, ownerId: string) {
   const rows = await database()<Array<{
     component_id: string;
@@ -42,6 +51,55 @@ export async function getComponentDocumentLinks(assetId: string, ownerId: string
     relationship: row.relationship,
     documentTitle: row.document_title,
   }));
+}
+
+export async function getComponentLifecycles(assetId: string, ownerId: string) {
+  const rows = await database()<Array<{
+    component_id: string;
+    lifecycle_status: EquipmentLifecycleStatus;
+    lifecycle_changed_on: string | null;
+    lifecycle_notes: string | null;
+  }>>`
+    SELECT c.id AS component_id,
+      c.lifecycle_status,
+      c.lifecycle_changed_on::text,
+      c.lifecycle_notes
+    FROM components c
+    INNER JOIN systems s ON s.id = c.system_id
+    INNER JOIN assets a ON a.id = s.asset_id
+    WHERE a.id = ${assetId} AND a.owner_id = ${ownerId}
+    ORDER BY c.position, c.name;
+  `;
+  return rows.map((row) => ({
+    componentId: row.component_id,
+    status: row.lifecycle_status,
+    changedOn: row.lifecycle_changed_on,
+    notes: row.lifecycle_notes,
+  }));
+}
+
+export async function updateComponentLifecycle(
+  assetId: string,
+  ownerId: string,
+  componentId: string,
+  status: EquipmentLifecycleStatus,
+  changedOn: string | null,
+  notes: string | null,
+) {
+  const rows = await database()`
+    UPDATE components c
+    SET lifecycle_status = ${status},
+      lifecycle_changed_on = ${changedOn},
+      lifecycle_notes = ${notes}
+    FROM systems s
+    INNER JOIN assets a ON a.id = s.asset_id
+    WHERE c.id = ${componentId}
+      AND c.system_id = s.id
+      AND a.id = ${assetId}
+      AND a.owner_id = ${ownerId}
+    RETURNING c.id;
+  `;
+  return rows.length === 1;
 }
 
 export async function linkDocumentToComponent(

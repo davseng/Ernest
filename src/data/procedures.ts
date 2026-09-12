@@ -50,6 +50,7 @@ export type ProcedureType = "routine" | "checklist" | "emergency";
 export type ProcedureStep = { id?: string; position: number; instruction: string; note: string | null };
 export type ProcedureRecord = { id:string; title:string; procedureType:ProcedureType; notes:string|null; sourceDocumentId:string|null; sourceDocumentTitle:string|null; sourcePage:number|null; steps:ProcedureStep[] };
 export type ProcedureCandidate = { id:string; documentId:string; documentTitle:string; pageNumber:number; title:string; procedureType:ProcedureType; notes:string|null; steps:Array<{instruction:string;note:string|null}>; status:"pending"|"approved"|"rejected"; verifiedProcedureId:string|null };
+export type ProcedureEdits = { title:string; procedureType:ProcedureType; notes:string; steps:Array<{instruction:string;note:string|null}> };
 
 export type ExtractedProcedureCandidate = {
   pageNumber: number;
@@ -152,6 +153,55 @@ export async function getProcedures(assetId: string, ownerId: string) {
     if (row.step_id && row.step_position !== null && row.instruction) procedure.steps.push({ id:row.step_id, position:row.step_position, instruction:row.instruction, note:row.step_note });
   }
   return [...map.values()];
+}
+
+export async function getProcedure(procedureId: string, assetId: string, ownerId: string) {
+  const procedures = await getProcedures(assetId, ownerId);
+  return procedures.find((procedure) => procedure.id === procedureId);
+}
+
+export async function createProcedure(assetId: string, ownerId: string, details: ProcedureEdits) {
+  if (!details.title.trim() || details.steps.length === 0) return false;
+  const sql = database();
+  return sql.begin(async (tx) => {
+    const asset = await tx`SELECT id FROM assets WHERE id=${assetId} AND owner_id=${ownerId}`;
+    if (asset.length !== 1) return false;
+    const procedureId = randomUUID();
+    const inserted = await tx`INSERT INTO procedures (id, asset_id, owner_id, title, procedure_type, notes)
+      VALUES (${procedureId}, ${assetId}, ${ownerId}, ${details.title.trim()}, ${details.procedureType}, ${details.notes.trim() || null}) RETURNING id`;
+    if (inserted.length !== 1) return false;
+    for (let i = 0; i < details.steps.length; i++) {
+      const step = details.steps[i];
+      await tx`INSERT INTO procedure_steps (id, procedure_id, position, instruction, note)
+        VALUES (${randomUUID()}, ${procedureId}, ${i}, ${step.instruction}, ${step.note})`;
+    }
+    return true;
+  });
+}
+
+export async function updateProcedure(procedureId: string, assetId: string, ownerId: string, details: ProcedureEdits) {
+  if (!details.title.trim() || details.steps.length === 0) return false;
+  const sql = database();
+  return sql.begin(async (tx) => {
+    const rows = await tx`UPDATE procedures p SET title=${details.title.trim()}, procedure_type=${details.procedureType}, notes=${details.notes.trim() || null}
+      FROM assets a WHERE p.id=${procedureId} AND p.asset_id=${assetId} AND p.owner_id=${ownerId}
+        AND a.id=p.asset_id AND a.owner_id=${ownerId} RETURNING p.id`;
+    if (rows.length !== 1) return false;
+    await tx`DELETE FROM procedure_steps WHERE procedure_id=${procedureId}`;
+    for (let i = 0; i < details.steps.length; i++) {
+      const step = details.steps[i];
+      await tx`INSERT INTO procedure_steps (id, procedure_id, position, instruction, note)
+        VALUES (${randomUUID()}, ${procedureId}, ${i}, ${step.instruction}, ${step.note})`;
+    }
+    return true;
+  });
+}
+
+export async function deleteProcedure(procedureId: string, assetId: string, ownerId: string) {
+  const rows = await database()`DELETE FROM procedures p USING assets a
+    WHERE p.id=${procedureId} AND p.asset_id=${assetId} AND p.owner_id=${ownerId}
+      AND a.id=p.asset_id AND a.owner_id=${ownerId} RETURNING p.id`;
+  return rows.length === 1;
 }
 
 export async function rejectProcedureCandidate(candidateId: string, assetId: string, ownerId: string) {
