@@ -16,12 +16,12 @@ export default async function ChecklistRunPage({ params }: { params: Promise<{ i
     getProcedure(procedureId, id, session.user.id),
   ]);
   if (!asset || !procedure) notFound();
-  if (procedure.procedureType !== "checklist") redirect(`/assets/${id}/procedures`);
 
   return <ChecklistRunner
     assetId={id}
     assetName={asset.name}
     title={procedure.title}
+    procedureType={procedure.procedureType}
     notes={procedure.notes}
     steps={procedure.steps}
     sourceDocumentTitle={procedure.sourceDocumentTitle}
