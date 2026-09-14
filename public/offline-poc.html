@@ -1,192 +1,35 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Ernest Offline POC</title>
-  <style>
-    :root { color-scheme: light dark; font-family: system-ui,-apple-system,Segoe UI,sans-serif; }
-    body { margin:0; background:#f6f7f8; color:#15171a; }
-    main { max-width:900px; margin:0 auto; padding:28px 18px 60px; }
-    h1 { margin:0 0 6px; font-size:30px; }
-    .muted { color:#60666d; }
-    .card { background:white; border:1px solid #dfe3e7; border-radius:14px; padding:18px; margin-top:16px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
-    label { font-weight:650; display:block; margin-bottom:8px; }
-    input[type=file], input[type=text] { width:100%; box-sizing:border-box; font:inherit; }
-    input[type=text] { padding:12px 14px; border:1px solid #bcc3ca; border-radius:10px; background:white; color:#15171a; }
-    button { font:inherit; border:0; border-radius:10px; padding:11px 16px; background:#15171a; color:white; cursor:pointer; }
-    button:disabled { opacity:.45; cursor:not-allowed; }
-    .row { display:flex; gap:10px; align-items:center; margin-top:10px; }
-    .row input { flex:1; }
-    .status { margin-top:10px; font-size:14px; }
-    .good { color:#176b37; }
-    .bad { color:#9b2929; }
-    .result { border-top:1px solid #e3e6e8; padding-top:14px; margin-top:14px; }
-    .result:first-child { border-top:0; padding-top:0; }
-    .source { font-size:13px; font-weight:700; margin-bottom:5px; }
-    .score { font-weight:500; color:#687078; }
-    .text { white-space:pre-wrap; line-height:1.45; }
-    .pill { display:inline-block; border:1px solid #cfd5da; border-radius:999px; padding:3px 8px; font-size:12px; margin-right:6px; }
-    .notice { background:#fff8d8; border:1px solid #eadb8c; padding:12px; border-radius:10px; }
-    @media (prefers-color-scheme: dark) {
-      body { background:#111315; color:#f2f3f4; }
-      .card { background:#1a1d20; border-color:#30353a; }
-      .muted,.score { color:#abb2b9; }
-      input[type=text] { background:#111315; color:#f2f3f4; border-color:#50565d; }
-      .result { border-color:#30353a; }
-      .notice { background:#3d3513; border-color:#6c5d1f; }
-      .good { color:#67d391; }
-      .bad { color:#ff8d8d; }
-    }
-  </style>
-</head>
-<body>
-<main>
-  <h1>Ernest Offline POC</h1>
-  <p class="muted">Read-only local retrieval experiment. Once this page is loaded and your package is selected, searching uses only data in your browser. No server or model is involved.</p>
-
-  <div class="card">
-    <label for="packageFile">1. Load your Ernest offline JSON package</label>
-    <input id="packageFile" type="file" accept="application/json,.json" />
-    <div id="packageStatus" class="status muted">No package loaded.</div>
-  </div>
-
-  <div class="card">
-    <label for="question">2. Search Far Better locally</label>
-    <div class="row">
-      <input id="question" type="text" placeholder="e.g. What impeller part number is in the maintenance records?" disabled />
-      <button id="searchButton" disabled>Search</button>
-    </div>
-    <div id="networkStatus" class="status"></div>
-  </div>
-
-  <div class="card">
-    <div class="notice"><strong>What this slice proves:</strong> local evidence retrieval. It does not generate an Ernest answer yet. The next slice will feed these retrieved passages to a local model.</div>
-    <div id="results"><p class="muted">Load a package, then ask a question.</p></div>
-  </div>
-</main>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Ernest Offline POC</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:light dark}body{margin:0;background:#f6f7f8;color:#15171a}main{max-width:900px;margin:auto;padding:28px 18px 60px}.card{background:#fff;border:1px solid #dfe3e7;border-radius:14px;padding:18px;margin-top:16px}.muted{color:#60666d}.good{color:#176b37}.bad{color:#9b2929}.row{display:flex;gap:10px;align-items:center;margin-top:10px}.row>*{min-width:0}input,select,button{font:inherit}input[type=text],select{padding:11px 12px;border:1px solid #bcc3ca;border-radius:10px;background:#fff;color:#15171a;box-sizing:border-box}input[type=text]{flex:1;width:100%}button{border:0;border-radius:10px;padding:11px 16px;background:#15171a;color:#fff;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}.status{font-size:14px;margin-top:9px}.result{border-top:1px solid #e3e6e8;padding-top:12px;margin-top:12px}.source{font-size:13px;font-weight:700}.pill{display:inline-block;border:1px solid #cfd5da;border-radius:999px;padding:3px 8px;font-size:12px;margin-right:6px}.text,.answer{white-space:pre-wrap;line-height:1.5}.answer{font-size:17px}.notice{background:#fff8d8;border:1px solid #eadb8c;padding:12px;border-radius:10px}.small{font-size:13px}@media(prefers-color-scheme:dark){body{background:#111315;color:#f2f3f4}.card{background:#1a1d20;border-color:#30353a}.muted{color:#abb2b9}input[type=text],select{background:#111315;color:#f2f3f4;border-color:#50565d}.notice{background:#3d3513;border-color:#6c5d1f}.good{color:#67d391}.bad{color:#ff8d8d}}
+</style>
+</head><body><main>
+<h1>Ernest Offline POC</h1>
+<p class="muted">Read-only experiment: package → local retrieval → local Ollama model. After the page and package are loaded, Ernest can answer without cloud services.</p>
+<div class="card"><strong>1. Load Ernest package</strong><div class="row"><input id="packageFile" type="file" accept="application/json,.json"/></div><div id="packageStatus" class="status muted">No package loaded.</div></div>
+<div class="card"><strong>2. Connect local model</strong><div class="row"><button id="connectButton">Connect Ollama</button><select id="modelSelect" disabled><option>No local models found</option></select></div><div id="ollamaStatus" class="status muted">Looking for Ollama at http://127.0.0.1:11434.</div><p class="small muted">This page only calls your computer's local Ollama API. No question or evidence is sent to Ernest, Vercel, OpenAI, or another cloud model.</p></div>
+<div class="card"><strong>3. Ask Ernest locally</strong><div class="row"><input id="question" type="text" placeholder="What impeller part number is in the maintenance records?" disabled/><button id="askButton" disabled>Ask locally</button></div><div id="networkStatus" class="status"></div></div>
+<div class="card"><div class="notice"><strong>Local Ernest answer</strong><div id="answer" class="answer" style="margin-top:10px">Load the package and connect Ollama.</div></div><div id="results"><p class="muted">Retrieved evidence will appear here.</p></div></div>
 <script>
-(() => {
-  const fileInput = document.getElementById('packageFile');
-  const statusEl = document.getElementById('packageStatus');
-  const questionEl = document.getElementById('question');
-  const searchButton = document.getElementById('searchButton');
-  const resultsEl = document.getElementById('results');
-  const networkEl = document.getElementById('networkStatus');
-  let packageData = null;
-  let records = [];
-
-  const STOP = new Set('a an and are as at be by can could did do does for from had has have how i in into is it me my of on or our should that the their there these they this those to was we what when where which who why will with would you your'.split(' '));
-
-  function networkStatus() {
-    const offline = !navigator.onLine;
-    networkEl.textContent = offline ? 'Browser reports: OFFLINE' : 'Browser reports: online — disconnect Wi-Fi for the actual offline test.';
-    networkEl.className = 'status ' + (offline ? 'good' : 'bad');
-  }
-  addEventListener('online', networkStatus);
-  addEventListener('offline', networkStatus);
-  networkStatus();
-
-  function text(v) { return v == null ? '' : String(v); }
-  function tokens(v) {
-    return text(v).toLowerCase().match(/[a-z0-9][a-z0-9_-]*/g)?.filter(x => x.length > 1 && !STOP.has(x)) || [];
-  }
-
-  function addRecord(kind, label, value, extra={}) {
-    const body = text(value).trim();
-    if (!body) return;
-    records.push({kind,label,body,...extra, tokenSet:new Set(tokens(label + ' ' + body))});
-  }
-
-  function buildRecords(data) {
-    records = [];
-    const s = data.snapshot || {};
-    const asset = s.asset || {};
-    addRecord('asset','Asset identity', [asset.name,asset.year,asset.make,asset.model,asset.type,asset.registration_number,asset.summary].filter(Boolean).join(' · '));
-
-    for (const system of s.systems || []) addRecord('system', `System: ${system.name}`, system.description || system.name);
-    for (const c of s.components || []) addRecord('equipment', `Equipment: ${c.name}`, [c.manufacturer,c.model,c.serial_number,c.location,c.notes,c.lifecycle_status,c.lifecycle_changed_on,c.lifecycle_notes].filter(Boolean).join(' · '));
-    for (const i of s.inventory?.items || []) addRecord('inventory', `Inventory: ${i.name}`, [i.quantity,i.details,(i.locations||[]).join(', '),i.source_label,i.source_page].filter(Boolean).join(' · '));
-    for (const p of s.procedures || []) {
-      const steps=(p.steps||[]).map(x => `${x.position}. ${x.instruction}${x.note ? ' — '+x.note : ''}`).join('\n');
-      addRecord('procedure', `Procedure: ${p.title}`, [p.procedure_type,p.notes,steps].filter(Boolean).join('\n'), {page:p.source_page,documentId:p.source_document_id});
-    }
-    for (const l of s.operatingLog || []) addRecord('log', `Operating log: ${l.title || l.entry_type || 'entry'}`, [l.occurred_at,l.body,l.source].filter(Boolean).join(' · '));
-    for (const m of s.maintenanceCandidates || []) {
-      if (m.status && m.status !== 'approved') continue;
-      addRecord('maintenance', `Maintenance: ${m.action || 'record'}`, [m.date_text,m.occurred_on,m.engine_hours,m.parts_consumables,m.notes].filter(Boolean).join(' · '), {page:m.page_number,documentId:m.document_id});
-    }
-    for (const c of data.localEvidence?.documentChunks || []) {
-      addRecord('document', c.document_title || 'Document', c.text_content, {page:c.page_number,documentId:c.document_id,chunk:c.chunk_index});
-    }
-  }
-
-  function scoreRecord(qTokens, rec) {
-    if (!qTokens.length) return 0;
-    let score = 0;
-    const lowerLabel = rec.label.toLowerCase();
-    const lowerBody = rec.body.toLowerCase();
-    for (const t of qTokens) {
-      if (rec.tokenSet.has(t)) score += 3;
-      if (lowerLabel.includes(t)) score += 3;
-      if (lowerBody.includes(t)) score += 1;
-    }
-    const phrase = qTokens.join(' ');
-    if (phrase.length > 3 && lowerBody.includes(phrase)) score += 8;
-    if (rec.kind !== 'document') score += .5;
-    return score;
-  }
-
-  function search() {
-    const q = questionEl.value.trim();
-    if (!packageData || !q) return;
-    const qTokens = [...new Set(tokens(q))];
-    const hits = records.map(r => ({r,score:scoreRecord(qTokens,r)})).filter(x => x.score > 0).sort((a,b)=>b.score-a.score).slice(0,10);
-    if (!hits.length) {
-      resultsEl.innerHTML = '<p><strong>No supporting evidence found.</strong></p><p class="muted">That is the desired behavior when the package does not support the question.</p>';
-      return;
-    }
-    resultsEl.innerHTML = hits.map(({r,score}) => {
-      const provenance = r.kind === 'document'
-        ? `${escapeHtml(r.label)}${r.page ? ` · page ${r.page}` : ''}`
-        : escapeHtml(r.label);
-      return `<div class="result"><div class="source"><span class="pill">${escapeHtml(r.kind)}</span>${provenance} <span class="score">score ${score.toFixed(1)}</span></div><div class="text">${escapeHtml(r.body.slice(0,1800))}</div></div>`;
-    }).join('');
-  }
-
-  function escapeHtml(v) {
-    return text(v).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  }
-
-  fileInput.addEventListener('change', async () => {
-    const file = fileInput.files?.[0];
-    if (!file) return;
-    try {
-      const data = JSON.parse(await file.text());
-      if (data.offlineFormat !== 'ernest-offline-package') throw new Error('This is not an Ernest offline POC package.');
-      packageData = data;
-      buildRecords(data);
-      const assetName = data.snapshot?.asset?.name || 'asset';
-      const docs = data.snapshot?.evidence?.documents?.length || 0;
-      const chunks = data.localEvidence?.documentChunks?.length || 0;
-      statusEl.textContent = `Loaded ${assetName}: ${records.length.toLocaleString()} searchable records, ${docs} documents, ${chunks.toLocaleString()} document chunks.`;
-      statusEl.className = 'status good';
-      questionEl.disabled = false;
-      searchButton.disabled = false;
-      questionEl.focus();
-    } catch (err) {
-      packageData = null;
-      records = [];
-      statusEl.textContent = `Could not load package: ${err instanceof Error ? err.message : String(err)}`;
-      statusEl.className = 'status bad';
-      questionEl.disabled = true;
-      searchButton.disabled = true;
-    }
-  });
-
-  searchButton.addEventListener('click', search);
-  questionEl.addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+(()=>{
+const $=id=>document.getElementById(id),file=$('packageFile'),pkgStatus=$('packageStatus'),q=$('question'),ask=$('askButton'),connect=$('connectButton'),model=$('modelSelect'),ollama=$('ollamaStatus'),network=$('networkStatus'),results=$('results'),answer=$('answer');
+let data=null,records=[],ollamaReady=false;
+const STOP=new Set('a an and are as at be by can could did do does for from had has have how i in into is it me my of on or our should that the their there these they this those to was we what when where which who why will with would you your'.split(' '));
+const txt=v=>v==null?'':String(v); const esc=v=>txt(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function tokens(v){return txt(v).toLowerCase().match(/[a-z0-9][a-z0-9_-]*/g)?.filter(x=>x.length>1&&!STOP.has(x))||[]}
+function net(){const off=!navigator.onLine;network.textContent=off?'Browser reports: OFFLINE — good.':'Browser reports: online. Disconnect Wi-Fi for the actual proof.';network.className='status '+(off?'good':'bad')}addEventListener('online',net);addEventListener('offline',net);net();
+function add(kind,label,body,extra={}){body=txt(body).trim();if(body)records.push({kind,label,body,...extra,tokenSet:new Set(tokens(label+' '+body))})}
+function build(d){records=[];const s=d.snapshot||{},a=s.asset||{};add('asset','Asset identity',[a.name,a.year,a.make,a.model,a.type,a.registration_number,a.summary].filter(Boolean).join(' · '));for(const x of s.systems||[])add('system','System: '+x.name,x.description||x.name);for(const x of s.components||[])add('equipment','Equipment: '+x.name,[x.manufacturer,x.model,x.serial_number,x.location,x.notes,x.lifecycle_status,x.lifecycle_changed_on,x.lifecycle_notes].filter(Boolean).join(' · '));for(const x of s.inventory?.items||[])add('inventory','Inventory: '+x.name,[x.quantity,x.details,(x.locations||[]).join(', '),x.source_label,x.source_page].filter(Boolean).join(' · '));for(const x of s.procedures||[])add('procedure','Procedure: '+x.title,[x.procedure_type,x.notes,(x.steps||[]).map(z=>`${z.position}. ${z.instruction}${z.note?' — '+z.note:''}`).join('\n')].filter(Boolean).join('\n'),{page:x.source_page});for(const x of s.operatingLog||[])add('log','Operating log: '+(x.title||x.entry_type||'entry'),[x.occurred_at,x.body,x.source].filter(Boolean).join(' · '));for(const x of s.maintenanceCandidates||[]){if(x.status&&x.status!=='approved')continue;add('maintenance','Maintenance: '+(x.action||'record'),[x.date_text,x.occurred_on,x.engine_hours,x.parts_consumables,x.notes].filter(Boolean).join(' · '),{page:x.page_number})}for(const x of d.localEvidence?.documentChunks||[])add('document',x.document_title||'Document',x.text_content,{page:x.page_number})}
+function score(qt,r){let s=0,ll=r.label.toLowerCase(),bb=r.body.toLowerCase();for(const t of qt){if(r.tokenSet.has(t))s+=3;if(ll.includes(t))s+=3;if(bb.includes(t))s+=1}const p=qt.join(' ');if(p.length>3&&bb.includes(p))s+=8;if(r.kind!=='document')s+=.5;return s}
+function retrieve(question){const qt=[...new Set(tokens(question))];return records.map(r=>({r,score:score(qt,r)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,8)}
+function showHits(hits){if(!hits.length){results.innerHTML='<p><strong>No supporting evidence found.</strong></p>';return}results.innerHTML='<h3>Local evidence used</h3>'+hits.map(({r,score},i)=>`<div class="result"><div class="source"><span class="pill">S${i+1}</span><span class="pill">${esc(r.kind)}</span>${esc(r.label)}${r.page?` · page ${r.page}`:''} <span class="muted">score ${score.toFixed(1)}</span></div><div class="text">${esc(r.body.slice(0,1600))}</div></div>`).join('')}
+async function connectOllama(){connect.disabled=true;ollama.textContent='Connecting…';try{const res=await fetch('http://127.0.0.1:11434/api/tags');if(!res.ok)throw new Error('HTTP '+res.status);const j=await res.json(),models=j.models||[];model.innerHTML='';for(const m of models){const o=document.createElement('option');o.value=m.name;o.textContent=m.name;model.appendChild(o)}if(!models.length)throw new Error('Ollama is running, but no models are installed.');ollamaReady=true;model.disabled=false;ollama.textContent=`Connected locally · ${models.length} model${models.length===1?'':'s'} available.`;ollama.className='status good';refresh()}catch(e){ollamaReady=false;ollama.textContent='Could not connect to local Ollama. Install/start Ollama and make sure this page is allowed to access localhost. '+(e?.message||e);ollama.className='status bad'}finally{connect.disabled=false}}
+function refresh(){q.disabled=!data;ask.disabled=!(data&&ollamaReady)}
+async function askLocal(){const question=q.value.trim();if(!question||!data||!ollamaReady)return;const hits=retrieve(question);showHits(hits);if(!hits.length){answer.textContent='I do not have enough local evidence to answer that.';return}ask.disabled=true;answer.textContent='Thinking locally…';const context=hits.map(({r},i)=>`[S${i+1}] ${r.kind.toUpperCase()} — ${r.label}${r.page?' — page '+r.page:''}\n${r.body.slice(0,1800)}`).join('\n\n');const system=`You are Ernest, a cautious offline asset assistant. Answer ONLY from the supplied local evidence. Never use background knowledge to invent an asset fact. If evidence is insufficient or conflicting, say so plainly. Cite factual claims using [S1], [S2], etc. Conversation history is not evidence. Keep the answer concise and useful.`;try{const res=await fetch('http://127.0.0.1:11434/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:model.value,stream:false,messages:[{role:'system',content:system},{role:'user',content:`Question: ${question}\n\nLOCAL EVIDENCE:\n${context}`}],options:{temperature:0.1,num_ctx:8192}})});if(!res.ok)throw new Error('Ollama HTTP '+res.status);const j=await res.json();answer.textContent=j.message?.content?.trim()||'The local model returned no answer.'}catch(e){answer.textContent='Local model call failed: '+(e?.message||e)}finally{ask.disabled=false}}
+file.addEventListener('change',async()=>{const f=file.files?.[0];if(!f)return;try{const d=JSON.parse(await f.text());if(d.offlineFormat!=='ernest-offline-package')throw new Error('Not an Ernest offline package.');data=d;build(d);pkgStatus.textContent=`Loaded ${d.snapshot?.asset?.name||'asset'} · ${records.length.toLocaleString()} searchable records · ${(d.localEvidence?.documentChunks?.length||0).toLocaleString()} document chunks.`;pkgStatus.className='status good';refresh();q.focus()}catch(e){data=null;records=[];pkgStatus.textContent='Could not load package: '+(e?.message||e);pkgStatus.className='status bad';refresh()}});
+connect.addEventListener('click',connectOllama);ask.addEventListener('click',askLocal);q.addEventListener('keydown',e=>{if(e.key==='Enter'&&!ask.disabled)askLocal()});
 })();
-</script>
-</body>
-</html>
+</script></main></body></html>
