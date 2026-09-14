@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 
 const LOG_TYPES = new Set(['note', 'maintenance', 'passage', 'observation', 'incident']);
+const PENDING_STATUSES = new Set(['queued', 'failed']);
 
 function text(value) {
   return value == null ? '' : String(value).trim();
@@ -47,6 +48,32 @@ function validateDraft(draft, expectedAssetId) {
     body,
     latitude,
     longitude,
+  };
+}
+
+function cloneEntry(entry) {
+  return JSON.parse(JSON.stringify(entry));
+}
+
+function toKnowledgeRecord(entry, tokenize) {
+  const payload = entry.payload || {};
+  const body = [
+    `Occurred at: ${payload.occurredAt || ''}`,
+    `Title: ${payload.title || ''}`,
+    `Type: ${payload.entryType || 'note'}`,
+    `Entry: ${payload.body || ''}`,
+    `Source: local operating log`,
+    `Sync status: ${entry.status || 'queued'}`,
+  ].filter((line) => !line.endsWith(': ')).join('\n');
+  const label = `Local operating log: ${payload.title || payload.entryType || 'entry'}`;
+  return {
+    kind: 'log',
+    label,
+    body,
+    source: 'local-outbox',
+    clientMutationId: entry.clientMutationId,
+    syncStatus: entry.status,
+    tokenSet: new Set(tokenize(`${label} ${body}`)),
   };
 }
 
@@ -99,11 +126,42 @@ export function createLocalOutbox({ outboxPath, expectedAssetId = null }) {
     };
     entries.push(entry);
     await persist();
-    return entry;
+    return cloneEntry(entry);
+  }
+
+  async function markAttempt(clientMutationId) {
+    const entry = entries.find((candidate) => candidate.clientMutationId === clientMutationId);
+    if (!entry) throw new Error('Outbox entry not found.');
+    entry.attempts = Number(entry.attempts || 0) + 1;
+    entry.updatedAt = new Date().toISOString();
+    await persist();
+    return cloneEntry(entry);
+  }
+
+  async function markFailed(clientMutationId, errorMessage) {
+    const entry = entries.find((candidate) => candidate.clientMutationId === clientMutationId);
+    if (!entry) throw new Error('Outbox entry not found.');
+    entry.status = 'failed';
+    entry.lastError = text(errorMessage) || 'Upload failed.';
+    entry.updatedAt = new Date().toISOString();
+    await persist();
+    return cloneEntry(entry);
+  }
+
+  async function markSynced(clientMutationId, cloudId = null) {
+    const entry = entries.find((candidate) => candidate.clientMutationId === clientMutationId);
+    if (!entry) throw new Error('Outbox entry not found.');
+    entry.status = 'synced';
+    entry.lastError = null;
+    entry.cloudId = text(cloudId) || entry.cloudId || null;
+    entry.syncedAt = new Date().toISOString();
+    entry.updatedAt = entry.syncedAt;
+    await persist();
+    return cloneEntry(entry);
   }
 
   function pending() {
-    return entries.filter((entry) => entry.status === 'queued' || entry.status === 'failed');
+    return entries.filter((entry) => PENDING_STATUSES.has(entry.status));
   }
 
   function summary() {
@@ -124,8 +182,12 @@ export function createLocalOutbox({ outboxPath, expectedAssetId = null }) {
   return {
     load,
     queueLogEntry,
-    list: () => entries.map((entry) => ({ ...entry })),
-    pending: () => pending().map((entry) => ({ ...entry })),
+    markAttempt,
+    markFailed,
+    markSynced,
+    list: () => entries.map(cloneEntry),
+    pending: () => pending().map(cloneEntry),
+    knowledgeRecords: (tokenize) => entries.map((entry) => toKnowledgeRecord(entry, tokenize)),
     summary,
   };
 }
