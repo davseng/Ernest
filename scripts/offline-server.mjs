@@ -54,6 +54,10 @@ async function refreshPendingWriteCount() {
   await knowledge.setPendingLocalWrites(outbox.summary().pending);
 }
 
+function getRetrievalRecords() {
+  return [...knowledge.getRecords(), ...outbox.knowledgeRecords(tokenize)];
+}
+
 async function handleRequest(req, res) {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
@@ -72,6 +76,7 @@ async function handleRequest(req, res) {
       storage: summary?.storage || 'json-package',
       sync: knowledge.getSyncState(),
       outbox: outbox.summary(),
+      localKnowledgeRecords: getRetrievalRecords().length,
       modelAdapter: modelAdapter.id,
       ollamaBase,
     });
@@ -107,6 +112,7 @@ async function handleRequest(req, res) {
       sendJson(res, 201, {
         ok: true,
         queued: true,
+        locallySearchable: true,
         uploadEnabled: false,
         entry,
         outbox: outbox.summary(),
@@ -186,7 +192,7 @@ async function handleRequest(req, res) {
       return;
     }
 
-    const hits = retrieve(knowledge.getRecords(), question);
+    const hits = retrieve(getRetrievalRecords(), question);
     const evidence = hits.map(toPublicEvidence);
     if (!evidence.length) {
       sendJson(res, 200, { answer: 'I do not have enough local evidence to answer that.', evidence });
