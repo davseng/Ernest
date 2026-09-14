@@ -12,6 +12,9 @@
 .env*
 !.env.example
 
+# local Ernest runtime data
+/runtime-data/
+
 # logs
 npm-debug.log*
 yarn-debug.log*
