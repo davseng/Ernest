@@ -43,6 +43,8 @@ export function toPublicEvidence(hit, index) {
     body: hit.record.body,
     page: hit.record.page || null,
     source: hit.record.source || null,
+    clientMutationId: hit.record.clientMutationId || null,
+    syncStatus: hit.record.syncStatus || null,
     score: hit.score,
   };
 }
