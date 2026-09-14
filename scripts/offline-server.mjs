@@ -73,8 +73,8 @@ async function handleRequest(req, res) {
   if (req.method === 'POST' && url.pathname === '/api/package') {
     const pkg = await readJsonBody(req);
     try {
-      await knowledge.importPackage(pkg);
-      sendJson(res, 200, { ok: true, package: knowledge.summary(), sync: knowledge.getSyncState() });
+      const imported = await knowledge.importPackage(pkg);
+      sendJson(res, 200, { ok: true, imported, package: knowledge.summary(), sync: knowledge.getSyncState() });
     } catch (error) {
       sendJson(res, 400, { error: error.message });
     }
@@ -85,6 +85,30 @@ async function handleRequest(req, res) {
     const body = await readJsonBody(req);
     const plan = planCloudToBoatSync({ localState: knowledge.getSyncState(), remote: body.remote });
     sendJson(res, plan.action === 'reject' || plan.action === 'unsupported' ? 400 : 200, { ok: plan.action !== 'reject' && plan.action !== 'unsupported', plan });
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/sync/apply') {
+    const body = await readJsonBody(req);
+    const pkg = body.package;
+    const plan = planCloudToBoatSync({ localState: knowledge.getSyncState(), remote: pkg?.sync });
+
+    if (plan.action === 'reject' || plan.action === 'unsupported') {
+      sendJson(res, 400, { ok: false, plan });
+      return;
+    }
+
+    if (plan.action === 'none') {
+      sendJson(res, 200, { ok: true, applied: false, plan, package: knowledge.summary(), sync: knowledge.getSyncState() });
+      return;
+    }
+
+    try {
+      const imported = await knowledge.importPackage(pkg);
+      sendJson(res, 200, { ok: true, applied: true, plan, imported, package: knowledge.summary(), sync: knowledge.getSyncState() });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, applied: false, plan, error: error.message, package: knowledge.summary(), sync: knowledge.getSyncState() });
+    }
     return;
   }
 
