@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
+import { validatePackageIntegrity } from './package-integrity.mjs';
 import { buildImportedSyncState, loadSyncState, saveSyncState } from './sync-state.mjs';
 
 const text = (value) => value == null ? '' : String(value);
@@ -103,7 +104,7 @@ export function createJsonKnowledgeStore({ dataDir, packagePath, statePath, toke
   let syncState = null;
 
   function validatePackage(pkg) {
-    if (pkg?.offlineFormat !== 'ernest-offline-package') throw new Error('Not an Ernest offline package.');
+    return validatePackageIntegrity(pkg);
   }
 
   function setPackage(pkg) {
@@ -125,14 +126,32 @@ export function createJsonKnowledgeStore({ dataDir, packagePath, statePath, toke
   }
 
   async function importPackage(pkg) {
-    validatePackage(pkg);
+    const integrity = validatePackage(pkg);
+    const serialized = JSON.stringify(pkg);
+    const tempPath = `${packagePath}.tmp`;
+
     await fs.mkdir(dataDir, { recursive: true });
-    await fs.writeFile(packagePath, JSON.stringify(pkg), 'utf8');
+    await fs.writeFile(tempPath, serialized, 'utf8');
+
+    const staged = JSON.parse(await fs.readFile(tempPath, 'utf8'));
+    validatePackage(staged);
+
+    await fs.rename(tempPath, packagePath);
+
+    const committed = JSON.parse(await fs.readFile(packagePath, 'utf8'));
+    validatePackage(committed);
+    setPackage(committed);
+
     if (statePath) {
-      syncState = buildImportedSyncState(pkg, syncState);
-      await saveSyncState(statePath, syncState);
+      const nextState = buildImportedSyncState(committed, syncState);
+      await saveSyncState(statePath, nextState);
+      syncState = nextState;
     }
-    setPackage(pkg);
+
+    return {
+      integrity,
+      packageRevision: committed.sync?.packageRevision || null,
+    };
   }
 
   function summary() {
