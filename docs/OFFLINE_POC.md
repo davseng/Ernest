@@ -89,7 +89,69 @@ Acceptance: with networking disabled, retrieval finds useful evidence for known 
 
 Connect the retrieval harness to a locally running model through a local endpoint/runtime. Keep the model adapter replaceable so the experiment can compare models later.
 
-Acceptance: with networking disabled, ask 30–50 representative questions and score answer correctness, refusal quality, latency, RAM, storage and CPU/GPU usage.
+Functional proof completed: the locally opened POC page loaded the Far Better package, retrieved asset-specific evidence, called local Ollama, produced a grounded answer, and refused an unsupported question with Wi-Fi disconnected.
+
+The current test Surface is not representative deployment hardware. Detailed latency/RAM/CPU/GPU benchmarking is deferred until representative onboard hardware is available. The important Slice C architectural path has been proven.
+
+### Slice D — Boat-Local Ernest Runtime
+
+The goal is to turn the browser-only experiment into the shape of an onboard Ernest service:
+
+Browser on laptop/tablet/phone
+→ local Ernest HTTP server
+→ locally stored Ernest knowledge
+→ server-side retrieval
+→ replaceable local model adapter
+→ Ollama
+→ grounded answer + sources
+
+The governing architectural principle is:
+
+> Ernest owns the knowledge; models reason over it; cloud connectivity enhances Ernest but is not required for Ernest to know the asset.
+
+#### D1 — Local runtime service
+
+Implemented on `feature/offline-poc` without changing production behavior:
+
+- `npm run offline` starts a dependency-light Node HTTP service on port 3210 by default.
+- The service binds to `0.0.0.0` so LAN-device testing can be added later.
+- A local UI is served from `public/offline-local.html`.
+- The existing Ernest offline JSON package can be imported through the local UI.
+- The package is copied into ignored `runtime-data/offline-package.json` and automatically reloaded after a server restart.
+- Retrieval now runs server-side rather than in browser JavaScript.
+- Structured evidence is rendered with explicit field labels such as Item, Quantity, Location, Model, and Source to reduce model ambiguity.
+- Local model access is behind a server-side adapter boundary; D1 currently implements Ollama only.
+- Ollama model discovery and `/api/chat` calls happen from the local Ernest server.
+- Only the question and retrieved local evidence are sent to the selected local model.
+- The prior `public/offline-poc.html` harness remains intact as the Slice B/C proof artifact.
+
+D1 does **not** implement SQLite, two-way sync, offline writes, cloud routing, production UI replacement, or authentication redesign.
+
+#### D1 acceptance test
+
+On any available development computer with Node 20+ and Ollama:
+
+1. Check out `feature/offline-poc` and install existing project dependencies if needed.
+2. Run `npm run offline`.
+3. Open `http://localhost:3210`.
+4. Import a valid Ernest offline JSON package.
+5. Connect to Ollama and choose an installed model.
+6. Ask a supported question and verify a grounded answer with evidence/source references.
+7. Ask an unsupported question and verify Ernest refuses rather than inventing a fact.
+8. Stop the server completely.
+9. Restart with `npm run offline` and verify the package is already loaded without re-importing it.
+10. Disconnect WAN internet and repeat local Q&A.
+
+The old Surface may be used for this functional proof, but its model latency is not an acceptance criterion. LAN access, power use, accelerator performance, and hardware sizing are deferred until representative boat hardware is available.
+
+#### Planned D2/D3 work
+
+After D1 is functionally verified:
+
+- introduce a persistent local knowledge store (likely SQLite) behind a clean data-access boundary;
+- keep the cloud database authoritative while sync remains one-way/export-driven;
+- harden LAN access and test Ernest from a second device on the same local network;
+- defer representative hardware performance, power, and storage testing until the intended onboard computer is available.
 
 ## Initial question set
 
