@@ -93,6 +93,20 @@ async function handleRequest(req, res) {
     return;
   }
 
+  if (req.method === 'GET' && url.pathname === '/api/outbox/upload-batch') {
+    try {
+      const assetId = knowledge.summary()?.assetId || null;
+      sendJson(res, 200, {
+        ok: true,
+        uploadEnabled: false,
+        batch: outbox.buildUploadBatch(assetId),
+      });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, uploadEnabled: false, error: error.message });
+    }
+    return;
+  }
+
   if (req.method === 'POST' && url.pathname === '/api/log') {
     if (!knowledge.hasPackage()) {
       sendJson(res, 409, { error: 'No Ernest offline package is loaded.' });
