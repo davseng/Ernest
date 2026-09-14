@@ -25,59 +25,29 @@ The prototype should preserve Ernest's trust model: source-backed information re
 
 ## Deliberately out of scope
 
-Phase 1 will NOT implement:
-
-- production two-way synchronization
-- broad offline editing
-- conflict resolution
-- authentication redesign
-- multi-user sharing
-- photo understanding
-- weather or routing
-- automatic document ingestion
-- production UI replacement
-- automatic model installation
+Phase 1 will NOT implement production two-way synchronization, broad offline editing, conflict resolution, authentication redesign, multi-user sharing, photo understanding, weather/routing, automatic document ingestion, production UI replacement, or automatic model installation.
 
 ## Experiment architecture
 
-Cloud Ernest
+Cloud Ernest produces an owner-scoped package using the existing structured export plus extracted document text/chunks and provenance. Original PDFs/photos and storage credentials remain outside the offline package.
 
-1. Produce a portable offline package for one owner-scoped asset.
-2. Reuse the existing versioned asset export for structured knowledge.
-3. Add the document text/chunks needed for grounded local retrieval.
-4. Do not expose R2 storage keys or create permanent public URLs.
-
-Local Ernest
-
-1. Load the package into a local knowledge-store boundary.
-2. Retrieve relevant structured facts and document passages locally.
-3. Send only that retrieved context to a locally running model.
-4. Return an answer with local source references or refuse when evidence is insufficient.
-5. Persist selected local writes in an outbox while disconnected.
-6. Make unsynced local operating-log facts searchable immediately.
-7. Require no network request during offline read/query operation.
+Local Ernest loads that package, retrieves structured/document evidence locally, calls a replaceable local model adapter, returns grounded answers or refusals, persists selected offline writes in an outbox, and makes those new local facts searchable immediately.
 
 ## Build slices
 
 ### Slice A — Offline package
 
-Create an authenticated owner-scoped download containing structured knowledge plus extracted document text and provenance. Original PDFs/photos remain outside the POC package.
-
-Acceptance completed: the package contains sufficient Far Better knowledge for useful local retrieval and grounded answers.
+Acceptance completed. The package contains sufficient Far Better structured knowledge and document evidence for useful local retrieval and grounded answers.
 
 ### Slice B — Local retrieval harness
-
-Create a local-only retrieval program that loads the package, searches structured data/document text, and shows source/page provenance.
 
 Acceptance completed with networking disabled.
 
 ### Slice C — Local model
 
-Connect local retrieval to a locally running model through a replaceable adapter.
+Functional proof completed: Far Better knowledge was loaded locally, evidence was retrieved locally, Ollama produced a grounded answer, and Ernest refused an unsupported question with Wi-Fi disconnected.
 
-Functional proof completed: the locally opened POC loaded Far Better knowledge, retrieved asset-specific evidence, called local Ollama, produced a grounded supported answer, and refused an unsupported question with Wi-Fi disconnected.
-
-The current Surface is not representative deployment hardware. Local-model questions take roughly ten minutes and can overwhelm that machine, so additional model calls are reserved for milestone acceptance tests rather than routine development. Detailed performance testing is deferred until representative onboard hardware is available.
+The current Surface is not representative deployment hardware. Additional local-model questions are reserved for milestone acceptance rather than routine development.
 
 ### Slice D — Boat-Local Ernest Runtime
 
@@ -97,79 +67,79 @@ Governing principle:
 
 #### D1 — Runtime boundaries
 
-Implemented on `feature/offline-poc` without changing production behavior:
+Implemented on `feature/offline-poc`:
 
 - dependency-light local HTTP service;
-- LAN-capable bind (`0.0.0.0`) for later onboard testing;
-- separate knowledge-store, retrieval, and model-adapter modules;
+- LAN-capable bind (`0.0.0.0`);
+- separate knowledge-store, retrieval, outbox, sync-planner, and model-adapter modules;
 - imported package persistence under ignored `runtime-data/`;
 - server-side retrieval and Ollama calls;
-- explicit labeled structured evidence;
-- Vercel Boat runtime preview for UI/trust-behavior development while local hardware execution is deferred.
-
-The existing browser-only Slice B/C harness remains as a proof artifact.
+- explicit labeled evidence and refusal behavior;
+- Vercel Boat runtime preview for UI/trust-behavior development while representative local hardware is unavailable.
 
 #### D2 — Persistence and sync boundary
 
-Implemented as architecture scaffolding while the cloud remains authoritative:
+Implemented:
 
-- offline package format advanced to version 2;
-- each package includes a sync protocol version, asset ID, unique package ID, SHA-256 package revision, direction, full-snapshot marker, base revision, and future cursor field;
-- the package revision is derived from exported knowledge/evidence content;
-- importing a package creates persistent `runtime-data/local-state.json` metadata alongside the knowledge package;
-- local state records last cloud import, package revision/version, protocol version, Cloud→Boat mode, Boat→Cloud mode, and pending-local-write count;
-- older version-1 POC packages remain importable through fallbacks;
-- `/api/status` exposes local storage/sync state.
+- offline package format version 2;
+- sync protocol version, asset ID, package ID, SHA-256 package revision, direction, full-snapshot marker, base revision, and future cursor;
+- content-derived package revision;
+- persistent `runtime-data/local-state.json`;
+- last cloud import/revision, package version, protocol version, Cloud→Boat mode, Boat→Cloud mode, and pending-write count;
+- backward compatibility for version-1 POC packages;
+- `/api/status` exposes storage and sync state.
 
 SQLite remains a likely later storage implementation behind the same boundary, not a change to the knowledge model.
 
 #### D3 — Cloud → Boat sync and safe snapshot replacement
 
-Implemented on the experiment branch:
+Implemented:
 
-1. Authenticated cloud route `/assets/[id]/offline-sync` accepts the boat's current `revision` as a query parameter.
-2. Cloud compares its content-derived revision to the boat revision.
-3. Matching revisions return `status: current` and no package payload.
-4. Different/missing revisions return `status: update` plus a fresh full package.
-5. Local `sync-planner.mjs` returns `none`, `replace-full-snapshot`, `reject`, or `unsupported`.
-6. `/api/sync/plan` exposes that decision separately from retrieval/model logic.
-7. Version-2 packages are integrity-checked locally by recomputing SHA-256.
-8. Incoming snapshots are staged, parsed, verified, renamed into place, read back, and verified again before activation.
-9. `local-state.json` uses its own atomic temporary-file rename and advances only after package replacement succeeds.
-10. `/api/sync/apply` combines planning and verified application; unchanged revisions perform no write.
+1. Authenticated cloud route `/assets/[id]/offline-sync` accepts the boat revision.
+2. Matching revision returns `status: current` with no package payload.
+3. Different/missing revision returns `status: update` plus a fresh package.
+4. Local sync planning returns `none`, `replace-full-snapshot`, `reject`, or `unsupported`.
+5. Version-2 packages are integrity-checked by recomputing SHA-256.
+6. Incoming snapshots are staged, parsed, verified, renamed into place, read back, and verified before activation.
+7. Local sync state advances only after package replacement succeeds.
+8. `/api/sync/apply` combines planning and safe application.
 
-This remains a correctness-first full-refresh protocol. The cloud is authoritative and no local write is uploaded yet.
+This remains a correctness-first full-refresh protocol. Representative hardware acceptance and the authenticated boat-side cloud client are deferred.
 
-Remaining D3 work that depends on representative hardware/network access:
+#### D4 — First offline write: operating log
 
-- add the authenticated boat-side cloud client;
-- exercise end-to-end Cloud→Boat refresh on the onboard runtime;
-- later add cursor/entity deltas where stable change markers exist.
+The offline operating-log round-trip is now structurally implemented while cloud mutation remains disabled by default.
 
-#### D4 — First offline write: operating-log outbox
+Local runtime:
 
-Local outbox scaffolding is implemented without enabling cloud ingestion:
+- `runtime-data/outbox.json` persists local writes atomically;
+- `/api/log` queues a local entry for the currently loaded asset;
+- supported types: `note`, `maintenance`, `passage`, `observation`, `incident`;
+- immutable client-generated UUID is the future idempotency key;
+- payload includes occurred-at, type, title, body, optional latitude/longitude, and source `manual`;
+- queue metadata tracks queued/failed/synced state, attempts, last error, timestamps, and cloud ID;
+- queued/failed entries are merged into local retrieval immediately with `source: local-outbox` provenance;
+- synced entries leave the local overlay so later cloud snapshots do not duplicate evidence;
+- `/api/outbox` exposes queue state;
+- `/api/outbox/upload-batch` builds the Boat→Cloud protocol envelope without transmitting it;
+- `/api/outbox/reconcile` consumes a successful cloud result and marks matching entries synced;
+- `/api/status` exposes pending-write and total-local-knowledge counts;
+- the local UI now includes runtime metrics, a local operating-log form, queue visibility, and explicit Cloud Upload Off status.
 
-- `runtime-data/outbox.json` persists queued local writes atomically;
-- `/api/log` accepts one local operating-log entry while an asset package is loaded;
-- supported log types match the cloud domain: `note`, `maintenance`, `passage`, `observation`, and `incident`;
-- each queued item gets an immutable client-generated UUID (`clientMutationId`);
-- payload includes asset ID, occurred-at time, type, title, body, optional latitude/longitude, and source `manual`;
-- queue metadata includes status, attempt count, last error, created/updated time, synced time, and future cloud ID;
-- `/api/outbox` returns queued records and summary counts;
-- `/api/status` includes outbox summary and total locally searchable record count;
-- `local-state.json.pendingLocalWrites` is kept in sync with queued/failed items;
-- `boatToCloudMode` explicitly records `outbox-disabled-upload`;
-- queued/failed local log entries are merged into retrieval immediately, so Ernest can reason over newly recorded facts before reconnecting;
-- local evidence exposes `source: local-outbox`, client mutation ID, and sync status for provenance;
-- synced outbox entries are excluded from the local overlay so a later cloud snapshot does not create duplicate retrieval evidence;
-- outbox entries have internal state-transition helpers for upload attempts, failures, and successful sync, but no network upload path uses them yet;
-- `/api/outbox/upload-batch` produces the future Boat→Cloud protocol envelope without transmitting it;
-- each upload record uses `clientMutationId` as its idempotency key;
-- a server-only cloud validator (`src/data/offline-log-sync.ts`) validates the future batch shape and maps that UUID directly to the existing `log_entries.id` primary key, allowing idempotent ingestion without a schema migration;
-- cloud upload/ingestion remains intentionally disabled.
+Cloud side:
 
-This leaves the next Boat→Cloud step narrowly scoped: add an authenticated ingestion route using the existing owner check and an idempotent insert, then add the local authenticated sender. Neither should be enabled until the authentication path is reviewed, because Preview and Production share the cloud database.
+- server-only batch validation verifies protocol, asset, entry type, timestamps, coordinates, and matching idempotency keys;
+- `clientMutationId` maps directly to existing `log_entries.id`, so the PostgreSQL primary key is the idempotency boundary without a migration;
+- idempotent persistence is owner-scoped and distinguishes newly created vs already-existing records;
+- POST on `/assets/[id]/offline-sync` is wired to that persistence helper;
+- **the route refuses writes unless `ERNEST_OFFLINE_LOG_UPLOAD_ENABLED=true`**;
+- that flag must remain off until Boat→Cloud authentication/write activation is explicitly approved.
+
+The full intended lifecycle is therefore represented in code:
+
+local entry → immediate local knowledge → persistent outbox → upload batch → owner-scoped idempotent cloud insert → result → local reconciliation → future refreshed cloud snapshot.
+
+The remaining D4 dependency is not data modeling; it is the authenticated boat-side sender/credential design and representative-hardware/network testing.
 
 #### Deferred hardware acceptance
 
@@ -177,28 +147,23 @@ When representative onboard hardware is available:
 
 1. start local Ernest;
 2. verify package, sync state, and outbox survive restart;
-3. create an offline operating-log entry and verify it remains queued after restart;
-4. verify that queued entry is retrievable locally before cloud sync;
+3. create an offline operating-log entry and verify it survives restart;
+4. verify the queued entry is retrievable locally before cloud sync;
 5. disconnect WAN and verify Q&A;
 6. access Ernest from a second device on the same LAN;
-7. verify supported-answer and refusal behavior;
-8. then measure latency, RAM, accelerator use, power, and storage.
+7. exercise Cloud→Boat refresh and, only after write activation approval, Boat→Cloud operating-log sync;
+8. measure latency, RAM, accelerator use, power, and storage.
 
 Do not spend additional time performance-tuning the old Surface.
 
 ## Minimal acceptance questions
 
-Because the current Surface is slow, keep local-model acceptance to the minimum needed:
-
-- one known supported question;
-- one deliberately unsupported question.
-
-Those two trust behaviors have already been demonstrated for the current Slice D preview. Do not rerun them for every architectural change.
+The supported-answer and unsupported-answer trust behaviors have already been demonstrated. Do not rerun expensive Ollama tests for routine architectural changes.
 
 ## Longer-term roadmap
 
 1. Local runtime and persistence boundary.
-2. Incremental Cloud→Boat synchronization.
+2. Cloud→Boat synchronization.
 3. First Boat→Cloud write (operating log).
 4. Automatic local/cloud model routing so Ernest behaves as one assistant.
 5. Agentic actions over the structured knowledge base.
