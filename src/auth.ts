@@ -4,6 +4,7 @@ import NextAuth from "next-auth";
 import Nodemailer from "next-auth/providers/nodemailer";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
+const sharedCookieDomain = process.env.AUTH_COOKIE_DOMAIN?.trim();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PostgresAdapter(pool),
@@ -22,6 +23,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   })],
   pages: { signIn: "/sign-in" },
   session: { strategy: "database" },
+  cookies: sharedCookieDomain ? {
+    sessionToken: {
+      name: "__Secure-authjs.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: true,
+        domain: sharedCookieDomain,
+      },
+    },
+  } : undefined,
   callbacks: {
     session({ session, user }) {
       session.user.id = user.id;
