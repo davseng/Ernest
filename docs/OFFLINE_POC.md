@@ -54,7 +54,8 @@ Local Ernest
 3. Send only that retrieved context to a locally running model.
 4. Return an answer with local source references or refuse when evidence is insufficient.
 5. Persist selected local writes in an outbox while disconnected.
-6. Require no network request during offline read/query operation.
+6. Make unsynced local operating-log facts searchable immediately.
+7. Require no network request during offline read/query operation.
 
 ## Build slices
 
@@ -147,23 +148,28 @@ Remaining D3 work that depends on representative hardware/network access:
 
 #### D4 — First offline write: operating-log outbox
 
-Local outbox scaffolding is now implemented without enabling cloud ingestion:
+Local outbox scaffolding is implemented without enabling cloud ingestion:
 
 - `runtime-data/outbox.json` persists queued local writes atomically;
 - `/api/log` accepts one local operating-log entry while an asset package is loaded;
 - supported log types match the cloud domain: `note`, `maintenance`, `passage`, `observation`, and `incident`;
-- each queued item gets an immutable client-generated UUID (`clientMutationId`) intended to become the future idempotency key;
+- each queued item gets an immutable client-generated UUID (`clientMutationId`);
 - payload includes asset ID, occurred-at time, type, title, body, optional latitude/longitude, and source `manual`;
 - queue metadata includes status, attempt count, last error, created/updated time, synced time, and future cloud ID;
 - `/api/outbox` returns queued records and summary counts;
-- `/api/status` includes outbox summary;
+- `/api/status` includes outbox summary and total locally searchable record count;
 - `local-state.json.pendingLocalWrites` is kept in sync with queued/failed items;
 - `boatToCloudMode` explicitly records `outbox-disabled-upload`;
-- cloud upload/ingestion is intentionally not implemented yet.
+- queued/failed local log entries are merged into retrieval immediately, so Ernest can reason over newly recorded facts before reconnecting;
+- local evidence exposes `source: local-outbox`, client mutation ID, and sync status for provenance;
+- synced outbox entries are excluded from the local overlay so a later cloud snapshot does not create duplicate retrieval evidence;
+- outbox entries have internal state-transition helpers for upload attempts, failures, and successful sync, but no network upload path uses them yet;
+- `/api/outbox/upload-batch` produces the future Boat→Cloud protocol envelope without transmitting it;
+- each upload record uses `clientMutationId` as its idempotency key;
+- a server-only cloud validator (`src/data/offline-log-sync.ts`) validates the future batch shape and maps that UUID directly to the existing `log_entries.id` primary key, allowing idempotent ingestion without a schema migration;
+- cloud upload/ingestion remains intentionally disabled.
 
-This creates a durable local write contract without risking a cloud mutation. The next D4 step is to design and review the authenticated idempotent cloud ingestion contract before any upload path is enabled.
-
-A later refinement should also make queued local log entries immediately available to local retrieval so Ernest can reason over facts recorded during an offline passage before they have synced to cloud.
+This leaves the next Boat→Cloud step narrowly scoped: add an authenticated ingestion route using the existing owner check and an idempotent insert, then add the local authenticated sender. Neither should be enabled until the authentication path is reviewed, because Preview and Production share the cloud database.
 
 #### Deferred hardware acceptance
 
@@ -172,10 +178,11 @@ When representative onboard hardware is available:
 1. start local Ernest;
 2. verify package, sync state, and outbox survive restart;
 3. create an offline operating-log entry and verify it remains queued after restart;
-4. disconnect WAN and verify Q&A;
-5. access Ernest from a second device on the same LAN;
-6. verify supported-answer and refusal behavior;
-7. then measure latency, RAM, accelerator use, power, and storage.
+4. verify that queued entry is retrievable locally before cloud sync;
+5. disconnect WAN and verify Q&A;
+6. access Ernest from a second device on the same LAN;
+7. verify supported-answer and refusal behavior;
+8. then measure latency, RAM, accelerator use, power, and storage.
 
 Do not spend additional time performance-tuning the old Surface.
 
