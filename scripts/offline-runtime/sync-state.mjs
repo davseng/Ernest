@@ -35,5 +35,7 @@ export async function loadSyncState(statePath) {
 }
 
 export async function saveSyncState(statePath, state) {
-  await fs.writeFile(statePath, JSON.stringify(state, null, 2), 'utf8');
+  const tempPath = `${statePath}.tmp`;
+  await fs.writeFile(tempPath, JSON.stringify(state, null, 2), 'utf8');
+  await fs.rename(tempPath, statePath);
 }
