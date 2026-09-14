@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { createJsonKnowledgeStore } from './offline-runtime/knowledge-store.mjs';
 import { createOllamaAdapter } from './offline-runtime/model-adapter.mjs';
+import { createLocalOutbox } from './offline-runtime/outbox.mjs';
 import { retrieve, tokenize, toPublicEvidence } from './offline-runtime/retrieval.mjs';
 import { planCloudToBoatSync } from './offline-runtime/sync-planner.mjs';
 
@@ -14,6 +15,7 @@ const rootDir = path.resolve(__dirname, '..');
 const dataDir = path.join(rootDir, 'runtime-data');
 const packagePath = path.join(dataDir, 'offline-package.json');
 const statePath = path.join(dataDir, 'local-state.json');
+const outboxPath = path.join(dataDir, 'outbox.json');
 const uiPath = path.join(rootDir, 'public', 'offline-local.html');
 const port = Number(process.env.ERNEST_OFFLINE_PORT || 3210);
 const host = process.env.ERNEST_OFFLINE_HOST || '0.0.0.0';
@@ -21,6 +23,7 @@ const ollamaBase = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
 const MAX_BODY = 50 * 1024 * 1024;
 
 const knowledge = createJsonKnowledgeStore({ dataDir, packagePath, statePath, tokenize });
+const outbox = createLocalOutbox({ outboxPath });
 const modelAdapter = createOllamaAdapter({ baseUrl: ollamaBase });
 
 const text = (value) => value == null ? '' : String(value);
@@ -47,6 +50,10 @@ async function readJsonBody(req) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
+async function refreshPendingWriteCount() {
+  await knowledge.setPendingLocalWrites(outbox.summary().pending);
+}
+
 async function handleRequest(req, res) {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
@@ -64,9 +71,50 @@ async function handleRequest(req, res) {
       package: summary,
       storage: summary?.storage || 'json-package',
       sync: knowledge.getSyncState(),
+      outbox: outbox.summary(),
       modelAdapter: modelAdapter.id,
       ollamaBase,
     });
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/outbox') {
+    sendJson(res, 200, {
+      ok: true,
+      summary: outbox.summary(),
+      entries: outbox.list(),
+      uploadEnabled: false,
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/log') {
+    if (!knowledge.hasPackage()) {
+      sendJson(res, 409, { error: 'No Ernest offline package is loaded.' });
+      return;
+    }
+
+    const assetId = knowledge.summary()?.assetId;
+    if (!assetId) {
+      sendJson(res, 409, { error: 'The loaded Ernest package does not identify its asset.' });
+      return;
+    }
+
+    try {
+      const body = await readJsonBody(req);
+      const entry = await outbox.queueLogEntry(body, assetId);
+      await refreshPendingWriteCount();
+      sendJson(res, 201, {
+        ok: true,
+        queued: true,
+        uploadEnabled: false,
+        entry,
+        outbox: outbox.summary(),
+        sync: knowledge.getSyncState(),
+      });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: error.message });
+    }
     return;
   }
 
@@ -74,6 +122,7 @@ async function handleRequest(req, res) {
     const pkg = await readJsonBody(req);
     try {
       const imported = await knowledge.importPackage(pkg);
+      await refreshPendingWriteCount();
       sendJson(res, 200, { ok: true, imported, package: knowledge.summary(), sync: knowledge.getSyncState() });
     } catch (error) {
       sendJson(res, 400, { error: error.message });
@@ -105,6 +154,7 @@ async function handleRequest(req, res) {
 
     try {
       const imported = await knowledge.importPackage(pkg);
+      await refreshPendingWriteCount();
       sendJson(res, 200, { ok: true, applied: true, plan, imported, package: knowledge.summary(), sync: knowledge.getSyncState() });
     } catch (error) {
       sendJson(res, 400, { ok: false, applied: false, plan, error: error.message, package: knowledge.summary(), sync: knowledge.getSyncState() });
@@ -156,9 +206,12 @@ async function handleRequest(req, res) {
 }
 
 try {
+  await fs.mkdir(dataDir, { recursive: true });
   await knowledge.load();
+  await outbox.load();
+  await refreshPendingWriteCount();
 } catch (error) {
-  console.warn(`Could not load saved offline package: ${error.message}`);
+  console.warn(`Could not load saved offline runtime state: ${error.message}`);
 }
 
 const server = http.createServer((req, res) => {
@@ -174,6 +227,8 @@ server.listen(port, host, () => {
   console.log(`LAN binding: http://${host}:${port}`);
   console.log(`Knowledge store: ${knowledge.getPackagePath()}`);
   console.log(`Local state: ${knowledge.getStatePath()}`);
+  console.log(`Outbox: ${outboxPath}`);
   console.log(`Model adapter: ${modelAdapter.label}`);
   console.log(knowledge.hasPackage() ? `Loaded ${knowledge.summary().assetName} from runtime-data.` : 'No offline package loaded yet.');
+  console.log(`Pending local writes: ${outbox.summary().pending}`);
 });
