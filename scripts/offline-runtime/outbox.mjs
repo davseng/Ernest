@@ -1,0 +1,131 @@
+import { randomUUID } from 'node:crypto';
+import { promises as fs } from 'node:fs';
+
+const LOG_TYPES = new Set(['note', 'maintenance', 'passage', 'observation', 'incident']);
+
+function text(value) {
+  return value == null ? '' : String(value).trim();
+}
+
+function numberOrNull(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw new Error('Latitude/longitude must be finite numbers.');
+  return parsed;
+}
+
+function validateOccurredAt(value) {
+  const candidate = text(value) || new Date().toISOString();
+  const parsed = new Date(candidate);
+  if (Number.isNaN(parsed.getTime())) throw new Error('occurredAt must be a valid date/time.');
+  return parsed.toISOString();
+}
+
+function validateDraft(draft, expectedAssetId) {
+  const assetId = text(draft?.assetId || expectedAssetId);
+  if (!assetId) throw new Error('assetId is required.');
+  if (expectedAssetId && assetId !== expectedAssetId) throw new Error('Log entry belongs to a different asset.');
+
+  const entryType = text(draft?.entryType || 'note').toLowerCase();
+  if (!LOG_TYPES.has(entryType)) throw new Error(`Unsupported log entry type: ${entryType}.`);
+
+  const title = text(draft?.title);
+  const body = text(draft?.body);
+  if (!title) throw new Error('title is required.');
+  if (!body) throw new Error('body is required.');
+
+  const latitude = numberOrNull(draft?.latitude);
+  const longitude = numberOrNull(draft?.longitude);
+  if (latitude !== null && (latitude < -90 || latitude > 90)) throw new Error('latitude must be between -90 and 90.');
+  if (longitude !== null && (longitude < -180 || longitude > 180)) throw new Error('longitude must be between -180 and 180.');
+
+  return {
+    assetId,
+    occurredAt: validateOccurredAt(draft?.occurredAt),
+    entryType,
+    title,
+    body,
+    latitude,
+    longitude,
+  };
+}
+
+export function createLocalOutbox({ outboxPath, expectedAssetId = null }) {
+  let entries = [];
+
+  async function persist() {
+    const tempPath = `${outboxPath}.tmp`;
+    const document = {
+      schemaVersion: 1,
+      updatedAt: new Date().toISOString(),
+      entries,
+    };
+    await fs.writeFile(tempPath, JSON.stringify(document, null, 2), 'utf8');
+    await fs.rename(tempPath, outboxPath);
+  }
+
+  async function load() {
+    try {
+      const parsed = JSON.parse(await fs.readFile(outboxPath, 'utf8'));
+      entries = Array.isArray(parsed?.entries) ? parsed.entries : [];
+      return true;
+    } catch (error) {
+      if (error?.code === 'ENOENT') {
+        entries = [];
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  async function queueLogEntry(draft, assetIdOverride = null) {
+    const payload = validateDraft(draft, assetIdOverride || expectedAssetId);
+    const now = new Date().toISOString();
+    const clientMutationId = randomUUID();
+    const entry = {
+      clientMutationId,
+      kind: 'operating-log',
+      status: 'queued',
+      attempts: 0,
+      lastError: null,
+      createdAt: now,
+      updatedAt: now,
+      syncedAt: null,
+      cloudId: null,
+      payload: {
+        ...payload,
+        source: 'manual',
+      },
+    };
+    entries.push(entry);
+    await persist();
+    return entry;
+  }
+
+  function pending() {
+    return entries.filter((entry) => entry.status === 'queued' || entry.status === 'failed');
+  }
+
+  function summary() {
+    const queued = entries.filter((entry) => entry.status === 'queued').length;
+    const failed = entries.filter((entry) => entry.status === 'failed').length;
+    const synced = entries.filter((entry) => entry.status === 'synced').length;
+    return {
+      storage: 'json-outbox',
+      total: entries.length,
+      pending: queued + failed,
+      queued,
+      failed,
+      synced,
+      uploadEnabled: false,
+    };
+  }
+
+  return {
+    load,
+    queueLogEntry,
+    list: () => entries.map((entry) => ({ ...entry })),
+    pending: () => pending().map((entry) => ({ ...entry })),
+    summary,
+  };
+}
