@@ -187,7 +187,7 @@ export function createLocalOutbox({ outboxPath, expectedAssetId = null }) {
     markSynced,
     list: () => entries.map(cloneEntry),
     pending: () => pending().map(cloneEntry),
-    knowledgeRecords: (tokenize) => entries.map((entry) => toKnowledgeRecord(entry, tokenize)),
+    knowledgeRecords: (tokenize) => pending().map((entry) => toKnowledgeRecord(entry, tokenize)),
     summary,
   };
 }
