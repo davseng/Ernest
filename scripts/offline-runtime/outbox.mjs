@@ -160,6 +160,30 @@ export function createLocalOutbox({ outboxPath, expectedAssetId = null }) {
     return cloneEntry(entry);
   }
 
+  async function applyUploadResult(result) {
+    if (result?.protocolVersion !== 1 || result?.kind !== 'operating-log-batch-result') {
+      throw new Error('Unsupported upload result.');
+    }
+    if (!Array.isArray(result.results)) throw new Error('Upload result is missing results.');
+
+    const changed = [];
+    const now = new Date().toISOString();
+    for (const item of result.results) {
+      const id = text(item?.clientMutationId);
+      const entry = entries.find((candidate) => candidate.clientMutationId === id);
+      if (!entry) continue;
+      if (item?.status !== 'created' && item?.status !== 'already-exists') continue;
+      entry.status = 'synced';
+      entry.lastError = null;
+      entry.cloudId = text(item?.cloudId) || entry.cloudId || id;
+      entry.syncedAt = now;
+      entry.updatedAt = now;
+      changed.push(cloneEntry(entry));
+    }
+    if (changed.length) await persist();
+    return changed;
+  }
+
   function pending() {
     return entries.filter((entry) => PENDING_STATUSES.has(entry.status));
   }
@@ -207,6 +231,7 @@ export function createLocalOutbox({ outboxPath, expectedAssetId = null }) {
     markAttempt,
     markFailed,
     markSynced,
+    applyUploadResult,
     buildUploadBatch,
     list: () => entries.map(cloneEntry),
     pending: () => pending().map(cloneEntry),
