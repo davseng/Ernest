@@ -1,6 +1,8 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
+import { buildImportedSyncState, loadSyncState, saveSyncState } from './sync-state.mjs';
+
 const text = (value) => value == null ? '' : String(value);
 
 function lines(entries) {
@@ -18,13 +20,7 @@ export function buildKnowledgeRecords(pkg, tokenize) {
   const add = (kind, label, body, extra = {}) => {
     const cleaned = text(body).trim();
     if (!cleaned) return;
-    target.push({
-      kind,
-      label,
-      body: cleaned,
-      ...extra,
-      tokenSet: new Set(tokenize(`${label} ${cleaned}`)),
-    });
+    target.push({ kind, label, body: cleaned, ...extra, tokenSet: new Set(tokenize(`${label} ${cleaned}`)) });
   };
 
   add('asset', 'Asset identity', lines([
@@ -37,42 +33,34 @@ export function buildKnowledgeRecords(pkg, tokenize) {
     { label: 'Summary', value: asset.summary },
   ]));
 
-  for (const item of snapshot.systems || []) {
-    add('system', `System: ${item.name}`, lines([
-      { label: 'Name', value: item.name },
-      { label: 'Description', value: item.description },
-    ]));
-  }
+  for (const item of snapshot.systems || []) add('system', `System: ${item.name}`, lines([
+    { label: 'Name', value: item.name },
+    { label: 'Description', value: item.description },
+  ]));
 
-  for (const item of snapshot.components || []) {
-    add('equipment', `Equipment: ${item.name}`, lines([
-      { label: 'Name', value: item.name },
-      { label: 'Manufacturer', value: item.manufacturer },
-      { label: 'Model', value: item.model },
-      { label: 'Serial number', value: item.serial_number },
-      { label: 'Location', value: item.location },
-      { label: 'Notes', value: item.notes },
-      { label: 'Lifecycle status', value: item.lifecycle_status },
-      { label: 'Lifecycle changed on', value: item.lifecycle_changed_on },
-      { label: 'Lifecycle notes', value: item.lifecycle_notes },
-    ]));
-  }
+  for (const item of snapshot.components || []) add('equipment', `Equipment: ${item.name}`, lines([
+    { label: 'Name', value: item.name },
+    { label: 'Manufacturer', value: item.manufacturer },
+    { label: 'Model', value: item.model },
+    { label: 'Serial number', value: item.serial_number },
+    { label: 'Location', value: item.location },
+    { label: 'Notes', value: item.notes },
+    { label: 'Lifecycle status', value: item.lifecycle_status },
+    { label: 'Lifecycle changed on', value: item.lifecycle_changed_on },
+    { label: 'Lifecycle notes', value: item.lifecycle_notes },
+  ]));
 
-  for (const item of snapshot.inventory?.items || []) {
-    add('inventory', `Inventory: ${item.name}`, lines([
-      { label: 'Item', value: item.name },
-      { label: 'Quantity', value: item.quantity },
-      { label: 'Details', value: item.details },
-      { label: 'Location', value: (item.locations || []).join(', ') },
-      { label: 'Source', value: item.source_label },
-      { label: 'Source page/row', value: item.source_page },
-    ]), { page: item.source_page });
-  }
+  for (const item of snapshot.inventory?.items || []) add('inventory', `Inventory: ${item.name}`, lines([
+    { label: 'Item', value: item.name },
+    { label: 'Quantity', value: item.quantity },
+    { label: 'Details', value: item.details },
+    { label: 'Location', value: (item.locations || []).join(', ') },
+    { label: 'Source', value: item.source_label },
+    { label: 'Source page/row', value: item.source_page },
+  ]), { page: item.source_page });
 
   for (const item of snapshot.procedures || []) {
-    const steps = (item.steps || [])
-      .map((step) => `${step.position}. ${step.instruction}${step.note ? ` — ${step.note}` : ''}`)
-      .join('\n');
+    const steps = (item.steps || []).map((step) => `${step.position}. ${step.instruction}${step.note ? ` — ${step.note}` : ''}`).join('\n');
     add('procedure', `Procedure: ${item.title}`, lines([
       { label: 'Title', value: item.title },
       { label: 'Type', value: item.procedure_type },
@@ -81,15 +69,13 @@ export function buildKnowledgeRecords(pkg, tokenize) {
     ]), { page: item.source_page });
   }
 
-  for (const item of snapshot.operatingLog || []) {
-    add('log', `Operating log: ${item.title || item.entry_type || 'entry'}`, lines([
-      { label: 'Occurred at', value: item.occurred_at },
-      { label: 'Title', value: item.title },
-      { label: 'Type', value: item.entry_type },
-      { label: 'Entry', value: item.body },
-      { label: 'Source', value: item.source },
-    ]));
-  }
+  for (const item of snapshot.operatingLog || []) add('log', `Operating log: ${item.title || item.entry_type || 'entry'}`, lines([
+    { label: 'Occurred at', value: item.occurred_at },
+    { label: 'Title', value: item.title },
+    { label: 'Type', value: item.entry_type },
+    { label: 'Entry', value: item.body },
+    { label: 'Source', value: item.source },
+  ]));
 
   for (const item of snapshot.maintenanceCandidates || []) {
     if (item.status && item.status !== 'approved') continue;
@@ -103,24 +89,21 @@ export function buildKnowledgeRecords(pkg, tokenize) {
     ]), { page: item.page_number });
   }
 
-  for (const item of pkg.localEvidence?.documentChunks || []) {
-    add('document', item.document_title || 'Document', item.text_content, {
-      page: item.page_number,
-      source: item.document_title,
-    });
-  }
+  for (const item of pkg.localEvidence?.documentChunks || []) add('document', item.document_title || 'Document', item.text_content, {
+    page: item.page_number,
+    source: item.document_title,
+  });
 
   return target;
 }
 
-export function createJsonKnowledgeStore({ dataDir, packagePath, tokenize }) {
+export function createJsonKnowledgeStore({ dataDir, packagePath, statePath, tokenize }) {
   let activePackage = null;
   let records = [];
+  let syncState = null;
 
   function validatePackage(pkg) {
-    if (pkg?.offlineFormat !== 'ernest-offline-package') {
-      throw new Error('Not an Ernest offline package.');
-    }
+    if (pkg?.offlineFormat !== 'ernest-offline-package') throw new Error('Not an Ernest offline package.');
   }
 
   function setPackage(pkg) {
@@ -133,6 +116,7 @@ export function createJsonKnowledgeStore({ dataDir, packagePath, tokenize }) {
     try {
       const raw = await fs.readFile(packagePath, 'utf8');
       setPackage(JSON.parse(raw));
+      syncState = statePath ? await loadSyncState(statePath) : null;
       return true;
     } catch (error) {
       if (error?.code !== 'ENOENT') throw error;
@@ -144,17 +128,25 @@ export function createJsonKnowledgeStore({ dataDir, packagePath, tokenize }) {
     validatePackage(pkg);
     await fs.mkdir(dataDir, { recursive: true });
     await fs.writeFile(packagePath, JSON.stringify(pkg), 'utf8');
+    if (statePath) {
+      syncState = buildImportedSyncState(pkg, syncState);
+      await saveSyncState(statePath, syncState);
+    }
     setPackage(pkg);
   }
 
   function summary() {
     if (!activePackage) return null;
     return {
+      assetId: activePackage.sync?.assetId || activePackage.snapshot?.asset?.id || null,
       assetName: activePackage.snapshot?.asset?.name || 'Asset',
       searchableRecords: records.length,
       documentChunks: activePackage.localEvidence?.documentChunks?.length || 0,
-      generatedAt: activePackage.generatedAt || activePackage.exportedAt || null,
+      generatedAt: activePackage.createdAt || activePackage.generatedAt || activePackage.exportedAt || null,
+      packageVersion: activePackage.version || 1,
+      packageRevision: activePackage.sync?.packageRevision || null,
       storage: 'json-package',
+      sync: syncState,
     };
   }
 
@@ -164,6 +156,8 @@ export function createJsonKnowledgeStore({ dataDir, packagePath, tokenize }) {
     summary,
     hasPackage: () => Boolean(activePackage),
     getRecords: () => records,
+    getSyncState: () => syncState,
     getPackagePath: () => path.resolve(packagePath),
+    getStatePath: () => statePath ? path.resolve(statePath) : null,
   };
 }
