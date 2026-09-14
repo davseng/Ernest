@@ -27,8 +27,8 @@ The prototype should preserve Ernest's trust model: source-backed information re
 
 Phase 1 will NOT implement:
 
-- two-way synchronization
-- offline writes or edits
+- production two-way synchronization
+- general offline writes or edits
 - conflict resolution
 - authentication redesign
 - multi-user sharing
@@ -49,7 +49,7 @@ Cloud Ernest
 
 Local Ernest
 
-1. Load the package into a small local store/index.
+1. Load the package into a local knowledge-store boundary.
 2. Retrieve relevant structured facts and document passages locally.
 3. Send only that retrieved context to a locally running model.
 4. Return an answer with local source references or refuse when evidence is insufficient.
@@ -59,126 +59,116 @@ Local Ernest
 
 ### Slice A — Offline package
 
-Create an authenticated owner-scoped download that contains:
+Create an authenticated owner-scoped download containing structured knowledge plus extracted document text and provenance. Original PDFs/photos remain outside the POC package.
 
-- existing structured asset export
-- document metadata
-- extracted document pages/chunks with document title and page provenance
-- procedures/checklists
-- equipment and lifecycle state
-- inventory and locations
-- operating history
-
-For the POC, a JSON package is acceptable. Original PDFs and photos do not need to be embedded yet.
-
-Acceptance: inspect the downloaded package and verify it contains enough Far Better knowledge to reproduce several known cloud answers without querying Neon or R2.
+Acceptance completed: the package contains sufficient Far Better knowledge for useful local retrieval and grounded answers.
 
 ### Slice B — Local retrieval harness
 
-Create a minimal local-only program that:
+Create a local-only retrieval program that loads the package, searches structured data/document text, and shows source/page provenance.
 
-- loads the offline package from disk
-- searches structured data and document text
-- returns the most relevant evidence for a question
-- shows document/page provenance
-- makes no network calls
-
-Acceptance: with networking disabled, retrieval finds useful evidence for known Far Better questions.
+Acceptance completed with networking disabled.
 
 ### Slice C — Local model
 
-Connect the retrieval harness to a locally running model through a local endpoint/runtime. Keep the model adapter replaceable so the experiment can compare models later.
+Connect local retrieval to a locally running model through a replaceable adapter.
 
-Functional proof completed: the locally opened POC page loaded the Far Better package, retrieved asset-specific evidence, called local Ollama, produced a grounded answer, and refused an unsupported question with Wi-Fi disconnected.
+Functional proof completed: the locally opened POC loaded Far Better knowledge, retrieved asset-specific evidence, called local Ollama, produced a grounded supported answer, and refused an unsupported question with Wi-Fi disconnected.
 
-The current test Surface is not representative deployment hardware. Detailed latency/RAM/CPU/GPU benchmarking is deferred until representative onboard hardware is available. The important Slice C architectural path has been proven.
+The current Surface is not representative deployment hardware. Local-model questions take roughly ten minutes and can overwhelm that machine, so additional model calls are reserved for milestone acceptance tests rather than routine development. Detailed performance testing is deferred until representative onboard hardware is available.
 
 ### Slice D — Boat-Local Ernest Runtime
 
-The goal is to turn the browser-only experiment into the shape of an onboard Ernest service:
+Target architecture:
 
 Browser on laptop/tablet/phone
 → local Ernest HTTP server
-→ locally stored Ernest knowledge
-→ server-side retrieval
-→ replaceable local model adapter
-→ Ollama
+→ local Ernest knowledge store
+→ local retrieval
+→ replaceable model adapter
+→ Ollama (or future local model runtime)
 → grounded answer + sources
 
-The governing architectural principle is:
+Governing principle:
 
 > Ernest owns the knowledge; models reason over it; cloud connectivity enhances Ernest but is not required for Ernest to know the asset.
 
-#### D1 — Local runtime service
+#### D1 — Runtime boundaries
 
 Implemented on `feature/offline-poc` without changing production behavior:
 
-- `npm run offline` starts a dependency-light Node HTTP service on port 3210 by default.
-- The service binds to `0.0.0.0` so LAN-device testing can be added later.
-- A local UI is served from `public/offline-local.html`.
-- The existing Ernest offline JSON package can be imported through the local UI.
-- The package is copied into ignored `runtime-data/offline-package.json` and automatically reloaded after a server restart.
-- Retrieval now runs server-side rather than in browser JavaScript.
-- Structured evidence is rendered with explicit field labels such as Item, Quantity, Location, Model, and Source to reduce model ambiguity.
-- Local model access is behind a server-side adapter boundary; D1 currently implements Ollama only.
-- Ollama model discovery and `/api/chat` calls happen from the local Ernest server.
-- Only the question and retrieved local evidence are sent to the selected local model.
-- The prior `public/offline-poc.html` harness remains intact as the Slice B/C proof artifact.
+- dependency-light local HTTP service;
+- LAN-capable bind (`0.0.0.0`) for later onboard testing;
+- separate knowledge-store, retrieval, and model-adapter modules;
+- imported package persistence under ignored `runtime-data/`;
+- server-side retrieval and Ollama calls;
+- explicit labeled structured evidence;
+- Vercel Boat runtime preview for UI/trust-behavior development while local hardware execution is deferred.
 
-D1 does **not** implement SQLite, two-way sync, offline writes, cloud routing, production UI replacement, or authentication redesign.
+The existing browser-only Slice B/C harness remains as a proof artifact.
 
-#### D1 preview checkpoint
+#### D2 — Persistence and sync boundary
 
-Because the available Surface cannot install a current Node runtime, local-server execution is intentionally deferred rather than engineering around obsolete test hardware.
+Implemented as architecture scaffolding while the cloud remains authoritative:
 
-A Vercel-only preview harness is available at `public/offline-runtime-preview.html` and from the Preview navigation as **Boat runtime preview**. It is explicitly not the final local runtime: it keeps package loading/retrieval in the browser so the intended UI, evidence formatting, model selection, answer behavior, and refusal behavior can be tested before representative hardware is available.
+- offline package format advanced to version 2;
+- each package now includes a sync protocol version, asset ID, unique package ID, SHA-256 package revision, direction, full-snapshot marker, base revision, and future cursor field;
+- the package revision is derived from the exported knowledge/evidence content, so later sync logic can distinguish unchanged vs changed cloud state;
+- importing a package creates persistent `runtime-data/local-state.json` metadata alongside the knowledge package;
+- local state records last cloud import, package revision/version, protocol version, Cloud→Boat mode, Boat→Cloud mode, and pending-local-write count;
+- older version-1 POC packages remain importable through fallbacks;
+- `/api/status` exposes the local storage/sync state for future UI and synchronization logic.
 
-This lets development continue with the established branch → Vercel Preview → manual test workflow while preserving the server-side D1 implementation for later hardware verification.
+This deliberately does **not** implement network synchronization yet. It creates the contract needed to evolve from today's full snapshot into incremental Cloud→Boat synchronization without coupling retrieval/model code to the storage mechanism.
 
-#### Deferred D1 hardware acceptance test
+The next persistence step may replace JSON storage with SQLite behind the same knowledge-store boundary. That is an implementation choice, not a change to Ernest's knowledge model.
 
-When a representative development/onboard computer with Node 20+ and Ollama is available:
+#### Planned D3 — Incremental Cloud → Boat sync
 
-1. Check out `feature/offline-poc` and install existing project dependencies if needed.
-2. Run `npm run offline`.
-3. Open `http://localhost:3210`.
-4. Import a valid Ernest offline JSON package.
-5. Connect to Ollama and choose an installed model.
-6. Ask a supported question and verify a grounded answer with evidence/source references.
-7. Ask an unsupported question and verify Ernest refuses rather than inventing a fact.
-8. Stop the server completely.
-9. Restart with `npm run offline` and verify the package is already loaded without re-importing it.
-10. Disconnect WAN internet and repeat local Q&A.
-11. From a second device on the same LAN, open the onboard Ernest URL and repeat both a supported and unsupported question.
+Design and implement the first real synchronization flow:
 
-Latency, RAM, GPU, power, and storage benchmarks are not acceptance criteria until representative onboard hardware is available.
+1. Boat reports asset ID + last imported package revision/cursor.
+2. Cloud determines whether knowledge has changed.
+3. If unchanged, transfer nothing.
+4. If changed, initially allow a fresh full snapshot behind the sync protocol.
+5. Evolve entity families to delta transfer as stable change markers become available.
+6. Apply updates atomically to the local store and advance local sync state only after success.
 
-#### Planned D2/D3 work
+This keeps correctness ahead of bandwidth optimization: a versioned full refresh is acceptable before fine-grained deltas.
 
-While hardware execution is deferred, continue work that is independent of the final boat computer:
+#### Planned D4 — First Boat → Cloud write
 
-- refine the local-runtime UI and source presentation through Preview;
-- keep the model boundary replaceable and local-first;
-- design the persistent local knowledge-store boundary (likely SQLite) without making the current cloud database non-authoritative;
-- define package/version metadata needed for later incremental synchronization;
-- preserve the existing read-only trust model;
-- defer LAN hardening, power/accelerator testing, and hardware sizing until representative onboard hardware is available.
+The operating log remains the preferred first offline write because it is append-oriented and comparatively low-conflict. The intended design is a local outbox with immutable client-generated entry IDs, sync status, retry state, and idempotent cloud ingestion. This is not implemented yet.
 
-## Initial question set
+#### Deferred hardware acceptance
 
-Include questions such as:
+When representative onboard hardware is available:
 
-- What engine is installed on Far Better?
-- What impeller part number is in the maintenance records?
-- What oil was used at the last recorded oil change?
-- Where is a named spare stored?
-- Show the steps in a named checklist.
-- What does the relevant manual say about a specific maintenance task?
-- When was a specific recorded service performed?
-- Ask several questions that are NOT supported by the package and verify Ernest refuses rather than guessing.
+1. start local Ernest;
+2. verify the package/store survive restart;
+3. disconnect WAN and verify Q&A;
+4. access Ernest from a second device on the same LAN;
+5. verify supported-answer and refusal behavior;
+6. then measure latency, RAM, accelerator use, power, and storage.
 
-## Decision after the POC
+Do not spend additional time performance-tuning the old Surface.
 
-If local answer quality is useful, design offline as a core Ernest architecture: packaging, incremental sync, local originals, writes/conflicts and hardware targets.
+## Minimal acceptance questions
 
-If local answer quality or hardware requirements are poor, stop the offline work without disturbing production and proceed to the next cloud feature release (likely Empty the Box / ingestion).
+Because the current Surface is slow, keep local-model acceptance to the minimum needed:
+
+- one known supported question;
+- one deliberately unsupported question.
+
+Those two trust behaviors have already been demonstrated for the current Slice D preview. Do not rerun them for every architectural change.
+
+## Longer-term roadmap
+
+1. Local runtime and persistence boundary.
+2. Incremental Cloud→Boat synchronization.
+3. First Boat→Cloud write (operating log).
+4. Automatic local/cloud model routing so Ernest behaves as one assistant.
+5. Agentic actions over the structured knowledge base.
+6. Boat integrations such as Signal K/NMEA2000, AIS/GPS, Victron/BMS, tanks, engine data, weather, and alarms.
+
+Do not let integrations displace the knowledge foundation.
