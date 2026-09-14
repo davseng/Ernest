@@ -119,22 +119,26 @@ Implemented as architecture scaffolding while the cloud remains authoritative:
 - older version-1 POC packages remain importable through fallbacks;
 - `/api/status` exposes the local storage/sync state for future UI and synchronization logic.
 
-This deliberately does **not** implement network synchronization yet. It creates the contract needed to evolve from today's full snapshot into incremental Cloud→Boat synchronization without coupling retrieval/model code to the storage mechanism.
-
 The next persistence step may replace JSON storage with SQLite behind the same knowledge-store boundary. That is an implementation choice, not a change to Ernest's knowledge model.
 
-#### Planned D3 — Incremental Cloud → Boat sync
+#### D3 — First Cloud → Boat sync behavior
 
-Design and implement the first real synchronization flow:
+The first synchronization contract is now implemented on the experiment branch:
 
-1. Boat reports asset ID + last imported package revision/cursor.
-2. Cloud determines whether knowledge has changed.
-3. If unchanged, transfer nothing.
-4. If changed, initially allow a fresh full snapshot behind the sync protocol.
-5. Evolve entity families to delta transfer as stable change markers become available.
-6. Apply updates atomically to the local store and advance local sync state only after success.
+1. Authenticated cloud route `/assets/[id]/offline-sync` accepts the boat's current `revision` as a query parameter.
+2. Cloud builds the owner-scoped package and compares its content-derived revision to the boat revision.
+3. If revisions match, cloud returns `status: current` and no package payload.
+4. If revisions differ or the boat has no revision, cloud returns `status: update` plus a fresh full package.
+5. Local `sync-planner.mjs` compares the remote descriptor to `local-state.json` and returns one of: `none`, `replace-full-snapshot`, `reject`, or `unsupported`.
+6. The local HTTP runtime exposes `/api/sync/plan` so this decision can remain separate from retrieval/model logic.
 
-This keeps correctness ahead of bandwidth optimization: a versioned full refresh is acceptable before fine-grained deltas.
+This is intentionally a correctness-first full-refresh protocol, not record-level delta sync yet. The cloud remains authoritative and no local write is sent upstream.
+
+Next D3 work:
+
+- add an authenticated boat-side sync client once the local runtime can be exercised on representative hardware;
+- apply an incoming full package atomically and advance local sync state only after successful replacement;
+- later add cursor/entity deltas where the cloud schema exposes stable change markers.
 
 #### Planned D4 — First Boat → Cloud write
 
