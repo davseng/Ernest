@@ -96,13 +96,27 @@ async function handleRequest(req, res) {
   if (req.method === 'GET' && url.pathname === '/api/outbox/upload-batch') {
     try {
       const assetId = knowledge.summary()?.assetId || null;
-      sendJson(res, 200, {
-        ok: true,
-        uploadEnabled: false,
-        batch: outbox.buildUploadBatch(assetId),
-      });
+      sendJson(res, 200, { ok: true, uploadEnabled: false, batch: outbox.buildUploadBatch(assetId) });
     } catch (error) {
       sendJson(res, 400, { ok: false, uploadEnabled: false, error: error.message });
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/outbox/reconcile') {
+    try {
+      const result = await readJsonBody(req);
+      const changed = await outbox.applyUploadResult(result);
+      await refreshPendingWriteCount();
+      sendJson(res, 200, {
+        ok: true,
+        reconciled: changed.length,
+        entries: changed,
+        outbox: outbox.summary(),
+        sync: knowledge.getSyncState(),
+      });
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: error.message });
     }
     return;
   }
