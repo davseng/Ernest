@@ -127,9 +127,17 @@ Implemented on `feature/offline-poc` without changing production behavior:
 
 D1 does **not** implement SQLite, two-way sync, offline writes, cloud routing, production UI replacement, or authentication redesign.
 
-#### D1 acceptance test
+#### D1 preview checkpoint
 
-On any available development computer with Node 20+ and Ollama:
+Because the available Surface cannot install a current Node runtime, local-server execution is intentionally deferred rather than engineering around obsolete test hardware.
+
+A Vercel-only preview harness is available at `public/offline-runtime-preview.html` and from the Preview navigation as **Boat runtime preview**. It is explicitly not the final local runtime: it keeps package loading/retrieval in the browser so the intended UI, evidence formatting, model selection, answer behavior, and refusal behavior can be tested before representative hardware is available.
+
+This lets development continue with the established branch → Vercel Preview → manual test workflow while preserving the server-side D1 implementation for later hardware verification.
+
+#### Deferred D1 hardware acceptance test
+
+When a representative development/onboard computer with Node 20+ and Ollama is available:
 
 1. Check out `feature/offline-poc` and install existing project dependencies if needed.
 2. Run `npm run offline`.
@@ -141,17 +149,20 @@ On any available development computer with Node 20+ and Ollama:
 8. Stop the server completely.
 9. Restart with `npm run offline` and verify the package is already loaded without re-importing it.
 10. Disconnect WAN internet and repeat local Q&A.
+11. From a second device on the same LAN, open the onboard Ernest URL and repeat both a supported and unsupported question.
 
-The old Surface may be used for this functional proof, but its model latency is not an acceptance criterion. LAN access, power use, accelerator performance, and hardware sizing are deferred until representative boat hardware is available.
+Latency, RAM, GPU, power, and storage benchmarks are not acceptance criteria until representative onboard hardware is available.
 
 #### Planned D2/D3 work
 
-After D1 is functionally verified:
+While hardware execution is deferred, continue work that is independent of the final boat computer:
 
-- introduce a persistent local knowledge store (likely SQLite) behind a clean data-access boundary;
-- keep the cloud database authoritative while sync remains one-way/export-driven;
-- harden LAN access and test Ernest from a second device on the same local network;
-- defer representative hardware performance, power, and storage testing until the intended onboard computer is available.
+- refine the local-runtime UI and source presentation through Preview;
+- keep the model boundary replaceable and local-first;
+- design the persistent local knowledge-store boundary (likely SQLite) without making the current cloud database non-authoritative;
+- define package/version metadata needed for later incremental synchronization;
+- preserve the existing read-only trust model;
+- defer LAN hardening, power/accelerator testing, and hardware sizing until representative onboard hardware is available.
 
 ## Initial question set
 
