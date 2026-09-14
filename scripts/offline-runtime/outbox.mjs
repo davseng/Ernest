@@ -164,6 +164,28 @@ export function createLocalOutbox({ outboxPath, expectedAssetId = null }) {
     return entries.filter((entry) => PENDING_STATUSES.has(entry.status));
   }
 
+  function buildUploadBatch(assetIdOverride = null) {
+    const pendingEntries = pending();
+    const assetIds = [...new Set(pendingEntries.map((entry) => text(entry.payload?.assetId)).filter(Boolean))];
+    const assetId = text(assetIdOverride || expectedAssetId || assetIds[0]);
+    if (assetIds.length > 1) throw new Error('Outbox contains entries for multiple assets.');
+    if (assetIds.length === 1 && assetId && assetIds[0] !== assetId) throw new Error('Outbox batch belongs to a different asset.');
+    return {
+      protocolVersion: 1,
+      kind: 'operating-log-batch',
+      direction: 'boat-to-cloud',
+      generatedAt: new Date().toISOString(),
+      assetId: assetId || null,
+      uploadEnabled: false,
+      entries: pendingEntries.map((entry) => ({
+        clientMutationId: entry.clientMutationId,
+        idempotencyKey: entry.clientMutationId,
+        attempts: Number(entry.attempts || 0),
+        payload: cloneEntry(entry.payload),
+      })),
+    };
+  }
+
   function summary() {
     const queued = entries.filter((entry) => entry.status === 'queued').length;
     const failed = entries.filter((entry) => entry.status === 'failed').length;
@@ -185,6 +207,7 @@ export function createLocalOutbox({ outboxPath, expectedAssetId = null }) {
     markAttempt,
     markFailed,
     markSynced,
+    buildUploadBatch,
     list: () => entries.map(cloneEntry),
     pending: () => pending().map(cloneEntry),
     knowledgeRecords: (tokenize) => pending().map((entry) => toKnowledgeRecord(entry, tokenize)),
