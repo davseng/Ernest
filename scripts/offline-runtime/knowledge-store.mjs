@@ -154,6 +154,18 @@ export function createJsonKnowledgeStore({ dataDir, packagePath, statePath, toke
     };
   }
 
+  async function setPendingLocalWrites(count) {
+    if (!statePath || !syncState) return null;
+    const nextState = {
+      ...syncState,
+      pendingLocalWrites: Math.max(0, Number(count || 0)),
+      boatToCloudMode: 'outbox-disabled-upload',
+    };
+    await saveSyncState(statePath, nextState);
+    syncState = nextState;
+    return syncState;
+  }
+
   function summary() {
     if (!activePackage) return null;
     return {
@@ -172,6 +184,7 @@ export function createJsonKnowledgeStore({ dataDir, packagePath, statePath, toke
   return {
     load,
     importPackage,
+    setPendingLocalWrites,
     summary,
     hasPackage: () => Boolean(activePackage),
     getRecords: () => records,
