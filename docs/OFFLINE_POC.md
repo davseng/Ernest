@@ -121,7 +121,7 @@ Implemented as architecture scaffolding while the cloud remains authoritative:
 
 The next persistence step may replace JSON storage with SQLite behind the same knowledge-store boundary. That is an implementation choice, not a change to Ernest's knowledge model.
 
-#### D3 — First Cloud → Boat sync behavior
+#### D3 — Cloud → Boat sync and safe snapshot replacement
 
 The first synchronization contract is now implemented on the experiment branch:
 
@@ -130,19 +130,25 @@ The first synchronization contract is now implemented on the experiment branch:
 3. If revisions match, cloud returns `status: current` and no package payload.
 4. If revisions differ or the boat has no revision, cloud returns `status: update` plus a fresh full package.
 5. Local `sync-planner.mjs` compares the remote descriptor to `local-state.json` and returns one of: `none`, `replace-full-snapshot`, `reject`, or `unsupported`.
-6. The local HTTP runtime exposes `/api/sync/plan` so this decision can remain separate from retrieval/model logic.
+6. The local HTTP runtime exposes `/api/sync/plan` so this decision remains separate from retrieval/model logic.
+7. Version-2 packages are integrity-checked locally by recomputing the package SHA-256 revision before they can replace active knowledge.
+8. Incoming snapshots are staged to a temporary file, parsed and verified, renamed into place, read back and verified again, and only then become the active knowledge package.
+9. `local-state.json` is written through its own temporary-file rename and advances only after the package replacement succeeds.
+10. `/api/sync/apply` combines planning and verified application; unchanged revisions perform no write.
 
-This is intentionally a correctness-first full-refresh protocol, not record-level delta sync yet. The cloud remains authoritative and no local write is sent upstream.
+This is intentionally a correctness-first full-refresh protocol, not record-level delta sync yet. The cloud remains authoritative and no local write is sent upstream. If local sync-state persistence fails after a package replacement, the state remains conservative and a later sync can safely re-evaluate/reapply the cloud revision.
 
-Next D3 work:
+Remaining D3 work that depends on representative hardware/network access:
 
-- add an authenticated boat-side sync client once the local runtime can be exercised on representative hardware;
-- apply an incoming full package atomically and advance local sync state only after successful replacement;
+- add the authenticated boat-side cloud client;
+- exercise end-to-end Cloud→Boat refresh over the real onboard runtime;
 - later add cursor/entity deltas where the cloud schema exposes stable change markers.
 
 #### Planned D4 — First Boat → Cloud write
 
-The operating log remains the preferred first offline write because it is append-oriented and comparatively low-conflict. The intended design is a local outbox with immutable client-generated entry IDs, sync status, retry state, and idempotent cloud ingestion. This is not implemented yet.
+The operating log remains the preferred first offline write because it is append-oriented and comparatively low-conflict. The intended design is a local outbox with immutable client-generated entry IDs, sync status, retry state, and idempotent cloud ingestion.
+
+Next implementation work can define this outbox/write contract without enabling production writes: local draft/queued operating-log records, persistent queue metadata, and an idempotency key format. Cloud ingestion should remain disabled until the contract and authentication path are reviewed.
 
 #### Deferred hardware acceptance
 
