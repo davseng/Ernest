@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
 import postgres from "postgres";
 
 import { buildAssetExport } from "@/data/asset-export";
@@ -41,13 +42,27 @@ export async function buildOfflineAssetPackage(assetId: string, ownerId: string)
       AND a.owner_id=${ownerId}
     ORDER BY d.title,c.page_number,c.chunk_index`;
 
+  const createdAt = new Date().toISOString();
+  const revisionMaterial = JSON.stringify({ snapshot, pages, chunks });
+  const packageRevision = createHash("sha256").update(revisionMaterial).digest("hex");
+
   return {
     offlineFormat: "ernest-offline-package",
-    version: 1,
-    createdAt: new Date().toISOString(),
+    version: 2,
+    createdAt,
     mode: "read-only-poc",
     trustNote: "Offline answers must use only this package as evidence. Do not invent missing asset facts. Conversation history remains continuity, not verified evidence.",
     originalsNote: "Original PDFs and photos are not embedded in this POC package. Extracted document text includes document and page provenance for local grounded retrieval.",
+    sync: {
+      protocolVersion: 1,
+      assetId,
+      packageId: `${assetId}:${createdAt}`,
+      packageRevision,
+      fullSnapshot: true,
+      direction: "cloud-to-boat",
+      baseRevision: null,
+      nextCursor: null,
+    },
     snapshot,
     localEvidence: {
       documentPages: pages,
