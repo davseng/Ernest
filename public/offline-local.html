@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Ernest Local</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color-scheme:light dark}body{margin:0;background:#f6f7f8;color:#15171a}main{max-width:900px;margin:auto;padding:28px 18px 60px}.card{background:#fff;border:1px solid #dfe3e7;border-radius:14px;padding:18px;margin-top:16px}.muted{color:#60666d}.good{color:#176b37}.bad{color:#9b2929}.row{display:flex;gap:10px;align-items:center;margin-top:10px}.row>*{min-width:0}input,select,button{font:inherit}input[type=text],select{padding:11px 12px;border:1px solid #bcc3ca;border-radius:10px;background:#fff;color:#15171a;box-sizing:border-box}input[type=text]{flex:1;width:100%}button{border:0;border-radius:10px;padding:11px 16px;background:#15171a;color:#fff;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}.status{font-size:14px;margin-top:9px}.result{border-top:1px solid #e3e6e8;padding-top:12px;margin-top:12px}.source{font-size:13px;font-weight:700}.pill{display:inline-block;border:1px solid #cfd5da;border-radius:999px;padding:3px 8px;font-size:12px;margin-right:6px}.text,.answer{white-space:pre-wrap;line-height:1.5}.answer{font-size:17px}.notice{background:#fff8d8;border:1px solid #eadb8c;padding:12px;border-radius:10px}.small{font-size:13px}.headerline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}@media(prefers-color-scheme:dark){body{background:#111315;color:#f2f3f4}.card{background:#1a1d20;border-color:#30353a}.muted{color:#abb2b9}input[type=text],select{background:#111315;color:#f2f3f4;border-color:#50565d}.notice{background:#3d3513;border-color:#6c5d1f}.good{color:#67d391}.bad{color:#ff8d8d}}
+</style>
+</head>
+<body><main>
+<div class="headerline"><h1 style="margin:0">Ernest Local</h1><span class="pill">Slice D</span><span class="pill">local runtime</span></div>
+<p class="muted">Boat-local experiment: browser → local Ernest server → local knowledge → local retrieval → Ollama.</p>
+
+<div class="card">
+<strong>1. Local knowledge</strong>
+<div id="packageStatus" class="status muted">Checking local package…</div>
+<div class="row"><input id="packageFile" type="file" accept="application/json,.json"/><button id="importButton">Import package</button></div>
+<p class="small muted">The imported package is copied into the local runtime-data folder and reloaded automatically after a server restart.</p>
+</div>
+
+<div class="card">
+<strong>2. Local model</strong>
+<div class="row"><button id="connectButton">Connect Ollama</button><select id="modelSelect" disabled><option>No local models found</option></select></div>
+<div id="ollamaStatus" class="status muted">Not connected yet.</div>
+</div>
+
+<div class="card">
+<strong>3. Ask Ernest</strong>
+<div class="row"><input id="question" type="text" placeholder="What Yanmar oil filters do I have aboard Far Better?" disabled/><button id="askButton" disabled>Ask locally</button></div>
+<div id="runtimeStatus" class="status muted">This page is served by the local Ernest runtime.</div>
+</div>
+
+<div class="card">
+<div class="notice"><strong>Local Ernest answer</strong><div id="answer" class="answer" style="margin-top:10px">Load a package and connect Ollama.</div></div>
+<div id="results"><p class="muted">Retrieved evidence will appear here.</p></div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const packageFile=$('packageFile'),importButton=$('importButton'),packageStatus=$('packageStatus'),connectButton=$('connectButton'),modelSelect=$('modelSelect'),ollamaStatus=$('ollamaStatus'),question=$('question'),askButton=$('askButton'),answer=$('answer'),results=$('results'),runtimeStatus=$('runtimeStatus');
+let packageReady=false,ollamaReady=false;
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function refresh(){question.disabled=!packageReady;askButton.disabled=!(packageReady&&ollamaReady)}
+function renderPackage(pkg){if(!pkg){packageReady=false;packageStatus.textContent='No local package loaded.';packageStatus.className='status muted';refresh();return}packageReady=true;packageStatus.textContent=`Loaded ${pkg.assetName} · ${Number(pkg.searchableRecords||0).toLocaleString()} searchable records · ${Number(pkg.documentChunks||0).toLocaleString()} document chunks${pkg.generatedAt?' · package '+pkg.generatedAt:''}.`;packageStatus.className='status good';refresh()}
+async function getJson(url,options){const res=await fetch(url,options);let body={};try{body=await res.json()}catch{}if(!res.ok)throw new Error(body.error||`HTTP ${res.status}`);return body}
+async function loadStatus(){try{const status=await getJson('/api/status');renderPackage(status.package);runtimeStatus.textContent=`Local runtime active · Ollama endpoint ${status.ollamaBase}`;runtimeStatus.className='status good'}catch(e){runtimeStatus.textContent='Could not reach the local Ernest runtime: '+e.message;runtimeStatus.className='status bad'}}
+async function importPackage(){const f=packageFile.files?.[0];if(!f){packageStatus.textContent='Choose an Ernest offline JSON package first.';packageStatus.className='status bad';return}importButton.disabled=true;packageStatus.textContent='Importing package…';try{const text=await f.text();const parsed=JSON.parse(text);if(parsed.offlineFormat!=='ernest-offline-package')throw new Error('Not an Ernest offline package.');const response=await getJson('/api/package',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(parsed)});renderPackage(response.package);question.focus()}catch(e){packageReady=false;packageStatus.textContent='Could not import package: '+e.message;packageStatus.className='status bad';refresh()}finally{importButton.disabled=false}}
+async function connectOllama(){connectButton.disabled=true;ollamaStatus.textContent='Connecting…';try{const response=await getJson('/api/models');modelSelect.innerHTML='';for(const name of response.models||[]){const option=document.createElement('option');option.value=name;option.textContent=name;modelSelect.appendChild(option)}if(!response.models?.length)throw new Error('Ollama is running, but no models are installed.');ollamaReady=true;modelSelect.disabled=false;ollamaStatus.textContent=`Connected through local Ernest · ${response.models.length} model${response.models.length===1?'':'s'} available.`;ollamaStatus.className='status good';refresh()}catch(e){ollamaReady=false;modelSelect.disabled=true;ollamaStatus.textContent='Could not connect to local Ollama: '+e.message;ollamaStatus.className='status bad';refresh()}finally{connectButton.disabled=false}}
+function showEvidence(evidence){if(!evidence?.length){results.innerHTML='<p><strong>No supporting evidence found.</strong></p>';return}results.innerHTML='<h3>Local evidence used</h3>'+evidence.map(item=>`<div class="result"><div class="source"><span class="pill">${esc(item.id)}</span><span class="pill">${esc(item.kind)}</span>${esc(item.label)}${item.page?` · page ${esc(item.page)}`:''} <span class="muted">score ${Number(item.score||0).toFixed(1)}</span></div><div class="text">${esc(item.body)}</div></div>`).join('')}
+async function ask(){const q=question.value.trim();if(!q||!packageReady||!ollamaReady)return;askButton.disabled=true;answer.textContent='Thinking locally…';results.innerHTML='<p class="muted">Retrieving local evidence…</p>';try{const response=await getJson('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,model:modelSelect.value})});answer.textContent=response.answer||'The local model returned no answer.';showEvidence(response.evidence)}catch(e){answer.textContent=e.message;if(e.evidence)showEvidence(e.evidence)}finally{askButton.disabled=false}}
+importButton.addEventListener('click',importPackage);connectButton.addEventListener('click',connectOllama);askButton.addEventListener('click',ask);question.addEventListener('keydown',e=>{if(e.key==='Enter'&&!askButton.disabled)ask()});
+loadStatus();
+})();
+</script>
+</main></body></html>
