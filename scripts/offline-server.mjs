@@ -12,13 +12,14 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const dataDir = path.join(rootDir, 'runtime-data');
 const packagePath = path.join(dataDir, 'offline-package.json');
+const statePath = path.join(dataDir, 'local-state.json');
 const uiPath = path.join(rootDir, 'public', 'offline-local.html');
 const port = Number(process.env.ERNEST_OFFLINE_PORT || 3210);
 const host = process.env.ERNEST_OFFLINE_HOST || '0.0.0.0';
 const ollamaBase = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
 const MAX_BODY = 50 * 1024 * 1024;
 
-const knowledge = createJsonKnowledgeStore({ dataDir, packagePath, tokenize });
+const knowledge = createJsonKnowledgeStore({ dataDir, packagePath, statePath, tokenize });
 const modelAdapter = createOllamaAdapter({ baseUrl: ollamaBase });
 
 const text = (value) => value == null ? '' : String(value);
@@ -56,10 +57,12 @@ async function handleRequest(req, res) {
   }
 
   if (req.method === 'GET' && url.pathname === '/api/status') {
+    const summary = knowledge.summary();
     sendJson(res, 200, {
       mode: 'local',
-      package: knowledge.summary(),
-      storage: knowledge.summary()?.storage || 'json-package',
+      package: summary,
+      storage: summary?.storage || 'json-package',
+      sync: knowledge.getSyncState(),
       modelAdapter: modelAdapter.id,
       ollamaBase,
     });
@@ -70,7 +73,7 @@ async function handleRequest(req, res) {
     const pkg = await readJsonBody(req);
     try {
       await knowledge.importPackage(pkg);
-      sendJson(res, 200, { ok: true, package: knowledge.summary() });
+      sendJson(res, 200, { ok: true, package: knowledge.summary(), sync: knowledge.getSyncState() });
     } catch (error) {
       sendJson(res, 400, { error: error.message });
     }
@@ -138,6 +141,7 @@ server.listen(port, host, () => {
   console.log(`Ernest local runtime listening on http://localhost:${port}`);
   console.log(`LAN binding: http://${host}:${port}`);
   console.log(`Knowledge store: ${knowledge.getPackagePath()}`);
+  console.log(`Local state: ${knowledge.getStatePath()}`);
   console.log(`Model adapter: ${modelAdapter.label}`);
   console.log(knowledge.hasPackage() ? `Loaded ${knowledge.summary().assetName} from runtime-data.` : 'No offline package loaded yet.');
 });
