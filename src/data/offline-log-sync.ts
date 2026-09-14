@@ -1,5 +1,7 @@
 import "server-only";
 
+import postgres from "postgres";
+
 const LOG_TYPES = new Set(["note", "maintenance", "passage", "observation", "incident"]);
 
 export type OfflineLogUploadEntry = {
@@ -28,6 +30,27 @@ export type OfflineLogUploadBatch = {
   entries: OfflineLogUploadEntry[];
 };
 
+type ValidatedOfflineLog = {
+  id: string;
+  assetId: string;
+  occurredAt: string;
+  entryType: string;
+  title: string;
+  body: string;
+  source: "manual";
+  latitude: number | null;
+  longitude: number | null;
+};
+
+let client: ReturnType<typeof postgres> | undefined;
+
+function database() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error("DATABASE_URL is required");
+  client ??= postgres(databaseUrl, { max: 5 });
+  return client;
+}
+
 function requiredText(value: unknown, label: string) {
   const result = String(value ?? "").trim();
   if (!result) throw new Error(`${label} is required.`);
@@ -43,7 +66,7 @@ function optionalCoordinate(value: unknown, label: "latitude" | "longitude") {
   return parsed;
 }
 
-export function validateOfflineLogUploadBatch(input: OfflineLogUploadBatch, expectedAssetId: string) {
+export function validateOfflineLogUploadBatch(input: OfflineLogUploadBatch, expectedAssetId: string): ValidatedOfflineLog[] {
   if (input?.protocolVersion !== 1) throw new Error("Unsupported Boat-to-Cloud protocol version.");
   if (input?.kind !== "operating-log-batch") throw new Error("Unsupported Boat-to-Cloud batch kind.");
   if (input?.direction !== "boat-to-cloud") throw new Error("Invalid Boat-to-Cloud direction.");
@@ -70,8 +93,6 @@ export function validateOfflineLogUploadBatch(input: OfflineLogUploadBatch, expe
     if (!LOG_TYPES.has(entryType)) throw new Error(`Unsupported log entry type: ${entryType}.`);
 
     return {
-      // Future ingestion can use this UUID directly as log_entries.id. PostgreSQL's
-      // primary key then becomes the idempotency boundary without another migration.
       id: clientMutationId,
       assetId,
       occurredAt: new Date(occurredAt).toISOString(),
@@ -83,4 +104,37 @@ export function validateOfflineLogUploadBatch(input: OfflineLogUploadBatch, expe
       longitude: optionalCoordinate(entry?.payload?.longitude, "longitude"),
     };
   });
+}
+
+export async function persistOfflineLogBatchForOwner(input: OfflineLogUploadBatch, assetId: string, ownerId: string) {
+  const entries = validateOfflineLogUploadBatch(input, assetId);
+  const sql = database();
+  const results = [];
+
+  for (const entry of entries) {
+    const rows = await sql<{ id: string; inserted: boolean }[]>`
+      WITH owned_asset AS (
+        SELECT id FROM assets WHERE id = ${assetId} AND owner_id = ${ownerId}
+      ), inserted AS (
+        INSERT INTO log_entries
+          (id, asset_id, author_user_id, occurred_at, entry_type, title, body, source, latitude, longitude)
+        SELECT ${entry.id}::uuid, oa.id, ${ownerId}, ${entry.occurredAt}, ${entry.entryType}, ${entry.title},
+          ${entry.body}, ${entry.source}, ${entry.latitude}, ${entry.longitude}
+        FROM owned_asset oa
+        ON CONFLICT (id) DO NOTHING
+        RETURNING id
+      )
+      SELECT id, true AS inserted FROM inserted
+      UNION ALL
+      SELECT le.id, false AS inserted
+      FROM log_entries le
+      INNER JOIN owned_asset oa ON oa.id = le.asset_id
+      WHERE le.id = ${entry.id}::uuid AND NOT EXISTS (SELECT 1 FROM inserted)
+      LIMIT 1`;
+
+    if (!rows[0]) throw new Error("Asset not found, not owned by the current user, or idempotency key conflicts with another asset.");
+    results.push({ clientMutationId: entry.id, cloudId: rows[0].id, status: rows[0].inserted ? "created" : "already-exists" });
+  }
+
+  return { protocolVersion: 1, kind: "operating-log-batch-result", assetId, results };
 }
