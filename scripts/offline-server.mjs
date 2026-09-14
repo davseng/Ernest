@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createJsonKnowledgeStore } from './offline-runtime/knowledge-store.mjs';
 import { createOllamaAdapter } from './offline-runtime/model-adapter.mjs';
 import { retrieve, tokenize, toPublicEvidence } from './offline-runtime/retrieval.mjs';
+import { planCloudToBoatSync } from './offline-runtime/sync-planner.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,6 +78,13 @@ async function handleRequest(req, res) {
     } catch (error) {
       sendJson(res, 400, { error: error.message });
     }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/sync/plan') {
+    const body = await readJsonBody(req);
+    const plan = planCloudToBoatSync({ localState: knowledge.getSyncState(), remote: body.remote });
+    sendJson(res, plan.action === 'reject' || plan.action === 'unsupported' ? 400 : 200, { ok: plan.action !== 'reject' && plan.action !== 'unsupported', plan });
     return;
   }
 
