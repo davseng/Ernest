@@ -42,9 +42,11 @@ test("Ask Ernest uses conversation only to recover retrieval subjects for short 
 
 test("Ask Ernest can turn a direct clarification answer into confirmation-gated learning", () => {
   assert.match(actionSource, /function learningProposalMessage/);
-  assert.match(actionSource, /directly answering Ernest's immediately preceding clarification question/);
-  assert.match(actionSource, /return a confirmation proposal/);
-  assert.match(actionSource, /Do not propose a write for opinions, plans, guesses, uncertain answers/);
+  assert.match(actionSource, /directly answering Ernest's immediately preceding clarification question/i);
+  assert.match(actionSource, /confirmation proposal whenever the answer supplies a concrete durable fact/i);
+  assert.match(actionSource, /observation log as the durable fallback/i);
+  assert.match(actionSource, /requires owner confirmation before anything is written or verified/i);
+  assert.match(actionSource, /Do not propose a write for opinions, plans, guesses, uncertain answers/i);
   assert.match(actionSource, /proposeErnestWrite\(learningProposalMessage\(question, conversation\)/);
 });
 
