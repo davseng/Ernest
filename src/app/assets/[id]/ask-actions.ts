@@ -37,8 +37,10 @@ function learningProposalMessage(question: string, conversation: string) {
   if (!lastErnest || !/[?]\s*$/.test(lastErnest)) return question;
   return [
     "LEARNING FOLLOW-UP: The owner is directly answering Ernest's immediately preceding clarification question.",
-    "If this answer supplies a concrete, durable fact about the asset that can be represented safely in an existing equipment, inventory, lifecycle, asset, procedure, or observation/log record, treat it as intent to remember that fact and return a confirmation proposal.",
-    "Do not propose a write for opinions, plans, guesses, uncertain answers, ordinary discussion, or anything that cannot be mapped without invention. Never infer more than the owner's actual answer.",
+    "The owner answering a clarification question is explicit intent to let Ernest remember a concrete durable asset fact when the answer is sufficiently definite.",
+    "Return a confirmation proposal whenever the answer supplies a concrete durable fact that can be represented safely. Prefer a structured equipment, inventory, lifecycle, asset, or procedure field when there is an exact fit. Otherwise use an observation log as the durable fallback; a current meter reading, which meter is authoritative, an observed condition, a location, or another owner-observed operating fact belongs in an observation log rather than being discarded merely because there is no dedicated field.",
+    "For an observation learned now, use today's date, a concise factual title, and a body containing only what the owner actually established plus enough subject context from Ernest's question to make the fact understandable later.",
+    "Do not propose a write for opinions, plans, guesses, uncertain answers, ordinary discussion, or anything that cannot be mapped without invention. Never infer more than the owner's actual answer. The proposal still requires owner confirmation before anything is written or verified.",
     `OWNER ANSWER: ${question}`,
   ].join("\n");
 }
