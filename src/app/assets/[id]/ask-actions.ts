@@ -28,10 +28,19 @@ function looksLikeFollowUp(question: string) {
 
 function retrievalQuestion(question: string, conversation: string) {
   if (!conversation || !looksLikeFollowUp(question)) return question;
-  // A short follow-up often has no useful search nouns of its own. Give retrieval a small
-  // tail of the conversation so "what about that?" can find the subject without making
-  // conversation itself verified evidence.
   return `${question}\n${conversation.slice(-1200)}`.slice(0, 1600);
+}
+
+function learningProposalMessage(question: string, conversation: string) {
+  if (!conversation || question.length > 500) return question;
+  const lastErnest = [...conversation.matchAll(/Ernest:\s*([^]*?)(?=\nOwner:|$)/gi)].at(-1)?.[1]?.trim() || "";
+  if (!lastErnest || !/[?]\s*$/.test(lastErnest)) return question;
+  return [
+    "LEARNING FOLLOW-UP: The owner is directly answering Ernest's immediately preceding clarification question.",
+    "If this answer supplies a concrete, durable fact about the asset that can be represented safely in an existing equipment, inventory, lifecycle, asset, procedure, or observation/log record, treat it as intent to remember that fact and return a confirmation proposal.",
+    "Do not propose a write for opinions, plans, guesses, uncertain answers, ordinary discussion, or anything that cannot be mapped without invention. Never infer more than the owner's actual answer.",
+    `OWNER ANSWER: ${question}`,
+  ].join("\n");
 }
 
 function verified(
@@ -83,14 +92,14 @@ function verified(
 
 function proposalAnswer(proposal: ErnestWriteProposal) {
   if (proposal.kind === "component_add") return `I can add ${proposal.component.name} to the ${proposal.component.systemName} equipment list. Review the proposed equipment entry below before I write anything.`;
-  if (proposal.kind === "log") return `I can save that to ${proposal.log.entryType} history. Review it below first.`;
-  if (proposal.kind === "component_fact") return `I can update ${proposal.componentFact.componentName}. Review the proposed change below first.`;
+  if (proposal.kind === "log") return `That's useful to remember. I can save it to ${proposal.log.entryType} history; review the proposed record below first.`;
+  if (proposal.kind === "component_fact") return `That's useful to pin down. I can update ${proposal.componentFact.componentName}; review the proposed fact below first.`;
   if (proposal.kind === "component_lifecycle") return `I can change the lifecycle status for ${proposal.lifecycle.componentName}. Review the proposed change below first.`;
   if (proposal.kind === "inventory_add") return `I can add ${proposal.inventory.name} to onboard inventory. Review it below first.`;
   if (proposal.kind === "inventory_update") return `I can update ${proposal.inventory.currentName}. Review it below first.`;
   if (proposal.kind === "procedure_add") return `I can add ${proposal.procedure.title}. Review every proposed step below first.`;
   if (proposal.kind === "procedure_update") return `I can update ${proposal.procedure.currentTitle}. Review the complete procedure below first.`;
-  return "I can save that as owner-provided information. Review the change below first.";
+  return "That's useful to remember. I can save it as owner-provided information; review the proposed fact below first.";
 }
 
 export async function askErnest(assetId: string, _previous: AskErnestState, formData: FormData): Promise<AskErnestState> {
@@ -116,7 +125,7 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
 
     if (!asset) return { ...empty(), question, error: "I couldn’t find that asset." };
 
-    const proposal = await proposeErnestWrite(question, asset, inventory, locations, conversation, lifecycles, procedures);
+    const proposal = await proposeErnestWrite(learningProposalMessage(question, conversation), asset, inventory, locations, conversation, lifecycles, procedures);
     if (proposal) return { question, answer: proposalAnswer(proposal), sources: [], proposal };
 
     const contextual = conversation
