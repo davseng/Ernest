@@ -2,20 +2,14 @@
 
 ## Purpose
 
-Answer one architectural question before building more features:
-
-> Can Ernest provide genuinely useful, grounded answers about an asset with no internet connection?
-
-This is an experiment, not a release feature. Production remains unchanged on `main`.
+Prove that Ernest can be genuinely useful and grounded about an asset without internet connectivity, then turn that proof into a safe onboard runtime. Production remains unchanged on `main`.
 
 ## Baseline
 
 - Production baseline: Ernest v0.8.1 (`b7b0fa0d3826a6753c0bfeccadcf54b2b11b89cc`).
 - Experiment branch: `feature/offline-poc`.
 - Far Better is the test asset.
-- The existing cloud database remains authoritative.
-- Never run the legacy seed.
-- Never invent asset facts.
+- Cloud data remains authoritative; never seed shared environments or invent asset facts.
 
 ## Governing principle
 
@@ -23,52 +17,56 @@ This is an experiment, not a release feature. Production remains unchanged on `m
 
 ## Completed proof
 
-Slices A-C proved package export, local retrieval, local Ollama grounding, and unsupported-answer refusal with WAN disconnected. The old Surface is not representative deployment hardware and is not a performance target.
+Slices A-C proved package export, local retrieval, local Ollama grounding, and unsupported-answer refusal with WAN disconnected. The old Surface is not representative deployment hardware or a performance target.
 
 ## Slice D — Boat-local runtime
 
 Target: browser on laptop/tablet/phone → local Ernest HTTP server → local knowledge/retrieval → replaceable model routing → grounded answer and sources.
 
-### D1 runtime boundaries
-Implemented: LAN-capable dependency-light HTTP service; separate knowledge, retrieval, outbox, sync-planner, model-adapter modules; persistent ignored `runtime-data/`; server-side Ollama calls; local UI and preview harness.
+### D1 runtime boundaries — implemented
+LAN-capable dependency-light HTTP service; separate knowledge, retrieval, outbox, sync, model-adapter/router, and configuration modules; persistent ignored `runtime-data/`; server-side Ollama; local UI; health/status endpoints; and an onboard readiness doctor.
 
-### D2 persistence and sync boundary
-Implemented package format v2 with asset/package IDs, SHA-256 content revision, protocol metadata, persistent local sync state, backward compatibility, and runtime status reporting. SQLite remains a possible later implementation behind the same boundary.
+### D2 persistence and sync boundary — implemented
+Package v2 includes asset/package IDs, SHA-256 content revision, protocol metadata, persistent local sync state and backward compatibility. Package replacement is staged and integrity checked. Startup reconciles state from the committed package after an interrupted state write.
 
-### D3 Cloud → Boat
-Implemented authenticated conditional cloud export, local revision planning, integrity verification, staged snapshot replacement, startup state reconciliation, and `/api/sync/apply`. Matching revisions perform no replacement. This is intentionally a correctness-first full snapshot protocol until change tracking/tombstones justify deltas.
+### D3 Cloud → Boat — implementation complete pending machine auth/hardware acceptance
+The cloud endpoint supports conditional export by package revision and machine-readable auth errors. The local runtime now has an executable Cloud → Boat client/orchestrator: it sends the last imported revision, distinguishes not-configured/offline/auth/current/update/error, validates asset/protocol through the planner, and imports a newer verified package. Offline/auth failures leave current local knowledge untouched. Full snapshots remain the correctness-first protocol until deltas are justified.
 
-### D4 first Boat → Cloud write: operating log
-Structurally implemented while mutation remains disabled by default. Local operating-log writes persist atomically in `runtime-data/outbox.json`, are searchable immediately, carry UUID idempotency keys, and track queued/failed/synced state. Upload batches and reconciliation are represented locally. Cloud validation and owner-scoped idempotent persistence are implemented using the existing `log_entries.id` primary key. POST ingestion refuses writes unless `ERNEST_OFFLINE_LOG_UPLOAD_ENABLED=true`; keep this flag off until authentication/write activation is explicitly approved.
+The transport accepts an authorization seam, but unattended boat credentials are deliberately not implemented. See `docs/BOAT_SYNC_AUTH.md`.
 
-Intended lifecycle:
-local entry → immediate local knowledge → persistent outbox → upload batch → owner-scoped idempotent cloud insert → result → local reconciliation → future refreshed cloud snapshot.
+### D4 first Boat → Cloud write: operating log — implementation complete but activation gated
+Local operating-log writes persist in `runtime-data/outbox.json`, become searchable immediately, carry UUID idempotency keys, and track queued/failed/synced state. Upload batch/result reconciliation validates protocol, asset and mutation identity before changing local state.
 
-### D5 one-Ernest model routing boundary
-Started without adding any cloud dependency. The local runtime now calls a model router rather than Ollama directly. Current `auto` routing deliberately resolves to the local Ollama adapter only. Runtime status exposes preferred/local/cloud/fallback availability, and answer responses identify the selected route and adapter.
+Cloud ingestion validates the complete batch, verifies owner/asset access once inside a database transaction, checks idempotent replay payload equality, and commits the batch atomically. A conflict rolls the transaction back instead of partially applying a batch. POST ingestion still refuses writes unless `ERNEST_OFFLINE_LOG_UPLOAD_ENABLED=true`; keep this flag off until machine authentication and write activation are explicitly approved.
 
-This is an architectural seam, not cloud fallback activation. A future cloud adapter can be attached to the router without changing knowledge ownership, retrieval, or the browser API. Offline behavior therefore remains first-class rather than a fallback mode.
+Lifecycle: local entry → immediate local knowledge → persistent outbox → upload batch → asset-scoped/idempotent cloud insert → result → local reconciliation → refreshed cloud snapshot.
+
+### D5 one-Ernest model routing boundary — implemented
+The local runtime calls a model router rather than Ollama directly. `auto` deliberately resolves to local Ollama. Explicit local/cloud route intents exist, but cloud is unavailable unless an adapter is deliberately configured. Auto cloud fallback is separately opt-in and remains off. Runtime status exposes the routing policy and answer responses identify route/adapter.
+
+A future cloud adapter can attach without changing knowledge ownership, retrieval, or the browser API. Offline remains first-class rather than a fallback mode.
+
+## Safety invariants
+
+- Production/main is untouched until explicit merge approval.
+- Boat → Cloud is off by default and is not activated by Cloud → Boat configuration.
+- Cloud-model fallback is off by default and independent of sync connectivity.
+- A cloud outage never deletes the last good onboard snapshot.
+- Pending local writes are separate from cloud snapshots and survive snapshot refreshes.
+- Interactive Auth.js cookies are not the long-lived boat credential.
 
 ## Deferred hardware acceptance
 
-When representative onboard hardware is available:
-1. start local Ernest and verify package/state/outbox survive restart;
-2. create an offline operating-log entry and verify restart persistence and local retrieval;
-3. disconnect WAN and verify Q&A;
-4. access Ernest from a second device on the same LAN;
-5. exercise Cloud→Boat refresh;
-6. only after explicit write activation approval, exercise Boat→Cloud operating-log sync;
-7. measure latency, RAM, accelerator use, power, and storage.
+On representative onboard hardware, perform one focused acceptance session: boot without WAN; verify automatic healthy startup and persistence; reach Ernest from a second LAN device; prove grounded answer/refusal; create and recover an operating-log entry across restart; reconnect WAN and prove Cloud → Boat current/update behavior without losing pending writes; verify Boat → Cloud remains off; record latency/RAM/storage/power. Only after separate authentication/write approval should a Boat → Cloud upload be exercised.
 
-Do not spend additional time performance-tuning the old Surface. Do not rerun expensive Ollama tests for routine architectural changes.
+Do not performance-tune or repeatedly run Ollama acceptance questions on the old Surface.
 
-## Longer-term roadmap
+## Next gates
 
-1. Complete representative-hardware runtime acceptance.
-2. Activate safe Cloud→Boat synchronization client.
-3. Activate first Boat→Cloud write after authentication review.
-4. Extend the model router to Auto / Local / Cloud while preserving local-first knowledge ownership.
-5. Add agentic actions over the structured knowledge base.
-6. Add boat integrations such as Signal K/NMEA2000, AIS/GPS, Victron/BMS, tanks, engine data, weather, and alarms.
+1. Review/approve the asset-scoped boat-device authentication design.
+2. Implement pairing/revocation only after that approval; keep cloud writes disabled during implementation.
+3. Select representative onboard hardware and package Ernest as an auto-starting appliance.
+4. Run the single hardware acceptance session.
+5. Then mature Auto / Local / Cloud routing and bidirectional synchronization before boat integrations.
 
 Do not let integrations displace the knowledge foundation.
