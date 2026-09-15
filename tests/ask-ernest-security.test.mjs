@@ -27,7 +27,7 @@ test("Ask Ernest tolerates natural-language questions during retrieval", () => {
 });
 
 test("Ask Ernest derives owner from authenticated session and preserves grounded competence", () => {
-  assert.match(actionSource, /getErnestDocumentContext\(assetId, session\.user\.id, question\)/);
+  assert.match(actionSource, /getErnestDocumentContext\(assetId,\s*session\.user\.id,\s*question\)/);
   assert.doesNotMatch(actionSource, /ownerId.*formData/);
   assert.match(answerSource, /Never turn general knowledge, inference, ambiguous text, or conversation into a verified fact about this asset/);
   assert.match(answerSource, /still give useful general domain expertise when it can help/);
