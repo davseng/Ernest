@@ -1,0 +1,4 @@
+Ernest v0.10 explicit confirmation-card hardening checkpoint.
+Source feature commit: ac648107d81aaf58a1bb480c8e92aad964ad6bcc
+Explicit requests such as 'please create the card to confirm' are write intent and must produce an application-rendered confirmation proposal, not a simulated prose card.
+CI run 59 passed.
