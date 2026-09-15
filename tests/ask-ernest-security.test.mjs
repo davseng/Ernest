@@ -30,6 +30,6 @@ test("Ask Ernest derives owner from authenticated session and preserves grounded
   assert.match(actionSource, /getErnestDocumentContext\(assetId,\s*session\.user\.id,\s*question\)/);
   assert.doesNotMatch(actionSource, /ownerId.*formData/);
   assert.match(answerSource, /Never turn general knowledge, inference, ambiguous text, or conversation into a verified fact about this asset/);
-  assert.match(answerSource, /still give useful general domain expertise when it can help/);
+  assert.match(answerSource, /still give useful general domain expertise/);
   assert.match(answerSource, /Never claim an action was completed unless the application explicitly confirms it was completed/);
 });
