@@ -1,41 +1,7 @@
 {
-  "name": "ernest",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "db:migrate": "node scripts/migrate.mjs",
-    "db:seed": "node scripts/seed.mjs",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "test": "node --test tests/*.test.mjs"
-  },
-  "dependencies": {
-    "@auth/pg-adapter": "^1.10.0",
-    "@aws-sdk/client-s3": "^3.876.0",
-    "@aws-sdk/s3-request-presigner": "^3.876.0",
-    "next": "^16.0.0",
-    "next-auth": "^5.0.0-beta.30",
-    "nodemailer": "^7.0.6",
-    "openai": "^6.0.0",
-    "pdfjs-dist": "^4.10.38",
-    "pg": "^8.16.3",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "postgres": "^3.4.7"
-  },
-  "devDependencies": {
-    "@types/node": "^24.0.0",
-    "@types/pg": "^8.15.5",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "eslint": "^9.0.0",
-    "eslint-config-next": "^16.0.0",
-    "typescript": "^5.9.0"
-  },
-  "engines": {
-    "node": ">=20.9.0"
-  }
+  "name":"ernest","version":"0.1.0","private":true,
+  "scripts":{"dev":"next dev","build":"next build","start":"next start","offline":"node scripts/offline-server.mjs","offline:doctor":"node scripts/offline-doctor.mjs","db:migrate":"node scripts/migrate.mjs","db:seed":"node scripts/seed.mjs","lint":"eslint .","typecheck":"tsc --noEmit","test":"node --test tests/*.test.mjs"},
+  "dependencies":{"@auth/pg-adapter":"^1.10.0","@aws-sdk/client-s3":"^3.876.0","@aws-sdk/s3-request-presigner":"^3.876.0","next":"^16.0.0","next-auth":"^5.0.0-beta.30","nodemailer":"^7.0.6","openai":"^6.0.0","pdfjs-dist":"^4.10.38","pg":"^8.16.3","react":"^19.2.0","react-dom":"^19.2.0","postgres":"^3.4.7"},
+  "devDependencies":{"@types/node":"^24.0.0","@types/pg":"^8.15.5","@types/react":"^19.2.0","@types/react-dom":"^19.2.0","eslint":"^9.0.0","eslint-config-next":"^16.0.0","typescript":"^5.9.0"},
+  "engines":{"node":">=20.9.0"}
 }

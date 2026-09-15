@@ -31,6 +31,11 @@ export function AssetAppHeader({ assetId, assetName, email, assets }: {
             <Link href={`/assets/${assetId}/evidence`}>Evidence</Link>
             <Link href={`/assets/${assetId}`}>Asset settings</Link>
             <a href={`/assets/${assetId}/export`}>Download backup</a>
+            {process.env.VERCEL_ENV === "preview" ? <>
+              <a href={`/assets/${assetId}/offline-export`}>Offline POC package</a>
+              <a href="/offline-poc.html">Offline retrieval test</a>
+              <a href="/offline-runtime-preview.html">Boat runtime preview</a>
+            </> : null}
           </div>
         </details>
         <AccountMenu email={email} compact />
