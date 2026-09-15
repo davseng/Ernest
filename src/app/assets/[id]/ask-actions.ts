@@ -34,7 +34,9 @@ function retrievalQuestion(question: string, conversation: string) {
 function learningProposalMessage(question: string, conversation: string) {
   if (!conversation || question.length > 500) return question;
   const lastErnest = [...conversation.matchAll(/Ernest:\s*([^]*?)(?=\nOwner:|$)/gi)].at(-1)?.[1]?.trim() || "";
-  if (!lastErnest || !/[?]\s*$/.test(lastErnest)) return question;
+  if (!lastErnest) return question;
+  const finalParagraph = lastErnest.split(/\n\s*\n/).at(-1)?.trim() || lastErnest.slice(-700);
+  if (!finalParagraph.includes("?")) return question;
   return [
     "LEARNING FOLLOW-UP: The owner is directly answering Ernest's immediately preceding clarification question.",
     "The owner answering a clarification question is explicit intent to let Ernest remember a concrete durable asset fact when the answer is sufficiently definite.",
