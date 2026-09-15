@@ -5,6 +5,7 @@ import test from "node:test";
 const contextSource = await readFile(new URL("../src/data/document-context.ts", import.meta.url), "utf8");
 const actionSource = await readFile(new URL("../src/app/assets/[id]/ask-actions.ts", import.meta.url), "utf8");
 const answerSource = await readFile(new URL("../src/data/ask-ernest.ts", import.meta.url), "utf8");
+const proposalSource = await readFile(new URL("../src/data/ernest-write-proposals.ts", import.meta.url), "utf8");
 
 test("Ask Ernest retrieval is owner scoped through documents and assets", () => {
   assert.match(contextSource, /INNER JOIN documents d ON d\.id = c\.document_id/);
@@ -40,14 +41,16 @@ test("Ask Ernest uses conversation only to recover retrieval subjects for short 
   assert.match(actionSource, /context only, not verified evidence/);
 });
 
-test("Ask Ernest can turn a direct clarification answer into confirmation-gated learning", () => {
+test("Ask Ernest turns definite clarification answers into confirmation-gated learning", () => {
+  assert.match(actionSource, /function clarificationContext/);
   assert.match(actionSource, /function learningProposalMessage/);
-  assert.match(actionSource, /directly answering Ernest's immediately preceding clarification question/i);
-  assert.match(actionSource, /confirmation proposal whenever the answer supplies a concrete durable fact/i);
-  assert.match(actionSource, /observation log as the durable fallback/i);
-  assert.match(actionSource, /requires owner confirmation before anything is written or verified/i);
+  assert.match(actionSource, /function clarificationFallback/);
+  assert.match(actionSource, /entryType: "observation"/);
+  assert.match(actionSource, /classifiedProposal \?\? \(learningMessage !== question \? clarificationFallback/);
   assert.match(actionSource, /Do not propose a write for opinions, plans, guesses, uncertain answers/i);
-  assert.match(actionSource, /proposeErnestWrite\(learningProposalMessage\(question, conversation\)/);
+  assert.match(proposalSource, /Treat a definite answer as save intent/i);
+  assert.match(proposalSource, /Use log for completed events AND for definite owner-observed durable facts/i);
+  assert.match(proposalSource, /entryType observation rather than returning none/i);
 });
 
 test("Ask Ernest exposes approved procedures and lifecycle state as verified asset context", () => {
