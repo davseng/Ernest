@@ -40,6 +40,14 @@ test("Ask Ernest uses conversation only to recover retrieval subjects for short 
   assert.match(actionSource, /context only, not verified evidence/);
 });
 
+test("Ask Ernest can turn a direct clarification answer into confirmation-gated learning", () => {
+  assert.match(actionSource, /function learningProposalMessage/);
+  assert.match(actionSource, /directly answering Ernest's immediately preceding clarification question/);
+  assert.match(actionSource, /return a confirmation proposal/);
+  assert.match(actionSource, /Do not propose a write for opinions, plans, guesses, uncertain answers/);
+  assert.match(actionSource, /proposeErnestWrite\(learningProposalMessage\(question, conversation\)/);
+});
+
 test("Ask Ernest exposes approved procedures and lifecycle state as verified asset context", () => {
   assert.match(actionSource, /VERIFIED PROCEDURES:/);
   assert.match(actionSource, /lifecycleByComponent/);
