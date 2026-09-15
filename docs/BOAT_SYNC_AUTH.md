@@ -1,49 +1,36 @@
-# Boat sync authentication decision record — proposed
+# Boat sync authentication decision record
 
-Status: **design only; not activated**.
+Status: **approved and implemented on `feature/offline-poc`; not activated in production**.
 
-## Problem
+## Decision
 
-The onboard Ernest process must eventually synchronize Far Better without an interactive browser sign-in. Reusing the owner's Auth.js browser cookie would be fragile and grants the appliance the wrong kind of authority.
+Use a dedicated asset-scoped boat-device credential for unattended Ernest synchronization. Normal Auth.js browser sessions remain unchanged.
 
-## Recommended model
+Each device has a UUID identity, one random 256-bit secret shown only at enrollment, a SHA-256 secret hash stored in cloud Ernest, one owner/asset assignment, explicit permissions, and created/last-used/revoked timestamps. The initial permissions are `snapshot:read` and separately `operating-log:write`.
 
-Use a dedicated **asset-scoped boat credential** issued by cloud Ernest after an authenticated owner explicitly pairs an onboard instance.
+## Pairing and revocation
 
-Properties:
-- random high-entropy secret generated once;
-- cloud stores only a one-way hash;
-- credential record is tied to one owner and one asset;
-- explicit scopes, initially `snapshot:read` and later separately `operating-log:write`;
-- revocable without changing the owner's login;
-- created/last-used/revoked timestamps for auditability;
-- secret shown only at pairing and stored only on the onboard computer;
-- normal owner Auth.js sessions remain unchanged.
+An authenticated owner enrolls a device for a specific asset through the owner-only boat-device endpoint. The returned `BoatDevice <device-id>.<secret>` credential must be stored on the onboard machine; the raw secret is not stored by Ernest and cannot be displayed again. Revocation sets `revoked_at` and immediately prevents later machine authentication without changing the owner's login.
 
-## Pairing flow
+The migration is `022_boat_devices.sql`. It is committed for review but has **not** been run against production/shared Neon by this workstream.
 
-1. Owner signs into cloud Ernest normally.
-2. Owner opens Far Better → Offline/Onboard and chooses Pair onboard Ernest.
-3. Cloud creates a credential with read-only scope first.
-4. Secret is transferred once to the onboard instance and stored in an OS-protected configuration location.
-5. Boat sends `Authorization: Bearer <secret>` to the offline-sync API.
-6. Cloud hashes the presented secret, resolves credential → owner/asset/scopes, and rejects mismatched asset IDs.
-7. Owner can revoke the boat credential from cloud Ernest.
+## Sync authorization
 
-Boat→Cloud operating-log scope should be a separate explicit capability. Enabling that scope is distinct from the existing deployment flag; both must permit the write before cloud mutation occurs.
+The existing offline-sync endpoint accepts either the owner's normal interactive session or an asset-scoped boat credential. Snapshot GET requires `snapshot:read`. Operating-log POST requires `operating-log:write`. A device credential never authorizes normal Ernest UI/account/document APIs or another asset.
 
-## Why this model
+Boat→Cloud retains an independent deployment safety gate: even a valid write-scoped device receives `503 uploadEnabled:false` unless `ERNEST_OFFLINE_LOG_UPLOAD_ENABLED=true`. That flag remains off.
 
-It avoids storing a personal browser session on an unattended appliance, limits compromise to one asset and declared capabilities, supports revocation, and works after long disconnected periods without requiring the owner to be present when connectivity returns.
+## Local transport
 
-## API behavior
+The onboard Cloud→Boat client already accepts an Authorization value and can therefore use the device credential without changing knowledge/retrieval/model architecture. The credential should eventually live in an OS-protected local configuration/secret store rather than source code or the exported knowledge package.
 
-Machine endpoints should always return JSON, never sign-in redirects:
-- `401` missing/invalid credential;
-- `403` valid credential but missing scope or wrong asset;
-- `200` current/update for snapshot reads;
-- Boat→Cloud remains `503 uploadEnabled:false` while the deployment-level write flag is off.
+## Remaining activation gates
 
-## Deferred implementation
+1. Review/build validation of the branch.
+2. Apply the device migration only in an explicitly approved environment.
+3. Pair a representative onboard machine and store the one-time credential securely.
+4. Prove read-only Cloud→Boat sync first.
+5. Separately grant `operating-log:write` and enable the deployment flag only for the Boat→Cloud acceptance test.
+6. Verify revocation before considering the feature releasable.
 
-Do not add a credential table/migration or modify Auth.js in Slice D without explicit approval. The current branch can complete transport boundaries, local persistence, UI/status, and hardware packaging independently of this decision.
+Production/main remains untouched until explicit merge/deployment approval.
