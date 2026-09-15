@@ -26,9 +26,10 @@ test("Ask Ernest tolerates natural-language questions during retrieval", () => {
   assert.match(contextSource, /CROSS JOIN query q/);
 });
 
-test("Ask Ernest derives owner from authenticated session and grounds the model", () => {
+test("Ask Ernest derives owner from authenticated session and preserves grounded competence", () => {
   assert.match(actionSource, /getErnestDocumentContext\(assetId, session\.user\.id, question\)/);
   assert.doesNotMatch(actionSource, /ownerId.*formData/);
-  assert.match(answerSource, /Answer only from the supplied source text/);
-  assert.match(answerSource, /If the sources do not support a confident answer/);
+  assert.match(answerSource, /Never turn general knowledge, inference, ambiguous text, or conversation into a verified fact about this asset/);
+  assert.match(answerSource, /still give useful general domain expertise when it can help/);
+  assert.match(answerSource, /Never claim an action was completed unless the application explicitly confirms it was completed/);
 });
