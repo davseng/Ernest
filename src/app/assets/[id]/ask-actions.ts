@@ -31,20 +31,45 @@ function retrievalQuestion(question: string, conversation: string) {
   return `${question}\n${conversation.slice(-1200)}`.slice(0, 1600);
 }
 
-function learningProposalMessage(question: string, conversation: string) {
-  if (!conversation || question.length > 500) return question;
-  const lastErnest = [...conversation.matchAll(/Ernest:\s*([^]*?)(?=\nOwner:|$)/gi)].at(-1)?.[1]?.trim() || "";
-  if (!lastErnest) return question;
+function clarificationContext(question: string, conversation: string) {
+  if (!conversation || question.length > 500) return null;
+  const ernestTurns = [...conversation.matchAll(/Ernest:\s*([^]*?)(?=\nOwner:|$)/gi)].map((match) => match[1]?.trim() || "").filter(Boolean);
+  const lastErnest = ernestTurns.at(-1) || "";
+  if (!lastErnest) return null;
   const finalParagraph = lastErnest.split(/\n\s*\n/).at(-1)?.trim() || lastErnest.slice(-700);
-  if (!finalParagraph.includes("?")) return question;
+  if (!finalParagraph.includes("?")) return null;
+  return finalParagraph;
+}
+
+function learningProposalMessage(question: string, conversation: string) {
+  const clarification = clarificationContext(question, conversation);
+  if (!clarification) return question;
   return [
     "LEARNING FOLLOW-UP: The owner is directly answering Ernest's immediately preceding clarification question.",
     "The owner answering a clarification question is explicit intent to let Ernest remember a concrete durable asset fact when the answer is sufficiently definite.",
     "Return a confirmation proposal whenever the answer supplies a concrete durable fact that can be represented safely. Prefer a structured equipment, inventory, lifecycle, asset, or procedure field when there is an exact fit. Otherwise use an observation log as the durable fallback; a current meter reading, which meter is authoritative, an observed condition, a location, or another owner-observed operating fact belongs in an observation log rather than being discarded merely because there is no dedicated field.",
     "For an observation learned now, use today's date, a concise factual title, and a body containing only what the owner actually established plus enough subject context from Ernest's question to make the fact understandable later.",
     "Do not propose a write for opinions, plans, guesses, uncertain answers, ordinary discussion, or anything that cannot be mapped without invention. Never infer more than the owner's actual answer. The proposal still requires owner confirmation before anything is written or verified.",
+    `ERNEST CLARIFICATION: ${clarification}`,
     `OWNER ANSWER: ${question}`,
   ].join("\n");
+}
+
+function clarificationFallback(question: string, conversation: string): ErnestWriteProposal | null {
+  const clarification = clarificationContext(question, conversation);
+  if (!clarification) return null;
+  const uncertain = /\b(i (?:don't|do not) know|not sure|unsure|maybe|probably|i think|guess)\b/i.test(question);
+  if (uncertain || question.length < 3) return null;
+  return {
+    kind: "log",
+    summary: "Remember owner clarification",
+    log: {
+      occurredAt: new Date().toISOString().slice(0, 10),
+      entryType: "observation",
+      title: "Owner-provided asset clarification",
+      body: question,
+    },
+  };
 }
 
 function verified(
@@ -129,7 +154,9 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
 
     if (!asset) return { ...empty(), question, error: "I couldn’t find that asset." };
 
-    const proposal = await proposeErnestWrite(learningProposalMessage(question, conversation), asset, inventory, locations, conversation, lifecycles, procedures);
+    const learningMessage = learningProposalMessage(question, conversation);
+    const classifiedProposal = await proposeErnestWrite(learningMessage, asset, inventory, locations, conversation, lifecycles, procedures);
+    const proposal = classifiedProposal ?? (learningMessage !== question ? clarificationFallback(question, conversation) : null);
     if (proposal) return { question, answer: proposalAnswer(proposal), sources: [], proposal };
 
     const contextual = conversation
