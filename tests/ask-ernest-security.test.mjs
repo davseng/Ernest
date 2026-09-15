@@ -27,9 +27,22 @@ test("Ask Ernest tolerates natural-language questions during retrieval", () => {
 });
 
 test("Ask Ernest derives owner from authenticated session and preserves grounded competence", () => {
-  assert.match(actionSource, /getErnestDocumentContext\(assetId,\s*session\.user\.id,\s*question\)/);
+  assert.match(actionSource, /getErnestDocumentContext\(\s*assetId,\s*session\.user\.id,\s*retrievalQuestion\(question, conversation\)\s*\)/);
   assert.doesNotMatch(actionSource, /ownerId.*formData/);
   assert.match(answerSource, /Never turn general knowledge, inference, ambiguous text, or conversation into a verified fact about this asset/);
   assert.match(answerSource, /still give useful general domain expertise/);
   assert.match(answerSource, /Never claim an action was completed unless the application explicitly confirms it was completed/);
+});
+
+test("Ask Ernest uses conversation only to recover retrieval subjects for short follow-ups", () => {
+  assert.match(actionSource, /function looksLikeFollowUp/);
+  assert.match(actionSource, /conversation\.slice\(-1200\)/);
+  assert.match(actionSource, /context only, not verified evidence/);
+});
+
+test("Ask Ernest exposes approved procedures and lifecycle state as verified asset context", () => {
+  assert.match(actionSource, /VERIFIED PROCEDURES:/);
+  assert.match(actionSource, /lifecycleByComponent/);
+  assert.match(actionSource, /getProcedures\(assetId, session\.user\.id\)/);
+  assert.match(actionSource, /getComponentLifecycles\(assetId, session\.user\.id\)/);
 });
