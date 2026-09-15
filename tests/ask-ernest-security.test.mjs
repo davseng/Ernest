@@ -57,6 +57,14 @@ test("Ask Ernest turns definite clarification answers into confirmation-gated le
   assert.match(proposalSource, /entryType observation rather than returning none/i);
 });
 
+test("Explicit confirmation-card requests must become proposals rather than simulated prose cards", () => {
+  assert.match(proposalSource, /explicitly asks for a confirmation card, proposal, save card/i);
+  assert.match(proposalSource, /that IS clear write intent/i);
+  assert.match(proposalSource, /Do not answer with prose saying a card could be prepared/i);
+  assert.match(proposalSource, /application itself will render the confirmation card/i);
+  assert.match(proposalSource, /identity corrections/i);
+});
+
 test("Ask Ernest exposes approved procedures and lifecycle state as verified asset context", () => {
   assert.match(actionSource, /VERIFIED PROCEDURES:/);
   assert.match(actionSource, /lifecycleByComponent/);
