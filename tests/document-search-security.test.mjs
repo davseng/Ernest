@@ -14,9 +14,9 @@ test("document search is scoped through owned documents and assets", () => {
   assert.match(documentsSource, /a\.owner_id = \$\{ownerId\}/);
 });
 
-test("asset page derives document search owner from authenticated session", () => {
+test("asset page derives asset access from authenticated session", () => {
   assert.match(assetPageSource, /if \(!session\?\.user\?\.id\) redirect\("\/sign-in"\)/);
-  assert.match(assetPageSource, /searchDocumentChunks\(id, session\.user\.id, normalizedDocumentQuery\)/);
+  assert.match(assetPageSource, /getAsset\(id,\s*session\.user\.id\)/);
   assert.doesNotMatch(assetPageSource, /ownerId.*searchParams/);
 });
 
