@@ -31,21 +31,43 @@ function retrievalQuestion(question: string, conversation: string) {
   return `${question}\n${conversation.slice(-1200)}`.slice(0, 1600);
 }
 
+function ernestTurns(conversation: string) {
+  return [...conversation.matchAll(/Ernest:\s*([^]*?)(?=\nOwner:|$)/gi)]
+    .map((match) => match[1]?.trim() || "")
+    .filter(Boolean);
+}
+
+function clarificationQuestion(turn: string) {
+  if (!turn) return null;
+  const paragraphs = turn.split(/\n\s*\n/).map((value) => value.trim()).filter(Boolean);
+  for (const paragraph of paragraphs.slice(-2).reverse()) {
+    if (paragraph.includes("?")) return paragraph;
+  }
+  return null;
+}
+
+function referencesEarlierQuestion(question: string) {
+  return /\b(previous|earlier)\s+question\b|\bas to (?:your )?(?:previous|earlier)?\s*question\b|\b(?:to answer|answering) (?:your )?(?:previous|earlier)?\s*question\b|\byou asked\b/i.test(question);
+}
+
 function clarificationContext(question: string, conversation: string) {
   if (!conversation || question.length > 500) return null;
-  const ernestTurns = [...conversation.matchAll(/Ernest:\s*([^]*?)(?=\nOwner:|$)/gi)].map((match) => match[1]?.trim() || "").filter(Boolean);
-  const lastErnest = ernestTurns.at(-1) || "";
-  if (!lastErnest) return null;
-  const finalParagraph = lastErnest.split(/\n\s*\n/).at(-1)?.trim() || lastErnest.slice(-700);
-  if (!finalParagraph.includes("?")) return null;
-  return finalParagraph;
+  const turns = ernestTurns(conversation);
+  const direct = clarificationQuestion(turns.at(-1) || "");
+  if (direct) return direct;
+  if (!referencesEarlierQuestion(question)) return null;
+  for (const turn of turns.slice(-3).reverse()) {
+    const earlier = clarificationQuestion(turn);
+    if (earlier) return earlier;
+  }
+  return null;
 }
 
 function learningProposalMessage(question: string, conversation: string) {
   const clarification = clarificationContext(question, conversation);
   if (!clarification) return question;
   return [
-    "LEARNING FOLLOW-UP: The owner is directly answering Ernest's immediately preceding clarification question.",
+    "LEARNING FOLLOW-UP: The owner is answering a recent Ernest clarification question.",
     "The owner answering a clarification question is explicit intent to let Ernest remember a concrete durable asset fact when the answer is sufficiently definite.",
     "Return a confirmation proposal whenever the answer supplies a concrete durable fact that can be represented safely. Prefer a structured equipment, inventory, lifecycle, asset, or procedure field when there is an exact fit. Otherwise use an observation log as the durable fallback; a current meter reading, which meter is authoritative, an observed condition, a location, or another owner-observed operating fact belongs in an observation log rather than being discarded merely because there is no dedicated field.",
     "For an observation learned now, use today's date, a concise factual title, and a body containing only what the owner actually established plus enough subject context from Ernest's question to make the fact understandable later.",
