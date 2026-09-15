@@ -1,6 +1,7 @@
 import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
-const root=path.resolve(new URL('..',import.meta.url).pathname),data=path.join(root,'runtime-data'),base=process.env.OLLAMA_BASE_URL||'http://127.0.0.1:11434';
+import { fileURLToPath } from 'node:url';
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),data=path.join(root,'runtime-data'),base=process.env.OLLAMA_BASE_URL||'http://127.0.0.1:11434';
 const checks=[];function add(name,ok,detail){checks.push({name,ok,detail});console.log(`${ok?'✓':'✗'} ${name}${detail?` — ${detail}`:''}`)}
 add('Node runtime',Number(process.versions.node.split('.')[0])>=20,`v${process.versions.node}`);
 try{await access(data);add('Runtime data directory',true,data)}catch{add('Runtime data directory',false,'created automatically when Ernest starts')}
