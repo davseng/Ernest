@@ -38,7 +38,11 @@
 .chat-thread-toolbar button:disabled { opacity:.45; cursor:default; }
 .chat-message { margin-bottom:30px; } .chat-message.user { display:flex; flex-direction:column; align-items:flex-end; }
 .chat-role { margin-bottom:7px; color:var(--muted); font-size:.72rem; font-weight:700; }
-.chat-bubble { max-width:88%; } .chat-bubble p { margin:0; white-space:pre-wrap; line-height:1.7; }
+.chat-bubble { max-width:88%; }
+.chat-text p { margin:0 0 10px; white-space:pre-wrap; line-height:1.65; }
+.chat-text p:last-child { margin-bottom:0; }
+.chat-text ul { margin:6px 0 10px; padding-left:1.35rem; }
+.chat-text li { margin:0 0 6px; line-height:1.55; }
 .chat-message.user .chat-bubble { padding:11px 15px; border-radius:16px 16px 4px 16px; background:#e9efeb; } .chat-message.assistant .chat-bubble { max-width:100%; }
 .chat-sources { display:flex; flex-wrap:wrap; gap:7px; margin-top:14px; } .chat-sources span { padding:6px 9px; border:1px solid var(--line); border-radius:999px; color:var(--muted); background:white; font-size:.7rem; }
 .chat-bubble.thinking { display:flex; gap:2px; color:var(--muted); }
