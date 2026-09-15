@@ -29,7 +29,11 @@ test("system actions derive ownership from the session", () => {
   assert.match(actions, /if \(!updated\) notFound\(\)/);
 });
 
-test("repository exposes no component mutations", () => {
-  assert.doesNotMatch(repositoryPort, /(?:create|update|delete)ComponentForOwner/);
-  assert.doesNotMatch(actions, /(?:add|edit|remove)Component/);
+test("equipment mutations are exposed only through owner-scoped repository methods", () => {
+  assert.match(repositoryPort, /createComponentForOwner\(assetId: string, systemId: string, ownerId: string/);
+  assert.match(repositoryPort, /updateComponentForOwner\(assetId: string, systemId: string, componentId: string, ownerId: string/);
+  assert.match(repositoryPort, /deleteComponentForOwner\(assetId: string, systemId: string, componentId: string, ownerId: string/);
+  assert.match(repository, /INSERT INTO components[\s\S]*a\.id = \$\{assetId\} AND a\.owner_id = \$\{ownerId\}/);
+  assert.match(repository, /UPDATE components c[\s\S]*a\.id = \$\{assetId\} AND a\.owner_id = \$\{ownerId\}/);
+  assert.match(repository, /DELETE FROM components c USING systems s, assets a[\s\S]*a\.id = \$\{assetId\} AND a\.owner_id = \$\{ownerId\}/);
 });
