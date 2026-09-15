@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { preparePhotoThumbnail } from "@/app/assets/[id]/photo-actions";
 
@@ -29,8 +29,6 @@ export function PhotoThumbnail({assetId,photoId,title,contentType}:{assetId:stri
   const [building,setBuilding]=useState(false);
   const tried=useRef(false);
   const unsupported=contentType==="image/heic"||contentType==="image/heif";
-
-  useEffect(()=>{setSrc(thumbnailUrl);tried.current=false;},[thumbnailUrl]);
 
   function backfill(){
     if(tried.current||unsupported)return;
