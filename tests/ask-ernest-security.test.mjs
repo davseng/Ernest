@@ -43,6 +43,10 @@ test("Ask Ernest uses conversation only to recover retrieval subjects for short 
 
 test("Ask Ernest turns definite clarification answers into confirmation-gated learning", () => {
   assert.match(actionSource, /function clarificationContext/);
+  assert.match(actionSource, /function clarificationQuestion/);
+  assert.match(actionSource, /paragraphs\.slice\(-2\)\.reverse\(\)/);
+  assert.match(actionSource, /function referencesEarlierQuestion/);
+  assert.match(actionSource, /turns\.slice\(-3\)\.reverse\(\)/);
   assert.match(actionSource, /function learningProposalMessage/);
   assert.match(actionSource, /function clarificationFallback/);
   assert.match(actionSource, /entryType: "observation"/);
