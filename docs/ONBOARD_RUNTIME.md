@@ -4,64 +4,34 @@ This document defines the deployment target for the boat computer. It is intenti
 
 ## Runtime shape
 
-One always-available onboard computer runs:
-- Ernest local HTTP runtime on the boat LAN;
-- persistent `runtime-data/` containing the verified asset snapshot, local sync state, and write outbox;
-- Ollama on loopback by default;
-- no Neon, R2, Vercel, or internet dependency for local knowledge, retrieval, operating-log capture, or local-model answers.
-
-Phones, tablets, and laptops are thin clients. They need only a browser and access to the boat LAN.
+One always-available onboard computer runs Ernest local HTTP runtime on the boat LAN, persistent `runtime-data/`, and Ollama on loopback by default. Local knowledge, retrieval, operating-log capture, and local-model answers have no Neon, R2, Vercel, or WAN dependency. Phones, tablets, and laptops are thin browser clients.
 
 ## Configuration
 
-Supported runtime environment variables:
-- `ERNEST_OFFLINE_HOST` — defaults to `0.0.0.0` so the runtime can serve the LAN.
-- `ERNEST_OFFLINE_PORT` — defaults to `3210`.
-- `OLLAMA_BASE_URL` — defaults to `http://127.0.0.1:11434`.
+- `ERNEST_OFFLINE_HOST` defaults to `0.0.0.0`.
+- `ERNEST_OFFLINE_PORT` defaults to `3210`.
+- `OLLAMA_BASE_URL` defaults to `http://127.0.0.1:11434`.
+- `ERNEST_CLOUD_SYNC_ENDPOINT` optionally configures the owner-scoped cloud snapshot endpoint.
+- `ERNEST_CLOUD_SYNC_AUTHORIZATION` is a transport seam only; the final machine credential design is not approved yet.
 
-Cloud synchronization credentials are deliberately not defined yet. Do not store an interactive browser session cookie as the long-lived boat credential. The eventual machine credential must be asset-scoped, revocable, and suitable for unattended sync.
+Cloud snapshot configuration never enables Boat → Cloud writes or cloud-model fallback. Do not use an interactive browser session cookie as the long-lived boat credential. The eventual machine credential must be asset-scoped, revocable, and suitable for unattended sync.
 
 ## Operational contracts
 
-`GET /api/health` is the process/appliance health endpoint. It reports runtime uptime, whether knowledge is loaded, the asset ID, pending local writes, write-sync enablement, and model-router policy without requiring Ollama to answer a question.
+`GET /api/health` reports appliance health without invoking a model. `GET /api/status` reports richer operator state. `POST /api/cloud-sync` checks the configured cloud snapshot using the last imported revision and safely applies a newer verified package. Offline/auth failures leave the current package untouched.
 
-`GET /api/status` is the richer operator status endpoint.
-
-`npm run offline:doctor` checks Node, persistent runtime files, and Ollama availability. It is intended for installation and troubleshooting, not normal daily use.
-
-The service manager on the final hardware should:
-1. start Ollama;
-2. start Ernest after local storage is mounted;
-3. restart Ernest after a crash;
-4. start both services at boot without WAN access;
-5. keep `runtime-data/` on persistent local storage;
-6. expose Ernest only to the trusted boat LAN unless a later security design explicitly changes that boundary.
+`npm run offline:doctor` checks Node, persistent runtime files, and Ollama availability. The final service manager should start Ollama and Ernest at boot, restart Ernest after a crash, preserve `runtime-data/`, work without WAN, and expose Ernest only to the trusted boat LAN.
 
 ## Sync state machine
 
-Cloud → Boat transport now distinguishes `offline`, `authentication-required`, `current`, `update`, and `error`. Package replacement remains integrity-checked and staged before commit. Startup reconciles sync metadata from the committed package if a crash occurred between those writes.
+Cloud → Boat now has an executable local orchestration path and distinguishes `not-configured`, `offline`, `authentication-required`, `current`, `updated`, and `error`. Revision matching avoids unnecessary replacement. Package replacement remains integrity-checked and staged before commit. Startup reconciles sync metadata from the committed package if a crash occurred between package and state writes.
 
-Boat → Cloud remains disabled. Local operating-log entries remain durable and searchable while queued. Cloud ingestion rejects idempotency-key reuse with different content.
+Boat → Cloud remains disabled. Local operating-log entries remain durable and searchable while queued. Cloud ingestion rejects idempotency-key reuse with different content. Authentication for unattended Boat → Cloud sync remains the next security decision before activation.
 
 ## Hardware acceptance gate
 
-Slice D is not hardware-accepted until representative onboard hardware proves all of the following in one focused session:
-- boot with WAN disconnected;
-- Ernest starts automatically and `/api/health` is healthy;
-- existing Far Better knowledge is present after restart;
-- a second device reaches Ernest over boat Wi-Fi/LAN;
-- a grounded local-model answer works offline;
-- an unsupported question refuses rather than inventing an answer;
-- a new operating-log entry survives restart and is locally searchable;
-- Cloud → Boat detects current/update correctly after WAN returns;
-- pending local writes remain intact across a cloud snapshot refresh;
-- Boat → Cloud is still off unless separately approved;
-- CPU/RAM/storage/power and response latency are recorded for hardware selection.
+Slice D is not hardware-accepted until representative onboard hardware proves, in one focused session: boot offline; automatic healthy startup; persisted Far Better knowledge; access from a second LAN device; grounded local answer and unsupported-question refusal; operating-log persistence/search after restart; Cloud → Boat current/update behavior after WAN returns; preservation of pending writes during snapshot refresh; Boat → Cloud still disabled; and recorded CPU/RAM/storage/power/latency.
 
 ## Explicit non-goals for this slice
 
-- no boat sensor integrations yet;
-- no autonomous cloud writes;
-- no cloud-model fallback activation;
-- no production/main merge without explicit approval;
-- no performance tuning around the old Surface.
+No boat sensor integrations, autonomous cloud writes, cloud-model fallback activation, production/main merge without explicit approval, or performance tuning around the old Surface.
