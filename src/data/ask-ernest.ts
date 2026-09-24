@@ -63,3 +63,29 @@ export async function answerErnestQuestion(question: string, context: ErnestCont
   });
   return response.output_text.trim() || "I couldn't produce a useful answer.";
 }
+
+
+export async function answerThinErnestQuestion(question: string, context: ErnestContextPage[], structuredContext = "", thinkHarder = false) {
+  const sourceText = context.map(page => `SOURCE: ${page.documentTitle} — page ${page.pageNumber}\n${page.text}`).join("\n\n---\n\n");
+  const diagnosticContext = [
+    structuredContext.trim() ? `VERIFIED ASSET KNOWLEDGE:\n${structuredContext}` : "VERIFIED ASSET KNOWLEDGE:\nNone supplied.",
+    sourceText ? `DOCUMENT SOURCES:\n${sourceText}` : "DOCUMENT SOURCES:\nNone retrieved.",
+  ].join("\n\n");
+  const response = await openai().responses.create({
+    model: thinkHarder ? (process.env.OPENAI_THINK_MODEL || "gpt-5.6-sol") : (process.env.OPENAI_MODEL || "gpt-5.6-luna"),
+    reasoning: { effort: thinkHarder ? "high" : "low" },
+    instructions: [
+      "You are an expert assistant helping the owner of a boat.",
+      "Answer the owner's actual question directly, accurately, and concisely.",
+      "Use supplied vessel records as evidence about this specific boat and use strong general marine expertise for reasoning.",
+      "Distinguish vessel-specific evidence from general knowledge when that distinction matters.",
+      "Do not turn inference or general knowledge into a verified vessel fact.",
+      "Prioritize useful judgment over exhaustive caution or a recital of retrieved records.",
+      "Mention a caveat only when it materially changes the recommendation or safety.",
+      "Cite vessel-specific document facts compactly using the supplied title and page. Do not cite ordinary general marine knowledge.",
+      "Do not write or claim to save anything.",
+    ].join(" "),
+    input: [`QUESTION:\n${question}`, diagnosticContext].join("\n\n"),
+  });
+  return { answer: response.output_text.trim() || "I couldn't produce a useful answer.", diagnosticContext };
+}
