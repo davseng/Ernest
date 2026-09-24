@@ -142,6 +142,48 @@ function verified(
   return lines.join("\n");
 }
 
+function relevantTerms(question: string) {
+  const stop = new Set(["what","which","where","when","why","how","does","should","could","would","about","with","from","have","your","mine","this","that","these","those","there","their","boat","far","better"]);
+  return [...new Set((question.toLowerCase().match(/[a-z0-9][a-z0-9_-]*/g) || []).filter((x) => x.length > 2 && !stop.has(x)))];
+}
+
+function focusedVerified(
+  question: string,
+  asset: NonNullable<Awaited<ReturnType<typeof getAsset>>>,
+  logs: Awaited<ReturnType<typeof getLogEntries>>,
+  inventory: Awaited<ReturnType<typeof getInventoryItems>>,
+  lifecycles: Awaited<ReturnType<typeof getComponentLifecycles>>,
+  procedures: Awaited<ReturnType<typeof getProcedures>>,
+) {
+  const terms = relevantTerms(question);
+  const score = (text: string) => terms.reduce((n,t) => n + (text.toLowerCase().includes(t) ? 1 : 0), 0);
+  const lines = ["ASSET RECORD:", `Name: ${asset.name}`];
+  const lifecycleByComponent = new Map(lifecycles.map((item) => [item.componentId, item]));
+  const components = asset.systems.flatMap(system => system.components.map(component => ({system,component,score:score([system.name,component.name,component.manufacturer,component.model,component.location].filter(Boolean).join(" "))}))).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
+  for (const {system,component} of components) {
+    const lifecycle=lifecycleByComponent.get(component.id);
+    lines.push(`SYSTEM: ${system.name}`);
+    lines.push(`Component: ${component.name} · Manufacturer: ${component.manufacturer || ""} · Model: ${component.model || ""} · Location: ${component.location || ""}${lifecycle ? ` · Status: ${lifecycle.status}${lifecycle.changedOn ? ` since ${lifecycle.changedOn}` : ""}${lifecycle.notes ? ` · Lifecycle note: ${lifecycle.notes}` : ""}` : ""}`);
+  }
+  const inventoryIntent=/\b(inventory|aboard|stored|storage|where|location|spare|spares|have|carry)\b/i.test(question);
+  if(inventoryIntent){const hits=inventory.map(item=>({item,score:score([item.name,...item.locations].join(" "))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,8);if(hits.length){lines.push("VERIFIED INVENTORY:");for(const {item} of hits)lines.push(`- ${item.name} · locations ${item.locations.join(", ") || "not recorded"} · quantity ${item.quantity || "not recorded"}`);}}
+  const procedureIntent=/\b(procedure|steps|checklist|how do i|how should i|operate|shutdown|shut down|start up)\b/i.test(question);
+  if(procedureIntent){const hits=procedures.map(p=>({p,score:score([p.title,p.notes||"",...p.steps.map(x=>x.instruction)].join(" "))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,2);if(hits.length){lines.push("VERIFIED PROCEDURES:");for(const {p} of hits){lines.push(`PROCEDURE: ${p.title} · type ${p.procedureType}`);for(const step of p.steps.slice(0,8))lines.push(`${step.position+1}. ${step.instruction}`);}}}
+  const logHits=logs.map(log=>({log,score:score(`${log.title} ${log.body} ${log.entryType}`)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,5);
+  if(logHits.length){lines.push("RELEVANT OPERATING / MAINTENANCE HISTORY:");for(const {log} of logHits)lines.push(`[${log.occurredAt.toISOString().slice(0,10)}] ${log.entryType}: ${log.title} — ${log.body}`);}
+  return lines.join("\n");
+}
+
+function focusedDocuments(context: Awaited<ReturnType<typeof getErnestDocumentContext>>) {
+  const seen=new Set<string>(); const out=[]; let chars=0;
+  for(const page of [...context].sort((a,b)=>b.relevance-a.relevance)){
+    const key=`${page.documentId}:${page.pageNumber}`; if(seen.has(key))continue; seen.add(key);
+    if(out.length>=4 || (chars+page.text.length>9000 && out.length>0))break;
+    out.push(page); chars+=page.text.length;
+  }
+  return out;
+}
+
 function proposalAnswer(proposal: ErnestWriteProposal) {
   if (proposal.kind === "component_add") return `I can add ${proposal.component.name} to the ${proposal.component.systemName} equipment list. Review the proposed equipment entry below before I write anything.`;
   if (proposal.kind === "log") return `That's useful to remember. I can save it to ${proposal.log.entryType} history; review the proposed record below first.`;
@@ -188,9 +230,11 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
       : question;
     const verifiedContext = verified(asset, logs, inventory, lifecycles, procedures);
     if (compareMode) {
+      const focusedContext = focusedDocuments(context);
+      const focusedKnowledge = focusedVerified(question, asset, logs, inventory, lifecycles, procedures);
       const [current, thin] = await Promise.all([
         answerErnestQuestion(contextual, context, verifiedContext, thinkHarder),
-        answerThinErnestQuestion(contextual, context, verifiedContext, thinkHarder),
+        answerThinErnestQuestion(contextual, focusedContext, focusedKnowledge, thinkHarder),
       ]);
       return {
         question,
