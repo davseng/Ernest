@@ -155,7 +155,7 @@ function focusedVerified(
   lifecycles: Awaited<ReturnType<typeof getComponentLifecycles>>,
   procedures: Awaited<ReturnType<typeof getProcedures>>,
 ) {
-  const terms = relevantTerms(question);
+  const intent = retrievalIntent(question);\n  const terms = relevantTerms(question);
   const score = (text: string) => terms.reduce((n,t) => n + (text.toLowerCase().includes(t) ? 1 : 0), 0);
   const lines = ["ASSET RECORD:", `Name: ${asset.name}`];
   const lifecycleByComponent = new Map(lifecycles.map((item) => [item.componentId, item]));
@@ -230,7 +230,7 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
       : question;
     const verifiedContext = verified(asset, logs, inventory, lifecycles, procedures);
     if (compareMode) {
-      const focusedContext = focusedDocuments(context);
+      const focusedContext = focusedDocuments(question, context);
       const focusedKnowledge = focusedVerified(question, asset, logs, inventory, lifecycles, procedures);
       const [current, thin] = await Promise.all([
         answerErnestQuestion(contextual, context, verifiedContext, thinkHarder),
