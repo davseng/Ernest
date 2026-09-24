@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { answerErnestQuestion } from "@/data/ask-ernest";
+import { answerErnestQuestion, answerThinErnestQuestion } from "@/data/ask-ernest";
 import { getAsset } from "@/data/assets";
 import { getErnestDocumentContext } from "@/data/document-context";
 import { proposeErnestWrite, type ErnestWriteProposal } from "@/data/ernest-write-proposals";
@@ -16,6 +16,7 @@ export type AskErnestState = {
   sources: { documentTitle: string; pageNumber: number }[];
   proposal?: ErnestWriteProposal;
   error?: string;
+  comparison?: { current: string; thin: string; context: string };
 };
 
 const empty = (): AskErnestState => ({ question: "", answer: "", sources: [] });
@@ -162,6 +163,7 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
 
   const conversation = String(formData.get("conversation") ?? "").trim().slice(-6000);
   const thinkHarder = String(formData.get("thinkHarder") ?? "") === "true";
+  const compareMode = String(formData.get("compareMode") ?? "") === "true";
 
   try {
     const [asset, logs, inventory, locations, lifecycles, procedures, context] = await Promise.all([
@@ -184,7 +186,20 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
     const contextual = conversation
       ? `Recent conversation (context only, not verified evidence):\n${conversation}\n\nCurrent question:\n${question}`
       : question;
-    const answer = await answerErnestQuestion(contextual, context, verified(asset, logs, inventory, lifecycles, procedures), thinkHarder);
+    const verifiedContext = verified(asset, logs, inventory, lifecycles, procedures);
+    if (compareMode) {
+      const [current, thin] = await Promise.all([
+        answerErnestQuestion(contextual, context, verifiedContext, thinkHarder),
+        answerThinErnestQuestion(contextual, context, verifiedContext, thinkHarder),
+      ]);
+      return {
+        question,
+        answer: thin.answer,
+        sources: [],
+        comparison: { current, thin: thin.answer, context: thin.diagnosticContext },
+      };
+    }
+    const answer = await answerErnestQuestion(contextual, context, verifiedContext, thinkHarder);
 
     const seen = new Set<string>();
     const sources = context
