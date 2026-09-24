@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { answerErnestQuestion } from "@/data/ask-ernest";
+import { answerErnestQuestion, answerThinErnestQuestion } from "@/data/ask-ernest";
 import { getAsset } from "@/data/assets";
 import { getErnestDocumentContext } from "@/data/document-context";
 import { proposeErnestWrite, type ErnestWriteProposal } from "@/data/ernest-write-proposals";
@@ -16,6 +16,7 @@ export type AskErnestState = {
   sources: { documentTitle: string; pageNumber: number }[];
   proposal?: ErnestWriteProposal;
   error?: string;
+  comparison?: { current: string; thin: string; context: string };
 };
 
 const empty = (): AskErnestState => ({ question: "", answer: "", sources: [] });
@@ -141,6 +142,72 @@ function verified(
   return lines.join("\n");
 }
 
+function relevantTerms(question: string) {
+  const stop = new Set(["what","which","where","when","why","how","does","should","could","would","about","with","from","have","your","mine","this","that","these","those","there","their","boat","far","better"]);
+  return [...new Set((question.toLowerCase().match(/[a-z0-9][a-z0-9_-]*/g) || []).filter((x) => x.length > 2 && !stop.has(x)))];
+}
+
+type RetrievalIntent = "fact" | "procedure" | "troubleshooting" | "maintenance" | "judgment" | "evidence";
+
+function retrievalIntent(question: string): RetrievalIntent {
+  const q = question.toLowerCase();
+  if (/\b(show|cite|source|evidence|survey|document|manual|report|records?|according to)\b/.test(q)) return "evidence";
+  if (/\b(troubleshoot|diagnos|not working|failed|failure|problem|issue|leak|noise|overheat|charging)\b/.test(q)) return "troubleshooting";
+  if (/\b(maintenance|service|replace|change|interval|hours|impeller|oil|filter|inspect)\b/.test(q)) return "maintenance";
+  if (/\b(ready|should i|would you|recommend|safe|risk|captain|professional|offshore|passage|bahamas|weather window|decision|choose)\b/.test(q)) return "judgment";
+  if (/\b(procedure|steps|checklist|how do i|how should i|operate|shutdown|shut down|start up)\b/.test(q)) return "procedure";
+  return "fact";
+}
+
+function focusedVerified(
+  question: string,
+  asset: NonNullable<Awaited<ReturnType<typeof getAsset>>>,
+  logs: Awaited<ReturnType<typeof getLogEntries>>,
+  inventory: Awaited<ReturnType<typeof getInventoryItems>>,
+  lifecycles: Awaited<ReturnType<typeof getComponentLifecycles>>,
+  procedures: Awaited<ReturnType<typeof getProcedures>>,
+) {
+  const intent = retrievalIntent(question);
+  const terms = relevantTerms(question);
+  const score = (text: string) => terms.reduce((n,t) => n + (text.toLowerCase().includes(t) ? 1 : 0), 0);
+  const lines = ["ASSET RECORD:", `Name: ${asset.name}`];
+  const lifecycleByComponent = new Map(lifecycles.map((item) => [item.componentId, item]));
+  const components = asset.systems.flatMap(system => system.components.map(component => ({system,component,score:score([system.name,component.name,component.manufacturer,component.model,component.location].filter(Boolean).join(" "))}))).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
+  for (const {system,component} of components) {
+    const lifecycle=lifecycleByComponent.get(component.id);
+    lines.push(`SYSTEM: ${system.name}`);
+    lines.push(`Component: ${component.name} · Manufacturer: ${component.manufacturer || ""} · Model: ${component.model || ""} · Location: ${component.location || ""}${lifecycle ? ` · Status: ${lifecycle.status}${lifecycle.changedOn ? ` since ${lifecycle.changedOn}` : ""}${lifecycle.notes ? ` · Lifecycle note: ${lifecycle.notes}` : ""}` : ""}`);
+  }
+  const inventoryIntent=/\b(inventory|aboard|stored|storage|where|location|spare|spares|have|carry)\b/i.test(question);
+  if(inventoryIntent){const hits=inventory.map(item=>({item,score:score([item.name,...item.locations].join(" "))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,8);if(hits.length){lines.push("VERIFIED INVENTORY:");for(const {item} of hits)lines.push(`- ${item.name} · locations ${item.locations.join(", ") || "not recorded"} · quantity ${item.quantity || "not recorded"}`);}}
+  const procedureIntent=/\b(procedure|steps|checklist|how do i|how should i|operate|shutdown|shut down|start up)\b/i.test(question);
+  if(procedureIntent){const hits=procedures.map(p=>({p,score:score([p.title,p.notes||"",...p.steps.map(x=>x.instruction)].join(" "))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,2);if(hits.length){lines.push("VERIFIED PROCEDURES:");for(const {p} of hits){lines.push(`PROCEDURE: ${p.title} · type ${p.procedureType}`);for(const step of p.steps.slice(0,8))lines.push(`${step.position+1}. ${step.instruction}`);}}}
+  const logHits=logs.map(log=>({log,score:score(`${log.title} ${log.body} ${log.entryType}`)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,5);
+  if(logHits.length){lines.push("RELEVANT OPERATING / MAINTENANCE HISTORY:");for(const {log} of logHits)lines.push(`[${log.occurredAt.toISOString().slice(0,10)}] ${log.entryType}: ${log.title} — ${log.body}`);}
+  return lines.join("\n");
+}
+
+function focusedDocuments(question: string, context: Awaited<ReturnType<typeof getErnestDocumentContext>>) {
+  const intent = retrievalIntent(question);
+  const maxPages = intent === "judgment" ? 2 : intent === "fact" ? 2 : intent === "evidence" ? 5 : 4;
+  const maxChars = intent === "judgment" ? 4500 : intent === "fact" ? 4000 : intent === "evidence" ? 12000 : 9000;
+  const checklistish = (page: Awaited<ReturnType<typeof getErnestDocumentContext>>[number]) =>
+    /checklist/i.test(page.documentTitle) || (page.text.match(/☐/g)?.length || 0) >= 4;
+  const ranked = [...context].sort((a,b) => {
+    const ap = intent === "judgment" && checklistish(a) ? 0.35 : 1;
+    const bp = intent === "judgment" && checklistish(b) ? 0.35 : 1;
+    return b.relevance * bp - a.relevance * ap;
+  });
+  const seen=new Set<string>(); const out=[]; let chars=0; let checklistPages=0;
+  for(const page of ranked){
+    if(intent === "judgment" && checklistish(page) && checklistPages >= 1) continue;
+    const key=`${page.documentId}:${page.pageNumber}`; if(seen.has(key))continue; seen.add(key);
+    if(out.length >= maxPages || (chars + page.text.length > maxChars && out.length > 0)) break;
+    out.push(page); chars += page.text.length; if(checklistish(page)) checklistPages++;
+  }
+  return out;
+}
+
 function proposalAnswer(proposal: ErnestWriteProposal) {
   if (proposal.kind === "component_add") return `I can add ${proposal.component.name} to the ${proposal.component.systemName} equipment list. Review the proposed equipment entry below before I write anything.`;
   if (proposal.kind === "log") return `That's useful to remember. I can save it to ${proposal.log.entryType} history; review the proposed record below first.`;
@@ -162,6 +229,7 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
 
   const conversation = String(formData.get("conversation") ?? "").trim().slice(-6000);
   const thinkHarder = String(formData.get("thinkHarder") ?? "") === "true";
+  const compareMode = String(formData.get("compareMode") ?? "") === "true";
 
   try {
     const [asset, logs, inventory, locations, lifecycles, procedures, context] = await Promise.all([
@@ -184,7 +252,22 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
     const contextual = conversation
       ? `Recent conversation (context only, not verified evidence):\n${conversation}\n\nCurrent question:\n${question}`
       : question;
-    const answer = await answerErnestQuestion(contextual, context, verified(asset, logs, inventory, lifecycles, procedures), thinkHarder);
+    const verifiedContext = verified(asset, logs, inventory, lifecycles, procedures);
+    if (compareMode) {
+      const focusedContext = focusedDocuments(question, context);
+      const focusedKnowledge = focusedVerified(question, asset, logs, inventory, lifecycles, procedures);
+      const [current, thin] = await Promise.all([
+        answerErnestQuestion(contextual, context, verifiedContext, thinkHarder),
+        answerThinErnestQuestion(contextual, focusedContext, focusedKnowledge, thinkHarder),
+      ]);
+      return {
+        question,
+        answer: thin.answer,
+        sources: [],
+        comparison: { current, thin: thin.answer, context: thin.diagnosticContext },
+      };
+    }
+    const answer = await answerErnestQuestion(contextual, context, verifiedContext, thinkHarder);
 
     const seen = new Set<string>();
     const sources = context
