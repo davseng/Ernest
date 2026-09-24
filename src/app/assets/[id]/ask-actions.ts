@@ -147,6 +147,18 @@ function relevantTerms(question: string) {
   return [...new Set((question.toLowerCase().match(/[a-z0-9][a-z0-9_-]*/g) || []).filter((x) => x.length > 2 && !stop.has(x)))];
 }
 
+type RetrievalIntent = "fact" | "procedure" | "troubleshooting" | "maintenance" | "judgment" | "evidence";
+
+function retrievalIntent(question: string): RetrievalIntent {
+  const q = question.toLowerCase();
+  if (/\b(show|cite|source|evidence|survey|document|manual|report|records?|according to)\b/.test(q)) return "evidence";
+  if (/\b(troubleshoot|diagnos|not working|failed|failure|problem|issue|leak|noise|overheat|charging)\b/.test(q)) return "troubleshooting";
+  if (/\b(maintenance|service|replace|change|interval|hours|impeller|oil|filter|inspect)\b/.test(q)) return "maintenance";
+  if (/\b(ready|should i|would you|recommend|safe|risk|captain|professional|offshore|passage|bahamas|weather window|decision|choose)\b/.test(q)) return "judgment";
+  if (/\b(procedure|steps|checklist|how do i|how should i|operate|shutdown|shut down|start up)\b/.test(q)) return "procedure";
+  return "fact";
+}
+
 function focusedVerified(
   question: string,
   asset: NonNullable<Awaited<ReturnType<typeof getAsset>>>,
@@ -175,12 +187,23 @@ function focusedVerified(
   return lines.join("\n");
 }
 
-function focusedDocuments(context: Awaited<ReturnType<typeof getErnestDocumentContext>>) {
-  const seen=new Set<string>(); const out=[]; let chars=0;
-  for(const page of [...context].sort((a,b)=>b.relevance-a.relevance)){
+function focusedDocuments(question: string, context: Awaited<ReturnType<typeof getErnestDocumentContext>>) {
+  const intent = retrievalIntent(question);
+  const maxPages = intent === "judgment" ? 2 : intent === "fact" ? 2 : intent === "evidence" ? 5 : 4;
+  const maxChars = intent === "judgment" ? 4500 : intent === "fact" ? 4000 : intent === "evidence" ? 12000 : 9000;
+  const checklistish = (page: Awaited<ReturnType<typeof getErnestDocumentContext>>[number]) =>
+    /checklist/i.test(page.documentTitle) || (page.text.match(/☐/g)?.length || 0) >= 4;
+  const ranked = [...context].sort((a,b) => {
+    const ap = intent === "judgment" && checklistish(a) ? 0.35 : 1;
+    const bp = intent === "judgment" && checklistish(b) ? 0.35 : 1;
+    return b.relevance * bp - a.relevance * ap;
+  });
+  const seen=new Set<string>(); const out=[]; let chars=0; let checklistPages=0;
+  for(const page of ranked){
+    if(intent === "judgment" && checklistish(page) && checklistPages >= 1) continue;
     const key=`${page.documentId}:${page.pageNumber}`; if(seen.has(key))continue; seen.add(key);
-    if(out.length>=4 || (chars+page.text.length>9000 && out.length>0))break;
-    out.push(page); chars+=page.text.length;
+    if(out.length >= maxPages || (chars + page.text.length > maxChars && out.length > 0)) break;
+    out.push(page); chars += page.text.length; if(checklistish(page)) checklistPages++;
   }
   return out;
 }
