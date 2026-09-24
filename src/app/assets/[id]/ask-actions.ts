@@ -155,7 +155,8 @@ function focusedVerified(
   lifecycles: Awaited<ReturnType<typeof getComponentLifecycles>>,
   procedures: Awaited<ReturnType<typeof getProcedures>>,
 ) {
-  const intent = retrievalIntent(question);\n  const terms = relevantTerms(question);
+  const intent = retrievalIntent(question);
+  const terms = relevantTerms(question);
   const score = (text: string) => terms.reduce((n,t) => n + (text.toLowerCase().includes(t) ? 1 : 0), 0);
   const lines = ["ASSET RECORD:", `Name: ${asset.name}`];
   const lifecycleByComponent = new Map(lifecycles.map((item) => [item.componentId, item]));
