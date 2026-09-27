@@ -5,8 +5,10 @@ import { auth } from "@/auth";
 import { AssetAppHeader } from "@/components/asset-app-header";
 import { DocumentUploadPanel } from "@/components/document-upload-panel";
 import { DocumentUrlImportForm } from "@/components/document-url-import-form";
+import { GoogleDriveInboxPanel } from "@/components/google-drive-inbox-panel";
 import { getAsset } from "@/data/assets";
 import { getDocumentsForAsset } from "@/data/documents";
+import { googleDriveConfigured } from "@/data/google-drive";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +69,7 @@ export default async function DocumentsPage({ params, searchParams }: {
             <li>Use <strong>Import new documents</strong> here once Drive is connected.</li>
           </ol>
           <p className="asset-summary">Drive is the intake tray, not Ernest’s filing cabinet. Imported originals are preserved in Ernest’s private storage; Ernest will catalog and retrieve them without requiring a folder hierarchy.</p>
-          <p className="asset-summary"><strong>Drive connection:</strong> the inbox importer is the next activation step. Until Google Drive credentials are connected, use the PDF uploader below—the same permanent document pipeline is used.</p>
+          <GoogleDriveInboxPanel assetId={id} configured={googleDriveConfigured()} />
         </section>
 
         <DocumentUploadPanel assetId={id} />
