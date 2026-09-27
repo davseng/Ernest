@@ -19,7 +19,7 @@ function titleFromFilename(filename: string) {
   return (filename.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim() || "Untitled document").slice(0, 200);
 }
 
-export async function importGoogleDriveInbox(assetId: string) {
+export async function importGoogleDriveInbox(assetId: string, _previousState?: { ok: boolean; message: string }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   const asset = await getAsset(assetId, session.user.id);
