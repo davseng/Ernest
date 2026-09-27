@@ -58,15 +58,15 @@ export default async function DocumentsPage({ params, searchParams }: {
           <div className="section-heading">
             <p className="eyebrow">Recommended capture workflow</p>
             <h2>Scan to Google Drive</h2>
-            <p>Use your phone's document scanner and save complete documents as PDFs in a Google Drive folder named <strong>Ernest Inbox</strong>. Accept Google's suggested filename if it is useful—there is no need to rename or organize files for Ernest.</p>
+            <p>Use your phone’s document scanner and save complete documents as PDFs in a Google Drive folder named <strong>Ernest Inbox</strong>. Accept Google’s suggested filename if it is useful—there is no need to rename or organize files for Ernest.</p>
           </div>
           <ol>
             <li>Scan the complete document as one PDF.</li>
             <li>Save it to <strong>Google Drive → Ernest Inbox</strong>.</li>
-            <li>Keep Google's suggested filename or use your own.</li>
+            <li>Keep Google’s suggested filename or use your own.</li>
             <li>Use <strong>Import new documents</strong> here once Drive is connected.</li>
           </ol>
-          <p className="asset-summary">Drive is the intake tray, not Ernest's filing cabinet. Imported originals are preserved in Ernest's private storage; Ernest will catalog and retrieve them without requiring a folder hierarchy.</p>
+          <p className="asset-summary">Drive is the intake tray, not Ernest’s filing cabinet. Imported originals are preserved in Ernest’s private storage; Ernest will catalog and retrieve them without requiring a folder hierarchy.</p>
           <p className="asset-summary"><strong>Drive connection:</strong> the inbox importer is the next activation step. Until Google Drive credentials are connected, use the PDF uploader below—the same permanent document pipeline is used.</p>
         </section>
 
