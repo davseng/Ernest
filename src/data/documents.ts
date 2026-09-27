@@ -155,6 +155,20 @@ export async function getDocumentPages(documentId: string, assetId: string, owne
   return rows.map((row) => ({ pageNumber: row.page_number, text: row.text_content }));
 }
 
+
+export async function findDocumentBySourceUrl(assetId: string, ownerId: string, sourceUrl: string) {
+  const rows = await database()<DocumentRow[]>`
+    SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
+      d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.extracted_at, d.page_count, d.extraction_error
+    FROM documents d
+    INNER JOIN assets a ON a.id=d.asset_id
+    WHERE d.asset_id=${assetId} AND d.owner_id=${ownerId} AND a.owner_id=${ownerId}
+      AND d.source_url=${sourceUrl}
+    LIMIT 1`;
+  return rows[0] ? mapDocument(rows[0]) : undefined;
+}
+
 export async function createDocumentForAsset(assetId: string, ownerId: string, document: NewAssetDocument) {
   const rows = await database()`
     INSERT INTO documents (
