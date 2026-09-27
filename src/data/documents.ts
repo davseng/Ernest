@@ -23,7 +23,7 @@ type DocumentRow = {
   size_bytes: string | number;
   storage_key: string;
   created_at: Date;
-  source_type: "upload" | "url";
+  source_type: "upload" | "url" | "google_drive";
   source_url: string | null;
   source_external_id: string | null;
   content_hash: string | null;
@@ -177,7 +177,9 @@ export async function createDocumentForAsset(assetId: string, ownerId: string, d
     )
     SELECT a.id, a.owner_id, ${document.title}, ${document.originalFilename},
       ${document.contentType}, ${document.sizeBytes}, ${document.storageKey},
-      ${document.sourceType ?? "upload"}, ${document.sourceUrl ?? null}, ${document.sourceExternalId ?? null},\n      ${document.contentHash ?? null}, ${document.documentType ?? null}, ${document.documentDate ?? null}, ${document.summary ?? null}\n    FROM assets a
+      ${document.sourceType ?? "upload"}, ${document.sourceUrl ?? null}, ${document.sourceExternalId ?? null},
+      ${document.contentHash ?? null}, ${document.documentType ?? null}, ${document.documentDate ?? null}, ${document.summary ?? null}
+    FROM assets a
     WHERE a.id = ${assetId} AND a.owner_id = ${ownerId}
     RETURNING id`;
   return rows[0]?.id as string | undefined;
