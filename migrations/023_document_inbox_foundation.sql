@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS documents_owner_content_hash_idx
 CREATE TABLE IF NOT EXISTS document_findings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   asset_id text NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-  owner_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  owner_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   document_id text NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
   page_number integer,
   subject_component_id text REFERENCES components(id) ON DELETE SET NULL,
