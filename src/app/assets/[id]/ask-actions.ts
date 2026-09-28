@@ -185,8 +185,7 @@ function focusedVerified(
   if(procedureIntent){const hits=procedures.map(p=>({p,score:score([p.title,p.notes||"",...p.steps.map(x=>x.instruction)].join(" "))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,2);if(hits.length){lines.push("VERIFIED PROCEDURES:");for(const {p} of hits){lines.push(`PROCEDURE: ${p.title} · type ${p.procedureType}`);for(const step of p.steps.slice(0,8))lines.push(`${step.position+1}. ${step.instruction}`);}}}
   const logHits=logs.map(log=>({log,score:score(`${log.title} ${log.body} ${log.entryType}`)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,5);
   if(logHits.length){lines.push("RELEVANT OPERATING / MAINTENANCE HISTORY:");for(const {log} of logHits)lines.push(`[${log.occurredAt.toISOString().slice(0,10)}] ${log.entryType}: ${log.title} — ${log.body}`);}
-  return lines.join("
-");
+  return lines.join("\\n");
 }
 
 function focusedDocuments(question: string, context: Awaited<ReturnType<typeof getErnestDocumentContext>>) {
@@ -222,8 +221,7 @@ function relevantHistoricalEvidence(question: string, findings: Awaited<ReturnTy
   const score = (value: string) => terms.reduce((n, term) => n + (termMatches(value,term) ? 1 : 0), 0);
   const hits = findings.map((finding) => ({ finding, score: score([finding.findingType, finding.statement, finding.documentTitle].join(" ")) })).filter((item) => item.score > 0).sort((a,b) => b.score - a.score).slice(0,8);
   if (!hits.length) return "";
-  return ["HISTORICAL DOCUMENT EVIDENCE (dated evidence, not automatically a current asset fact):", ...hits.map(({finding}) => `- ${finding.observedAt ? `[${finding.observedAt}] ` : ""}${finding.statement} · source ${finding.documentTitle}${finding.pageNumber ? `, p. ${finding.pageNumber}` : ""} · lifecycle status ${finding.status}`)].join("
-");
+  return ["HISTORICAL DOCUMENT EVIDENCE (dated evidence, not automatically a current asset fact):", ...hits.map(({finding}) => `- ${finding.observedAt ? `[${finding.observedAt}] ` : ""}${finding.statement} · source ${finding.documentTitle}${finding.pageNumber ? `, p. ${finding.pageNumber}` : ""} · lifecycle status ${finding.status}`)].join("\\n");
 }
 
 function proposalAnswer(proposal: ErnestWriteProposal) {
@@ -292,9 +290,7 @@ ${question}`
     }
     const focusedContext = focusedDocuments(question, context);
     const historicalEvidence = relevantHistoricalEvidence(question, findings);
-    const focusedKnowledge = [focusedVerified(question, asset, logs, inventory, lifecycles, procedures), historicalEvidence].filter(Boolean).join("
-
-");
+    const focusedKnowledge = [focusedVerified(question, asset, logs, inventory, lifecycles, procedures), historicalEvidence].filter(Boolean).join("\\n\\n");
     const focused = await answerThinErnestQuestion(contextual, focusedContext, focusedKnowledge, thinkHarder);
     const answer = focused.answer;
 
