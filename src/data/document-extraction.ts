@@ -1,6 +1,6 @@
 import "server-only";
 
-import { classifyDocument } from "@/data/document-classification";
+import { classifyDocument } from "@/data/document-classification";\nimport { extractDocumentFindings, replaceDocumentFindings } from "@/data/document-findings";
 
 import {
   getDocumentForAsset,
@@ -52,7 +52,7 @@ export async function processDocument(documentId: string, assetId: string, owner
     stage = "database-write";
     const stored = await replaceDocumentPages(documentId, assetId, ownerId, pages);
     if (!stored) return { ok: false as const, notFound: true as const, message: "Document not found." };
-    try { await classifyDocument(documentId, assetId, ownerId); } catch (error) { console.error("Classification failed", error); }
+    try {\n      const classification = await classifyDocument(documentId, assetId, ownerId);\n      const findings = await extractDocumentFindings(pages, classification.ok ? classification.documentType : undefined);\n      await replaceDocumentFindings(documentId, assetId, ownerId, findings);\n    } catch (error) { console.error("Document understanding failed", error); }
     return { ok: true as const, pageCount: pages.length };
   } catch (error) {
     console.error(`Document text extraction failure at ${stage}`, error);
