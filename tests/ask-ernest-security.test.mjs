@@ -37,7 +37,9 @@ test("Ask Ernest derives owner from authenticated session and preserves grounded
 
 test("Ask Ernest uses conversation only to recover retrieval subjects for short follow-ups", () => {
   assert.match(actionSource, /function looksLikeFollowUp/);
-  assert.match(actionSource, /conversation\.slice\(-1200\)/);
+  assert.match(actionSource, /ownerTurns/);
+  assert.match(actionSource, /priorOwnerQuestion/);
+  assert.doesNotMatch(actionSource, /conversation\\.slice\\(-1200\\)/);
   assert.match(actionSource, /context only, not verified evidence/);
 });
 
