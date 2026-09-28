@@ -277,10 +277,14 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
         comparison: { current, thin: thin.answer, context: thin.diagnosticContext },
       };
     }
-    const answer = await answerErnestQuestion(contextual, context, verifiedContext, thinkHarder);
+    const focusedContext = focusedDocuments(question, context);
+    const historicalEvidence = relevantHistoricalEvidence(question, findings);
+    const focusedKnowledge = [focusedVerified(question, asset, logs, inventory, lifecycles, procedures), historicalEvidence].filter(Boolean).join("\n\n");
+    const focused = await answerThinErnestQuestion(contextual, focusedContext, focusedKnowledge, thinkHarder);
+    const answer = focused.answer;
 
     const seen = new Set<string>();
-    const sources = context
+    const sources = focusedContext
       .filter((page) => {
         const key = `${page.documentId}:${page.pageNumber}`;
         if (seen.has(key)) return false;
