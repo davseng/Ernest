@@ -76,8 +76,7 @@ function learningProposalMessage(question: string, conversation: string) {
     "Do not propose a write for opinions, plans, guesses, uncertain answers, ordinary discussion, or anything that cannot be mapped without invention. Never infer more than the owner's actual answer. The proposal still requires owner confirmation before anything is written or verified.",
     `ERNEST CLARIFICATION: ${clarification}`,
     `OWNER ANSWER: ${question}`,
-  ].join("
-");
+  ].join("\\n");
 }
 
 function clarificationFallback(question: string, conversation: string): ErnestWriteProposal | null {
