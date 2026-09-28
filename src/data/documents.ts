@@ -94,6 +94,24 @@ export async function getDocumentsForAsset(assetId: string, ownerId: string) {
   return rows.map(mapDocument);
 }
 
+export async function getNextUnprocessedDocumentForAsset(assetId: string, ownerId: string) {
+  const rows = await database()<DocumentRow[]>`
+    SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
+      d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
+      d.extracted_at, d.page_count, d.extraction_error
+    FROM documents d
+    INNER JOIN assets a ON a.id = d.asset_id
+    WHERE d.asset_id = ${assetId}
+      AND d.owner_id = ${ownerId}
+      AND a.owner_id = ${ownerId}
+      AND d.extracted_at IS NULL
+      AND d.extraction_error IS NULL
+    ORDER BY d.created_at ASC
+    LIMIT 1`;
+  return rows[0] ? mapDocument(rows[0]) : undefined;
+}
+
 export async function searchDocumentChunks(assetId: string, ownerId: string, query: string) {
   const normalized = query.trim().slice(0, 200);
   if (!normalized) return [];
