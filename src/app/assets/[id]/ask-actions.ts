@@ -30,8 +30,7 @@ function looksLikeFollowUp(question: string) {
 
 function retrievalQuestion(question: string, conversation: string) {
   if (!conversation || !looksLikeFollowUp(question)) return question;
-  return `${question}
-${conversation.slice(-1200)}`.slice(0, 1600);
+  return [question, conversation.slice(-1200)].join("\\n").slice(0, 1600);
 }
 
 function ernestTurns(conversation: string) {
