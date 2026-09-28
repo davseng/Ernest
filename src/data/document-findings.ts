@@ -13,7 +13,8 @@ function clean(v:unknown,max=1600){return typeof v==="string"&&v.trim()?v.trim()
 export type DocumentFinding={id:string;pageNumber:number|null;findingType:string;statement:string;observedAt:string|null;status:"unknown"|"current"|"resolved"|"superseded";confidence:string|null};
 
 export async function extractDocumentFindings(pages:ExtractedDocumentPage[],documentType?:string|null){
-  const source=pages.slice(0,12).map(p=>`PAGE ${p.pageNumber}\\n${p.text.slice(0,6000)}`).join("\\n\\n---\\n\\n");\n  if(!source.trim())return[];
+  const source=pages.slice(0,12).map(p=>`PAGE ${p.pageNumber}\\n${p.text.slice(0,6000)}`).join("\\n\\n---\\n\\n");
+  if(!source.trim())return[];
   const response=await openai().responses.create({
     model:process.env.OPENAI_MODEL||"gpt-5.6-luna",reasoning:{effort:"low"},
     instructions:[
