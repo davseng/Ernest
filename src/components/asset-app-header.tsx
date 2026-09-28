@@ -29,6 +29,7 @@ export function AssetAppHeader({ assetId, assetName, email, assets }: {
             <Link href={`/assets/${assetId}/inventory`}>Inventory</Link>
             <Link href={`/assets/${assetId}/procedures`}>Procedures</Link>
             <Link href={`/assets/${assetId}/evidence`}>Evidence</Link>
+            <Link href={`/assets/${assetId}/documents`}>Documents</Link>
             <Link href={`/assets/${assetId}`}>Asset settings</Link>
             <a href={`/assets/${assetId}/export`}>Download backup</a>
             {process.env.VERCEL_ENV === "preview" ? <>

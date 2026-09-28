@@ -4,9 +4,12 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AssetAppHeader } from "@/components/asset-app-header";
 import { DocumentUploadPanel } from "@/components/document-upload-panel";
+import { DocumentInboxProcessor } from "@/components/document-inbox-processor";
 import { DocumentUrlImportForm } from "@/components/document-url-import-form";
+import { GoogleDriveInboxPanel } from "@/components/google-drive-inbox-panel";
 import { getAsset } from "@/data/assets";
 import { getDocumentsForAsset } from "@/data/documents";
+import { googleDriveConfigured } from "@/data/google-drive";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +57,26 @@ export default async function DocumentsPage({ params, searchParams }: {
 
         {query.saved === "deleted" ? <p className="write-result success">✓ Document deleted. The vault and search index have been updated.</p> : null}
 
+        <section className="editor-card add-system">
+          <div className="section-heading">
+            <p className="eyebrow">Recommended capture workflow</p>
+            <h2>Scan to Google Drive</h2>
+            <p>Use your phone’s document scanner and save complete documents as PDFs in a Google Drive folder named <strong>Ernest Inbox</strong>. Accept Google’s suggested filename if it is useful—there is no need to rename or organize files for Ernest.</p>
+          </div>
+          <ol>
+            <li>Scan the complete document as one PDF.</li>
+            <li>Save it to <strong>Google Drive → Ernest Inbox</strong>.</li>
+            <li>Keep Google’s suggested filename or use your own.</li>
+            <li>Use <strong>Import new documents</strong> here once Drive is connected.</li>
+          </ol>
+          <p className="asset-summary">Drive is the intake tray, not Ernest’s filing cabinet. Imported originals are preserved in Ernest’s private storage; Ernest will catalog and retrieve them without requiring a folder hierarchy.</p>
+          <GoogleDriveInboxPanel assetId={id} configured={googleDriveConfigured()} />
+        </section>
+
+        <section className="editor-card add-system">
+          <DocumentInboxProcessor assetId={id} waiting={inbox.filter((document) => !document.extractionError).length} />
+        </section>
+
         <DocumentUploadPanel assetId={id} />
         <DocumentUrlImportForm assetId={id} />
 
@@ -75,7 +98,7 @@ export default async function DocumentsPage({ params, searchParams }: {
           <div className="section-heading"><p className="eyebrow">Ready knowledge</p><h2>Processed documents</h2><p>{ready.length} searchable source{ready.length === 1 ? "" : "s"}.</p></div>
           {ready.length === 0 ? <p className="empty-log">No processed documents yet.</p> : <div className="log-list">
             {ready.map((document) => <article className="log-entry" key={document.id}>
-              <div className="log-entry-meta"><span>{document.sourceType === "url" ? "URL" : "UPLOAD"}</span><time dateTime={document.createdAt.toISOString()}>{document.createdAt.toLocaleString()}</time></div>
+              <div className="log-entry-meta"><span>{document.sourceType === "url" ? "URL" : document.sourceType === "google_drive" ? "DRIVE" : "UPLOAD"}</span><time dateTime={document.createdAt.toISOString()}>{document.createdAt.toLocaleString()}</time></div>
               <h3><Link href={`/assets/${id}/documents/${document.id}`}>{document.title}</Link></h3>
               <p>{document.originalFilename}</p>
               <small>{formatBytes(document.sizeBytes)} · {status(document)}</small>

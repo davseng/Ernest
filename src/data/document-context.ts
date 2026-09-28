@@ -30,7 +30,7 @@ type ContextRow = {
 const GENERIC_QUERY_WORDS = new Set([
   "about", "and", "are", "can", "could", "document", "does", "for", "from",
   "have", "how", "into", "me", "should", "that", "the", "their", "there",
-  "these", "this", "those", "what", "when", "where", "which", "with", "would",
+  "these", "this", "those", "what", "when", "where", "which", "with", "would", "know", "one",
 ]);
 
 function buildRetrievalQuery(question: string) {
@@ -53,11 +53,15 @@ export async function getErnestDocumentContext(assetId: string, ownerId: string,
   const rows = await database()<ContextRow[]>`
     WITH query AS (
       SELECT websearch_to_tsquery('english', ${retrievalQuery}) AS value
-    ), ranked_hits AS (
+    ), scored_hits AS (
       SELECT
         c.document_id,
         c.page_number,
-        ts_rank(to_tsvector('english', c.text_content), q.value) AS relevance
+        ts_rank(to_tsvector('english', c.text_content), q.value) AS relevance,
+        ROW_NUMBER() OVER (
+          PARTITION BY c.document_id
+          ORDER BY ts_rank(to_tsvector('english', c.text_content), q.value) DESC
+        ) AS document_rank
       FROM document_chunks c
       INNER JOIN documents d ON d.id = c.document_id
       INNER JOIN assets a ON a.id = d.asset_id
@@ -66,8 +70,12 @@ export async function getErnestDocumentContext(assetId: string, ownerId: string,
         AND d.owner_id = ${ownerId}
         AND a.owner_id = ${ownerId}
         AND to_tsvector('english', c.text_content) @@ q.value
+    ), ranked_hits AS (
+      SELECT document_id, page_number, relevance
+      FROM scored_hits
+      WHERE document_rank = 1
       ORDER BY relevance DESC
-      LIMIT 8
+      LIMIT 12
     ), expanded_pages AS (
       SELECT
         p.document_id,

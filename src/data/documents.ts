@@ -23,8 +23,14 @@ type DocumentRow = {
   size_bytes: string | number;
   storage_key: string;
   created_at: Date;
-  source_type: "upload" | "url";
+  source_type: "upload" | "url" | "google_drive";
   source_url: string | null;
+  source_external_id: string | null;
+  content_hash: string | null;
+  document_type: string | null;
+  document_date: string | null;
+  summary: string | null;
+  classified_at: Date | null;
   extracted_at: Date | null;
   page_count: number | null;
   extraction_error: string | null;
@@ -61,6 +67,12 @@ function mapDocument(row: DocumentRow): AssetDocument {
     createdAt: row.created_at,
     sourceType: row.source_type,
     sourceUrl: row.source_url ?? undefined,
+    sourceExternalId: row.source_external_id ?? undefined,
+    contentHash: row.content_hash ?? undefined,
+    documentType: row.document_type ?? undefined,
+    documentDate: row.document_date ?? undefined,
+    summary: row.summary ?? undefined,
+    classifiedAt: row.classified_at ?? undefined,
     extractedAt: row.extracted_at ?? undefined,
     pageCount: row.page_count ?? undefined,
     extractionError: row.extraction_error ?? undefined,
@@ -71,6 +83,7 @@ export async function getDocumentsForAsset(assetId: string, ownerId: string) {
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
       d.extracted_at, d.page_count, d.extraction_error
     FROM documents d
     INNER JOIN assets a ON a.id = d.asset_id
@@ -79,6 +92,24 @@ export async function getDocumentsForAsset(assetId: string, ownerId: string) {
       AND a.owner_id = ${ownerId}
     ORDER BY d.created_at DESC`;
   return rows.map(mapDocument);
+}
+
+export async function getNextUnprocessedDocumentForAsset(assetId: string, ownerId: string) {
+  const rows = await database()<DocumentRow[]>`
+    SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
+      d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
+      d.extracted_at, d.page_count, d.extraction_error
+    FROM documents d
+    INNER JOIN assets a ON a.id = d.asset_id
+    WHERE d.asset_id = ${assetId}
+      AND d.owner_id = ${ownerId}
+      AND a.owner_id = ${ownerId}
+      AND d.extracted_at IS NULL
+      AND d.extraction_error IS NULL
+    ORDER BY d.created_at ASC
+    LIMIT 1`;
+  return rows[0] ? mapDocument(rows[0]) : undefined;
 }
 
 export async function searchDocumentChunks(assetId: string, ownerId: string, query: string) {
@@ -133,6 +164,7 @@ export async function getDocumentForAsset(documentId: string, assetId: string, o
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
       d.extracted_at, d.page_count, d.extraction_error
     FROM documents d
     INNER JOIN assets a ON a.id = d.asset_id
@@ -155,15 +187,32 @@ export async function getDocumentPages(documentId: string, assetId: string, owne
   return rows.map((row) => ({ pageNumber: row.page_number, text: row.text_content }));
 }
 
+
+export async function findDocumentBySourceUrl(assetId: string, ownerId: string, sourceUrl: string) {
+  const rows = await database()<DocumentRow[]>`
+    SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
+      d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
+      d.extracted_at, d.page_count, d.extraction_error
+    FROM documents d
+    INNER JOIN assets a ON a.id=d.asset_id
+    WHERE d.asset_id=${assetId} AND d.owner_id=${ownerId} AND a.owner_id=${ownerId}
+      AND d.source_url=${sourceUrl}
+    LIMIT 1`;
+  return rows[0] ? mapDocument(rows[0]) : undefined;
+}
+
 export async function createDocumentForAsset(assetId: string, ownerId: string, document: NewAssetDocument) {
   const rows = await database()`
     INSERT INTO documents (
       asset_id, owner_id, title, original_filename, content_type, size_bytes, storage_key,
-      source_type, source_url
+      source_type, source_url, source_external_id, content_hash, document_type, document_date, summary
     )
     SELECT a.id, a.owner_id, ${document.title}, ${document.originalFilename},
       ${document.contentType}, ${document.sizeBytes}, ${document.storageKey},
-      ${document.sourceType ?? "upload"}, ${document.sourceUrl ?? null}
+      ${document.sourceType ?? "upload"}, ${document.sourceUrl ?? null},
+      ${document.sourceExternalId ?? null}, ${document.contentHash ?? null},
+      ${document.documentType ?? null}, ${document.documentDate ?? null}, ${document.summary ?? null}
     FROM assets a
     WHERE a.id = ${assetId} AND a.owner_id = ${ownerId}
     RETURNING id`;
@@ -200,6 +249,7 @@ export async function deleteDocumentRecord(documentId: string, assetId: string, 
       AND a.owner_id = ${ownerId}
     RETURNING d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
       d.extracted_at, d.page_count, d.extraction_error`;
   return rows[0] ? mapDocument(rows[0]) : undefined;
 }
@@ -248,6 +298,25 @@ export async function replaceDocumentPages(
   });
 
   return true;
+}
+
+export async function updateDocumentClassification(
+  documentId: string,
+  assetId: string,
+  ownerId: string,
+  classification: { documentType: string; documentDate?: string; summary?: string },
+) {
+  const rows = await database()`
+    UPDATE documents d
+    SET document_type=${classification.documentType},
+        document_date=${classification.documentDate ?? null},
+        summary=${classification.summary ?? null},
+        classified_at=now()
+    FROM assets a
+    WHERE d.id=${documentId} AND d.asset_id=${assetId} AND d.owner_id=${ownerId}
+      AND a.id=d.asset_id AND a.owner_id=${ownerId}
+    RETURNING d.id`;
+  return rows.length === 1;
 }
 
 export async function markDocumentExtractionError(

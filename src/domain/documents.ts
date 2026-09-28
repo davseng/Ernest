@@ -1,4 +1,4 @@
-export type DocumentSourceType = "upload" | "url";
+export type DocumentSourceType = "upload" | "url" | "google_drive";
 
 export interface AssetDocument {
   id: string;
@@ -11,6 +11,12 @@ export interface AssetDocument {
   createdAt: Date;
   sourceType: DocumentSourceType;
   sourceUrl?: string;
+  sourceExternalId?: string;
+  contentHash?: string;
+  documentType?: string;
+  documentDate?: string;
+  summary?: string;
+  classifiedAt?: Date;
   extractedAt?: Date;
   pageCount?: number;
   extractionError?: string;
@@ -24,6 +30,11 @@ export interface NewAssetDocument {
   storageKey: string;
   sourceType?: DocumentSourceType;
   sourceUrl?: string;
+  sourceExternalId?: string;
+  contentHash?: string;
+  documentType?: string;
+  documentDate?: string;
+  summary?: string;
 }
 
 export interface ExtractedDocumentPage {
