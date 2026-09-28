@@ -1,6 +1,7 @@
 import "server-only";
 
-import { classifyDocument } from "@/data/document-classification";\nimport { extractDocumentFindings, replaceDocumentFindings } from "@/data/document-findings";
+import { classifyDocument } from "@/data/document-classification";
+import { extractDocumentFindings, replaceDocumentFindings } from "@/data/document-findings";
 
 import {
   getDocumentForAsset,
