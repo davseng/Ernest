@@ -20,6 +20,7 @@ function titleFromFilename(filename: string) {
 }
 
 export async function importGoogleDriveInbox(assetId: string, _previousState?: { ok: boolean; message: string }) {
+  void _previousState;
   const session = await auth();
   if (!session?.user?.id) redirect("/sign-in");
   const asset = await getAsset(assetId, session.user.id);
