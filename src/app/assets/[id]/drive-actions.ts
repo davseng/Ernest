@@ -6,7 +6,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { getAsset } from "@/data/assets";
-import { createDocumentForAsset, findDocumentBySourceUrl } from "@/data/documents";
+import { createDocumentForAsset, findDocumentBySourceUrl, getDocumentsForAsset } from "@/data/documents";
 import { deleteStoredDocument, storeDocumentBytes } from "@/data/document-storage";
 import { downloadDrivePdf, listInboxPdfs } from "@/data/google-drive";
 
@@ -42,6 +42,8 @@ export async function importGoogleDriveInbox(assetId: string, _previousState?: {
         const bytes = await downloadDrivePdf(session.user.id, file.id);
         if (!bytes.byteLength || bytes.byteLength > MAX_FILE_BYTES) { failed += 1; continue; }
         const signature = new TextDecoder("ascii").decode(bytes.slice(0, 5));
+        const existingByHash = file.md5Checksum ? (await getDocumentsForAsset(assetId, session.user.id)).find((document) => document.contentHash === file.md5Checksum) : undefined;
+        if (existingByHash) { skipped += 1; continue; }
         if (signature !== "%PDF-") { failed += 1; continue; }
         const filename = safeFilename(file.name.toLowerCase().endsWith(".pdf") ? file.name : `${file.name}.pdf`);
         const storageKey = `assets/${assetId}/documents/${randomUUID()}-${filename}`;
