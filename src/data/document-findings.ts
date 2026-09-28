@@ -20,7 +20,7 @@ export async function extractDocumentFindings(pages:ExtractedDocumentPage[],docu
     instructions:[
       "Extract durable asset-history findings from this document only.",
       "A finding is a useful historical observation such as work completed, inspection condition, installed/replaced equipment, damage, measurement, or explicitly stated recommendation.",
-      "Do not turn estimates, proposals, quotes, planned work, generic manual instructions, or manufacturer specifications into claims that work occurred on this asset.",
+      "Do not turn estimates, proposals, quotes, planned work, generic manual instructions, or manufacturer specifications into claims that work occurred on this asset.",\n      "A paid service invoice or receipt that states a repair/replacement scope, has a service date, and shows payment/labor is strong evidence the listed work was completed. Record that as maintenance_completed unless the document itself says the work was only proposed, incomplete, or cancelled.",\n      "Do not add a generic caveat that an invoice cannot prove completion when the document contains those completion signals. Preserve any real ambiguity that is actually present.",
       "Use findingType from: maintenance_completed, inspection_observation, equipment_observation, damage_observation, recommendation, other.",
       "statement must preserve the source meaning and make uncertainty explicit.",
       "observedAt is YYYY-MM-DD only when a complete applicable date is explicit; otherwise null.",
