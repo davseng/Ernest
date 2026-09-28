@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { answerErnestQuestion, answerThinErnestQuestion } from "@/data/ask-ernest";
 import { getAsset } from "@/data/assets";
 import { getErnestDocumentContext } from "@/data/document-context";
+import { getAssetFindings } from "@/data/document-findings";
 import { proposeErnestWrite, type ErnestWriteProposal } from "@/data/ernest-write-proposals";
 import { getComponentLifecycles } from "@/data/equipment-knowledge";
 import { getInventoryItems, getInventoryLocations } from "@/data/inventory";
@@ -206,6 +207,14 @@ function focusedDocuments(question: string, context: Awaited<ReturnType<typeof g
     out.push(page); chars += page.text.length; if(checklistish(page)) checklistPages++;
   }
   return out;
+}
+
+function relevantHistoricalEvidence(question: string, findings: Awaited<ReturnType<typeof getAssetFindings>>) {
+  const terms = relevantTerms(question);
+  const score = (value: string) => terms.reduce((n, term) => n + (value.toLowerCase().includes(term) ? 1 : 0), 0);
+  const hits = findings.map((finding) => ({ finding, score: score([finding.findingType, finding.statement, finding.documentTitle].join(" ")) })).filter((item) => item.score > 0).sort((a,b) => b.score - a.score).slice(0,8);
+  if (!hits.length) return "";
+  return ["HISTORICAL DOCUMENT EVIDENCE (dated evidence, not automatically a current asset fact):", ...hits.map(({finding}) => `- ${finding.observedAt ? `[${finding.observedAt}] ` : ""}${finding.statement} · source ${finding.documentTitle}${finding.pageNumber ? `, p. ${finding.pageNumber}` : ""} · lifecycle status ${finding.status}`)].join("\n");
 }
 
 function proposalAnswer(proposal: ErnestWriteProposal) {
