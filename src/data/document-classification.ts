@@ -33,7 +33,7 @@ export async function classifyDocument(documentId: string, assetId: string, owne
   const type = clean(parsed.documentType, 40) || "other";
   const documentType = TYPES.includes(type as (typeof TYPES)[number]) ? type : "other";
   const date = clean(parsed.documentDate, 10);
-  const documentDate = date && /^\\d{4}-\\d{2}-\\d{2}$/.test(date) ? date : undefined;
+  const documentDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined;
   const summary = clean(parsed.summary, 1200);
   await updateDocumentClassification(documentId, assetId, ownerId, { documentType, documentDate, summary });
   return { ok: true as const, documentType, documentDate, summary };
