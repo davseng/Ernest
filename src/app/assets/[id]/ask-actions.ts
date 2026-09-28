@@ -41,9 +41,7 @@ function ernestTurns(conversation: string) {
 
 function clarificationQuestion(turn: string) {
   if (!turn) return null;
-  const paragraphs = turn.split(/
-\s*
-/).map((value) => value.trim()).filter(Boolean);
+  const paragraphs = turn.split(new RegExp("\\n\\s*\\n")).map((value) => value.trim()).filter(Boolean);
   for (const paragraph of paragraphs.slice(-2).reverse()) {
     if (paragraph.includes("?")) return paragraph;
   }
