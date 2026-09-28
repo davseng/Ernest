@@ -41,3 +41,12 @@ export async function extractDocumentFindings(pages:ExtractedDocumentPage[],docu
 export async function replaceDocumentFindings(documentId:string,assetId:string,ownerId:string,findings:Awaited<ReturnType<typeof extractDocumentFindings>>){
   const sql=database();await sql.begin(async tx=>{await tx`DELETE FROM document_findings WHERE document_id=${documentId} AND asset_id=${assetId} AND owner_id=${ownerId} AND status='unknown'`;for(const f of findings){await tx`INSERT INTO document_findings(asset_id,owner_id,document_id,page_number,finding_type,statement,observed_at,status,confidence) VALUES(${assetId},${ownerId},${documentId},${f.pageNumber},${f.findingType},${f.statement},${f.observedAt},'unknown',${f.confidence})`;}});}
 export async function getDocumentFindings(documentId:string,assetId:string,ownerId:string){const rows=await database()<Array<{id:string;page_number:number|null;finding_type:string;statement:string;observed_at:string|null;status:DocumentFinding["status"];confidence:string|null}>>`SELECT id,page_number,finding_type,statement,observed_at::text,status,confidence::text FROM document_findings WHERE document_id=${documentId} AND asset_id=${assetId} AND owner_id=${ownerId} ORDER BY page_number,created_at`;return rows.map(r=>({id:r.id,pageNumber:r.page_number,findingType:r.finding_type,statement:r.statement,observedAt:r.observed_at,status:r.status,confidence:r.confidence}));}
+
+export async function getAssetFindings(assetId:string,ownerId:string,limit=80){
+  const rows=await database()<Array<{id:string;document_id:string;document_title:string;page_number:number|null;finding_type:string;statement:string;observed_at:string|null;status:DocumentFinding["status"];confidence:string|null}>>`
+    SELECT f.id,f.document_id,d.title AS document_title,f.page_number,f.finding_type,f.statement,f.observed_at::text,f.status,f.confidence::text
+    FROM document_findings f JOIN documents d ON d.id=f.document_id
+    WHERE f.asset_id=${assetId} AND f.owner_id=${ownerId}
+    ORDER BY f.observed_at DESC NULLS LAST,f.created_at DESC LIMIT ${limit}`;
+  return rows.map(r=>({id:r.id,documentId:r.document_id,documentTitle:r.document_title,pageNumber:r.page_number,findingType:r.finding_type,statement:r.statement,observedAt:r.observed_at,status:r.status,confidence:r.confidence}));
+}
