@@ -30,6 +30,8 @@ export async function importGoogleDriveInbox(assetId: string, _previousState?: {
   let failed = 0;
   try {
     const files = await listInboxPdfs(session.user.id);
+    const existingDocuments = await getDocumentsForAsset(assetId, session.user.id);
+    const knownHashes = new Set(existingDocuments.map((document) => document.contentHash).filter((hash): hash is string => Boolean(hash)));
     for (const file of files) {
       const sourceUrl = `https://drive.google.com/file/d/${file.id}/view`;
       if (await findDocumentBySourceUrl(assetId, session.user.id, sourceUrl)) {
@@ -42,8 +44,7 @@ export async function importGoogleDriveInbox(assetId: string, _previousState?: {
         const bytes = await downloadDrivePdf(session.user.id, file.id);
         if (!bytes.byteLength || bytes.byteLength > MAX_FILE_BYTES) { failed += 1; continue; }
         const signature = new TextDecoder("ascii").decode(bytes.slice(0, 5));
-        const existingByHash = file.md5Checksum ? (await getDocumentsForAsset(assetId, session.user.id)).find((document) => document.contentHash === file.md5Checksum) : undefined;
-        if (existingByHash) { skipped += 1; continue; }
+        if (file.md5Checksum && knownHashes.has(file.md5Checksum)) { skipped += 1; continue; }
         if (signature !== "%PDF-") { failed += 1; continue; }
         const filename = safeFilename(file.name.toLowerCase().endsWith(".pdf") ? file.name : `${file.name}.pdf`);
         const storageKey = `assets/${assetId}/documents/${randomUUID()}-${filename}`;
