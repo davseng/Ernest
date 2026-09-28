@@ -209,9 +209,9 @@ function focusedDocuments(question: string, context: Awaited<ReturnType<typeof g
   return out;
 }
 
-function relevantHistoricalEvidence(question: string, findings: Awaited<ReturnType<typeof getAssetFindings>>) {
+function termMatches(value: string, term: string) {\n  const v=value.toLowerCase();\n  if(v.includes(term))return true;\n  const aliases:Record<string,string[]>={ais:["ais700","ais 700","automatic identification"],gps:["gnss"],cooler:["oil cooler","gear cooler"],windlass:["anchor windlass"]};\n  return (aliases[term]||[]).some(alias=>v.includes(alias));\n}\n\nfunction relevantHistoricalEvidence(question: string, findings: Awaited<ReturnType<typeof getAssetFindings>>) {
   const terms = relevantTerms(question);
-  const score = (value: string) => terms.reduce((n, term) => n + (value.toLowerCase().includes(term) ? 1 : 0), 0);
+  const score = (value: string) => terms.reduce((n, term) => n + (termMatches(value,term) ? 1 : 0), 0);
   const hits = findings.map((finding) => ({ finding, score: score([finding.findingType, finding.statement, finding.documentTitle].join(" ")) })).filter((item) => item.score > 0).sort((a,b) => b.score - a.score).slice(0,8);
   if (!hits.length) return "";
   return ["HISTORICAL DOCUMENT EVIDENCE (dated evidence, not automatically a current asset fact):", ...hits.map(({finding}) => `- ${finding.observedAt ? `[${finding.observedAt}] ` : ""}${finding.statement} · source ${finding.documentTitle}${finding.pageNumber ? `, p. ${finding.pageNumber}` : ""} · lifecycle status ${finding.status}`)].join("\n");
