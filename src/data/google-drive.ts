@@ -10,12 +10,12 @@ function database() {
   return client;
 }
 
-const SCOPES = ["https://www.googleapis.com/auth/drive.readonly", "openid", "email"].join(" ");
+const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
 
 function config() {
   const clientId = process.env.GOOGLE_DRIVE_CLIENT_ID?.trim();
   const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET?.trim();
-  const appUrl = (process.env.AUTH_URL || process.env.NEXTAUTH_URL || "").replace(/\/$/, "");
+  const appUrl = (process.env.AUTH_URL || process.env.NEXTAUTH_URL || "").trim().replace(/\/$/, "");
   if (!clientId || !clientSecret || !appUrl) return undefined;
   return { clientId, clientSecret, redirectUri: `${appUrl}/api/google-drive/callback` };
 }
@@ -31,6 +31,7 @@ export function googleDriveAuthorizationUrl(state: string) {
     response_type: "code",
     access_type: "offline",
     prompt: "consent",
+    include_granted_scopes: "true",
     scope: SCOPES,
     state,
   });
@@ -67,8 +68,9 @@ async function refreshAccessToken(refreshToken: string) {
 }
 
 export async function saveGoogleDriveConnection(ownerId: string, token: { access_token: string; refresh_token?: string; expires_in: number }) {
-  const emailResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", { headers: { Authorization: `Bearer ${token.access_token}` } });
-  const profile = emailResponse.ok ? await emailResponse.json() as { email?: string } : {};
+  // Drive authorization does not require identity scopes. Keep the connection
+  // deliberately limited to the Drive permission Ernest actually uses.
+  const profile: { email?: string } = {};
   await database()`
     INSERT INTO external_connections (owner_id, provider, access_token, refresh_token, token_expires_at, provider_account_email)
     VALUES (${ownerId}, 'google_drive', ${token.access_token}, ${token.refresh_token ?? null}, now() + (${token.expires_in} * interval '1 second'), ${profile.email ?? null})
