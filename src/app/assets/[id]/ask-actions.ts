@@ -275,20 +275,6 @@ ${conversation}
 Current question:
 ${question}`
       : question;
-    const verifiedContext = verified(asset, logs, inventory, lifecycles, procedures);
-    const focusedContext = focusedDocuments(question, context);
-      const focusedKnowledge = focusedVerified(question, asset, logs, inventory, lifecycles, procedures);
-      const [current, thin] = await Promise.all([
-        answerErnestQuestion(contextual, context, verifiedContext, thinkHarder),
-        answerThinErnestQuestion(contextual, focusedContext, focusedKnowledge, thinkHarder),
-      ]);
-      return {
-        question,
-        answer: thin.answer,
-        sources: [],
-        comparison: { current, thin: thin.answer, context: thin.diagnosticContext },
-      };
-    }
     const focusedContext = focusedDocuments(question, context);
     const historicalEvidence = relevantHistoricalEvidence(question, findings);
     const focusedKnowledge = [focusedVerified(question, asset, logs, inventory, lifecycles, procedures), historicalEvidence].filter(Boolean).join("\\n\\n");
