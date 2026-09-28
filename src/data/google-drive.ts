@@ -121,10 +121,26 @@ export async function ensureErnestInbox(ownerId: string) {
 
 export async function listInboxPdfs(ownerId: string) {
   const folder = await ensureErnestInbox(ownerId);
-  const q = encodeURIComponent(`'${folder.id}' in parents and trashed=false and mimeType='application/pdf'`);
-  const response = await driveGet(ownerId, `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,mimeType,size,modifiedTime,md5Checksum,webViewLink)&orderBy=modifiedTime desc&pageSize=100`);
-  const body = await response.json() as { files?: Array<{id:string;name:string;mimeType:string;size?:string;modifiedTime?:string;md5Checksum?:string;webViewLink?:string}> };
-  return body.files ?? [];
+  const q = encodeURIComponent("'" + folder.id.replace(/'/g, "\\'") + "' in parents and trashed=false and mimeType='application/pdf'");
+  type DriveFile = {id:string;name:string;mimeType:string;size?:string;modifiedTime?:string;md5Checksum?:string;webViewLink?:string};
+  const files: DriveFile[] = [];
+  let pageToken: string | undefined;
+  do {
+    const token = pageToken ? "&pageToken=" + encodeURIComponent(pageToken) : "";
+    const response = await driveGet(ownerId, "https://www.googleapis.com/drive/v3/files?q=" + q + "&fields=nextPageToken,files(id,name,mimeType,size,modifiedTime,md5Checksum,webViewLink)&orderBy=modifiedTime%20desc&pageSize=100" + token);
+    const body = await response.json() as { files?: DriveFile[]; nextPageToken?: string };
+    files.push(...(body.files ?? []));
+    pageToken = body.nextPageToken;
+  } while (pageToken && files.length < 1000);
+  return files;
+}
+
+export async function disconnectGoogleDrive(ownerId: string) {
+  const connection = await getGoogleDriveConnection(ownerId);
+  if (connection?.access_token) {
+    await fetch("https://oauth2.googleapis.com/revoke?token=" + encodeURIComponent(connection.access_token), { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" } }).catch(() => undefined);
+  }
+  await database()`DELETE FROM external_connections WHERE owner_id=${ownerId} AND provider='google_drive'`;
 }
 
 export async function downloadDrivePdf(ownerId: string, fileId: string) {
