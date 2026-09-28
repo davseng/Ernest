@@ -30,7 +30,11 @@ function looksLikeFollowUp(question: string) {
 
 function retrievalQuestion(question: string, conversation: string) {
   if (!conversation || !looksLikeFollowUp(question)) return question;
-  return [question, conversation.slice(-1200)].join("\\n").slice(0, 1600);
+  const ownerTurns = [...conversation.matchAll(/Owner:\s*([^\n]+)/gi)]
+    .map((match) => match[1]?.trim() || "")
+    .filter(Boolean);
+  const priorOwnerQuestion = ownerTurns.at(-1) || "";
+  return [question, priorOwnerQuestion].filter(Boolean).join(" ").slice(0, 800);
 }
 
 function ernestTurns(conversation: string) {
