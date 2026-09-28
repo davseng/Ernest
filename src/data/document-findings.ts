@@ -13,13 +13,7 @@ function clean(v:unknown,max=1600){return typeof v==="string"&&v.trim()?v.trim()
 export type DocumentFinding={id:string;pageNumber:number|null;findingType:string;statement:string;observedAt:string|null;status:"unknown"|"current"|"resolved"|"superseded";confidence:string|null};
 
 export async function extractDocumentFindings(pages:ExtractedDocumentPage[],documentType?:string|null){
-  const source=pages.slice(0,12).map(p=>`PAGE ${p.pageNumber}
-${p.text.slice(0,6000)}`).join("
-
----
-
-");
-  if(!source.trim())return[];
+  const source=pages.slice(0,12).map(p=>`PAGE ${p.pageNumber}\\n${p.text.slice(0,6000)}`).join("\\n\\n---\\n\\n");\n  if(!source.trim())return[];
   const response=await openai().responses.create({
     model:process.env.OPENAI_MODEL||"gpt-5.6-luna",reasoning:{effort:"low"},
     instructions:[
@@ -36,10 +30,7 @@ ${p.text.slice(0,6000)}`).join("
       "Keep each finding tied to its supporting page.",
       "Return JSON only: {\"findings\":[{\"pageNumber\":1,\"findingType\":\"maintenance_completed\",\"statement\":\"...\",\"observedAt\":\"YYYY-MM-DD or null\",\"status\":\"unknown\",\"confidence\":0.95}]}."
     ].join(" "),
-    input:`DOCUMENT TYPE: ${documentType||"unknown"}
-
-DOCUMENT TEXT:
-${source}`
+    input:`DOCUMENT TYPE: ${documentType||"unknown"}\\n\\nDOCUMENT TEXT:\\n${source}`
   });
   const raw=response.output_text.trim();const json=raw.startsWith("{")?raw:raw.slice(raw.indexOf("{"),raw.lastIndexOf("}")+1);const parsed=JSON.parse(json) as {findings?:unknown[]};
   if(!Array.isArray(parsed.findings))return[];
