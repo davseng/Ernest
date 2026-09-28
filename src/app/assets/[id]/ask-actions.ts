@@ -34,8 +34,7 @@ function retrievalQuestion(question: string, conversation: string) {
 }
 
 function ernestTurns(conversation: string) {
-  return [...conversation.matchAll(/Ernest:\s*([^]*?)(?=
-Owner:|$)/gi)]
+  return [...conversation.matchAll(new RegExp("Ernest:\\\\s*([^]*?)(?=\\\\nOwner:|$)", "gi"))]
     .map((match) => match[1]?.trim() || "")
     .filter(Boolean);
 }
