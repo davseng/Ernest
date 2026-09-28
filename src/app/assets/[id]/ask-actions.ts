@@ -140,8 +140,7 @@ function verified(
     lines.push(`[${log.occurredAt.toISOString().slice(0, 10)}] ${log.entryType}: ${log.title} — ${log.body}`);
   }
 
-  return lines.join("
-");
+  return lines.join("\\n");
 }
 
 function relevantTerms(question: string) {
