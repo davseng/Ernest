@@ -25,6 +25,12 @@ type DocumentRow = {
   created_at: Date;
   source_type: "upload" | "url" | "google_drive";
   source_url: string | null;
+  source_external_id: string | null;
+  content_hash: string | null;
+  document_type: string | null;
+  document_date: string | null;
+  summary: string | null;
+  classified_at: Date | null;
   extracted_at: Date | null;
   page_count: number | null;
   extraction_error: string | null;
@@ -61,6 +67,12 @@ function mapDocument(row: DocumentRow): AssetDocument {
     createdAt: row.created_at,
     sourceType: row.source_type,
     sourceUrl: row.source_url ?? undefined,
+    sourceExternalId: row.source_external_id ?? undefined,
+    contentHash: row.content_hash ?? undefined,
+    documentType: row.document_type ?? undefined,
+    documentDate: row.document_date ?? undefined,
+    summary: row.summary ?? undefined,
+    classifiedAt: row.classified_at ?? undefined,
     extractedAt: row.extracted_at ?? undefined,
     pageCount: row.page_count ?? undefined,
     extractionError: row.extraction_error ?? undefined,
@@ -71,6 +83,7 @@ export async function getDocumentsForAsset(assetId: string, ownerId: string) {
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
       d.extracted_at, d.page_count, d.extraction_error
     FROM documents d
     INNER JOIN assets a ON a.id = d.asset_id
@@ -133,6 +146,7 @@ export async function getDocumentForAsset(documentId: string, assetId: string, o
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
       d.extracted_at, d.page_count, d.extraction_error
     FROM documents d
     INNER JOIN assets a ON a.id = d.asset_id
@@ -160,6 +174,7 @@ export async function findDocumentBySourceUrl(assetId: string, ownerId: string, 
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
       d.extracted_at, d.page_count, d.extraction_error
     FROM documents d
     INNER JOIN assets a ON a.id=d.asset_id
@@ -173,11 +188,13 @@ export async function createDocumentForAsset(assetId: string, ownerId: string, d
   const rows = await database()`
     INSERT INTO documents (
       asset_id, owner_id, title, original_filename, content_type, size_bytes, storage_key,
-      source_type, source_url
+      source_type, source_url, source_external_id, content_hash, document_type, document_date, summary
     )
     SELECT a.id, a.owner_id, ${document.title}, ${document.originalFilename},
       ${document.contentType}, ${document.sizeBytes}, ${document.storageKey},
-      ${document.sourceType ?? "upload"}, ${document.sourceUrl ?? null}
+      ${document.sourceType ?? "upload"}, ${document.sourceUrl ?? null},
+      ${document.sourceExternalId ?? null}, ${document.contentHash ?? null},
+      ${document.documentType ?? null}, ${document.documentDate ?? null}, ${document.summary ?? null}
     FROM assets a
     WHERE a.id = ${assetId} AND a.owner_id = ${ownerId}
     RETURNING id`;
@@ -214,6 +231,7 @@ export async function deleteDocumentRecord(documentId: string, assetId: string, 
       AND a.owner_id = ${ownerId}
     RETURNING d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
       d.extracted_at, d.page_count, d.extraction_error`;
   return rows[0] ? mapDocument(rows[0]) : undefined;
 }
