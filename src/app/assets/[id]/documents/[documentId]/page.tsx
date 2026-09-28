@@ -4,7 +4,8 @@ import { auth } from "@/auth";
 import { AssetAppHeader } from "@/components/asset-app-header";
 import { getAsset } from "@/data/assets";
 import { getDocumentForAsset, getDocumentPages } from "@/data/documents";
-import { getMaintenanceCandidates, getMaintenanceGuidance } from "@/data/maintenance-candidates";\nimport { getDocumentFindings } from "@/data/document-findings";
+import { getMaintenanceCandidates, getMaintenanceGuidance } from "@/data/maintenance-candidates";
+import { getDocumentFindings } from "@/data/document-findings";
 import { removeDocument, renameDocument } from "../../document-actions";
 import { approveMaintenanceCandidate, editAndApproveMaintenanceCandidate, generateMaintenanceCandidates, rejectMaintenanceCandidate } from "./maintenance-actions";
 
