@@ -241,7 +241,7 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
   const compareMode = String(formData.get("compareMode") ?? "") === "true";
 
   try {
-    const [asset, logs, inventory, locations, lifecycles, procedures, context] = await Promise.all([
+    const [asset, logs, inventory, locations, lifecycles, procedures, context, findings] = await Promise.all([
       getAsset(assetId, session.user.id),
       getLogEntries(assetId, session.user.id),
       getInventoryItems(assetId, session.user.id),
@@ -249,6 +249,7 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
       getComponentLifecycles(assetId, session.user.id),
       getProcedures(assetId, session.user.id),
       getErnestDocumentContext(assetId, session.user.id, retrievalQuestion(question, conversation)),
+      getAssetFindings(assetId, session.user.id),
     ]);
 
     if (!asset) return { ...empty(), question, error: "I couldn’t find that asset." };
