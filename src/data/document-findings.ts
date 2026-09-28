@@ -50,3 +50,37 @@ export async function getAssetFindings(assetId:string,ownerId:string,limit=80){
     ORDER BY f.observed_at DESC NULLS LAST,f.created_at DESC LIMIT ${limit}`;
   return rows.map(r=>({id:r.id,documentId:r.document_id,documentTitle:r.document_title,pageNumber:r.page_number,findingType:r.finding_type,statement:r.statement,observedAt:r.observed_at,status:r.status,confidence:r.confidence}));
 }
+
+type ReconcileCandidate={id:string;documentId:string;documentTitle:string;pageNumber:number|null;findingType:string;statement:string;observedAt:string|null;status:DocumentFinding["status"];confidence:string|null};
+
+export async function reconcileAssetFindings(assetId:string,ownerId:string){
+  const findings=await getAssetFindings(assetId,ownerId,160);
+  const eligible=findings.filter(f=>f.status==="unknown"&&f.observedAt);
+  if(eligible.length<2)return {updated:0};
+  const response=await openai().responses.create({
+    model:process.env.OPENAI_MODEL||"gpt-5.6-luna",reasoning:{effort:"low"},
+    instructions:[
+      "Compare historical asset findings and identify only clear lifecycle relationships.",
+      "A later completed repair/replacement may supersede an earlier observation or completed replacement about the same specific equipment.",
+      "A later completed repair may resolve an earlier damage/inspection/recommendation only when the later statement clearly addresses that same issue.",
+      "Do not infer relationships merely because findings share broad words such as engine, boat, repair, survey, electrical, or maintenance.",
+      "Do not mark ordinary recurring maintenance such as oil changes as superseding prior maintenance; both remain valid history.",
+      "Never change the later finding. Return only relationships supported by the supplied statements and dates.",
+      "Return JSON only: {\"relationships\":[{\"olderId\":\"uuid\",\"newerId\":\"uuid\",\"effect\":\"resolved|superseded\",\"confidence\":0.95}]}."
+    ].join(" "),
+    input:eligible.map(f=>JSON.stringify({id:f.id,date:f.observedAt,type:f.findingType,statement:f.statement,source:f.documentTitle})).join("\n")
+  });
+  const raw=response.output_text.trim();const json=raw.startsWith("{")?raw:raw.slice(raw.indexOf("{"),raw.lastIndexOf("}")+1);
+  const parsed=JSON.parse(json) as {relationships?:Array<Record<string,unknown>>};
+  if(!Array.isArray(parsed.relationships))return {updated:0};
+  const byId=new Map(eligible.map(f=>[f.id,f]));let updated=0;const sql=database();
+  for(const rel of parsed.relationships){
+    const olderId=clean(rel.olderId,80),newerId=clean(rel.newerId,80),effect=clean(rel.effect,20);const confidence=Number(rel.confidence);
+    if(!olderId||!newerId||!["resolved","superseded"].includes(effect||"")||!Number.isFinite(confidence)||confidence<0.9)continue;
+    const older=byId.get(olderId),newer=byId.get(newerId);if(!older||!newer||!older.observedAt||!newer.observedAt||newer.observedAt<=older.observedAt)continue;
+    if(effect==="resolved"){await sql`UPDATE document_findings SET status='resolved',resolved_by=${newerId} WHERE id=${olderId} AND asset_id=${assetId} AND owner_id=${ownerId} AND status='unknown'`;}
+    else {await sql`UPDATE document_findings SET status='superseded',superseded_by=${newerId} WHERE id=${olderId} AND asset_id=${assetId} AND owner_id=${ownerId} AND status='unknown'`;}
+    updated+=1;
+  }
+  return {updated};
+}
