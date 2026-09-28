@@ -11,6 +11,12 @@ import { deleteStoredDocument, storeDocumentBytes } from "@/data/document-storag
 import { downloadDrivePdf, listInboxPdfs } from "@/data/google-drive";
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
+const PDF_HEADER_SCAN_BYTES = 1024;
+
+function hasPdfHeader(bytes: Uint8Array) {
+  const prefix = new TextDecoder("ascii").decode(bytes.slice(0, Math.min(bytes.byteLength, PDF_HEADER_SCAN_BYTES)));
+  return prefix.includes("%PDF-");
+}
 
 function safeFilename(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "drive-document.pdf";
@@ -29,6 +35,7 @@ export async function importGoogleDriveInbox(assetId: string, _previousState?: {
   let imported = 0;
   let skipped = 0;
   let failed = 0;
+  const failures: string[] = [];
   try {
     const files = await listInboxPdfs(session.user.id);
     const existingDocuments = await getDocumentsForAsset(assetId, session.user.id);
@@ -40,13 +47,13 @@ export async function importGoogleDriveInbox(assetId: string, _previousState?: {
         continue;
       }
       const reportedSize = Number(file.size ?? "0");
-      if (reportedSize > MAX_FILE_BYTES) { failed += 1; continue; }
+      if (reportedSize > MAX_FILE_BYTES) { failed += 1; failures.push(`${file.name}: larger than 20 MB`); continue; }
       try {
         const bytes = await downloadDrivePdf(session.user.id, file.id);
         if (!bytes.byteLength || bytes.byteLength > MAX_FILE_BYTES) { failed += 1; continue; }
         const signature = new TextDecoder("ascii").decode(bytes.slice(0, 5));
         if (file.md5Checksum && knownHashes.has(file.md5Checksum)) { skipped += 1; continue; }
-        if (signature !== "%PDF-") { failed += 1; continue; }
+        if (!hasPdfHeader(bytes)) { failed += 1; failures.push(`${file.name}: PDF header not found`); continue; }
         const filename = safeFilename(file.name.toLowerCase().endsWith(".pdf") ? file.name : `${file.name}.pdf`);
         const storageKey = `assets/${assetId}/documents/${randomUUID()}-${filename}`;
         await storeDocumentBytes(storageKey, bytes, "application/pdf");
@@ -83,5 +90,6 @@ export async function importGoogleDriveInbox(assetId: string, _previousState?: {
   }
 
   revalidatePath(`/assets/${assetId}/documents`);
-  return { ok: true, message: `${imported} imported · ${skipped} already in Ernest${failed ? ` · ${failed} need attention` : ""}` };
+  const failureDetail = failures.length ? ` · ${failures.join(" · ")}` : "";
+  return { ok: true, message: `${imported} imported · ${skipped} already in Ernest${failed ? ` · ${failed} need attention${failureDetail}` : ""}` };
 }
