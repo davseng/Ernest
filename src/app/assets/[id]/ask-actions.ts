@@ -190,8 +190,8 @@ function focusedVerified(
 
 function focusedDocuments(question: string, context: Awaited<ReturnType<typeof getErnestDocumentContext>>) {
   const intent = retrievalIntent(question);
-  const maxPages = intent === "judgment" ? 2 : intent === "fact" ? 2 : intent === "evidence" ? 5 : 4;
-  const maxChars = intent === "judgment" ? 4500 : intent === "fact" ? 4000 : intent === "evidence" ? 12000 : 9000;
+  const maxPages = intent === "judgment" ? 2 : intent === "fact" ? 4 : intent === "evidence" ? 5 : 4;
+  const maxChars = intent === "judgment" ? 4500 : intent === "fact" ? 8000 : intent === "evidence" ? 12000 : 9000;
   const checklistish = (page: Awaited<ReturnType<typeof getErnestDocumentContext>>[number]) =>
     /checklist/i.test(page.documentTitle) || (page.text.match(/☐/g)?.length || 0) >= 4;
   const ranked = [...context].sort((a,b) => {
