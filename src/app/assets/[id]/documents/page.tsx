@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AssetAppHeader } from "@/components/asset-app-header";
 import { DocumentUploadPanel } from "@/components/document-upload-panel";
+import { DocumentInboxProcessor } from "@/components/document-inbox-processor";
 import { DocumentUrlImportForm } from "@/components/document-url-import-form";
 import { GoogleDriveInboxPanel } from "@/components/google-drive-inbox-panel";
 import { getAsset } from "@/data/assets";
@@ -70,6 +71,10 @@ export default async function DocumentsPage({ params, searchParams }: {
           </ol>
           <p className="asset-summary">Drive is the intake tray, not Ernest’s filing cabinet. Imported originals are preserved in Ernest’s private storage; Ernest will catalog and retrieve them without requiring a folder hierarchy.</p>
           <GoogleDriveInboxPanel assetId={id} configured={googleDriveConfigured()} />
+        </section>
+
+        <section className="editor-card add-system">
+          <DocumentInboxProcessor assetId={id} waiting={inbox.filter((document) => !document.extractionError).length} />
         </section>
 
         <DocumentUploadPanel assetId={id} />
