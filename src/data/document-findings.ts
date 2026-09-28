@@ -51,7 +51,6 @@ export async function getAssetFindings(assetId:string,ownerId:string,limit=80){
   return rows.map(r=>({id:r.id,documentId:r.document_id,documentTitle:r.document_title,pageNumber:r.page_number,findingType:r.finding_type,statement:r.statement,observedAt:r.observed_at,status:r.status,confidence:r.confidence}));
 }
 
-type ReconcileCandidate={id:string;documentId:string;documentTitle:string;pageNumber:number|null;findingType:string;statement:string;observedAt:string|null;status:DocumentFinding["status"];confidence:string|null};
 
 export async function reconcileAssetFindings(assetId:string,ownerId:string){
   const findings=await getAssetFindings(assetId,ownerId,160);
