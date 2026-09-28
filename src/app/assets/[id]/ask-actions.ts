@@ -30,18 +30,22 @@ function looksLikeFollowUp(question: string) {
 
 function retrievalQuestion(question: string, conversation: string) {
   if (!conversation || !looksLikeFollowUp(question)) return question;
-  return `${question}\n${conversation.slice(-1200)}`.slice(0, 1600);
+  return `${question}
+${conversation.slice(-1200)}`.slice(0, 1600);
 }
 
 function ernestTurns(conversation: string) {
-  return [...conversation.matchAll(/Ernest:\s*([^]*?)(?=\nOwner:|$)/gi)]
+  return [...conversation.matchAll(/Ernest:\s*([^]*?)(?=
+Owner:|$)/gi)]
     .map((match) => match[1]?.trim() || "")
     .filter(Boolean);
 }
 
 function clarificationQuestion(turn: string) {
   if (!turn) return null;
-  const paragraphs = turn.split(/\n\s*\n/).map((value) => value.trim()).filter(Boolean);
+  const paragraphs = turn.split(/
+\s*
+/).map((value) => value.trim()).filter(Boolean);
   for (const paragraph of paragraphs.slice(-2).reverse()) {
     if (paragraph.includes("?")) return paragraph;
   }
@@ -76,7 +80,8 @@ function learningProposalMessage(question: string, conversation: string) {
     "Do not propose a write for opinions, plans, guesses, uncertain answers, ordinary discussion, or anything that cannot be mapped without invention. Never infer more than the owner's actual answer. The proposal still requires owner confirmation before anything is written or verified.",
     `ERNEST CLARIFICATION: ${clarification}`,
     `OWNER ANSWER: ${question}`,
-  ].join("\n");
+  ].join("
+");
 }
 
 function clarificationFallback(question: string, conversation: string): ErnestWriteProposal | null {
@@ -140,7 +145,8 @@ function verified(
     lines.push(`[${log.occurredAt.toISOString().slice(0, 10)}] ${log.entryType}: ${log.title} — ${log.body}`);
   }
 
-  return lines.join("\n");
+  return lines.join("
+");
 }
 
 function relevantTerms(question: string) {
@@ -185,7 +191,8 @@ function focusedVerified(
   if(procedureIntent){const hits=procedures.map(p=>({p,score:score([p.title,p.notes||"",...p.steps.map(x=>x.instruction)].join(" "))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,2);if(hits.length){lines.push("VERIFIED PROCEDURES:");for(const {p} of hits){lines.push(`PROCEDURE: ${p.title} · type ${p.procedureType}`);for(const step of p.steps.slice(0,8))lines.push(`${step.position+1}. ${step.instruction}`);}}}
   const logHits=logs.map(log=>({log,score:score(`${log.title} ${log.body} ${log.entryType}`)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,5);
   if(logHits.length){lines.push("RELEVANT OPERATING / MAINTENANCE HISTORY:");for(const {log} of logHits)lines.push(`[${log.occurredAt.toISOString().slice(0,10)}] ${log.entryType}: ${log.title} — ${log.body}`);}
-  return lines.join("\n");
+  return lines.join("
+");
 }
 
 function focusedDocuments(question: string, context: Awaited<ReturnType<typeof getErnestDocumentContext>>) {
@@ -209,12 +216,20 @@ function focusedDocuments(question: string, context: Awaited<ReturnType<typeof g
   return out;
 }
 
-function termMatches(value: string, term: string) {\n  const v=value.toLowerCase();\n  if(v.includes(term))return true;\n  const aliases:Record<string,string[]>={ais:["ais700","ais 700","automatic identification"],gps:["gnss"],cooler:["oil cooler","gear cooler"],windlass:["anchor windlass"]};\n  return (aliases[term]||[]).some(alias=>v.includes(alias));\n}\n\nfunction relevantHistoricalEvidence(question: string, findings: Awaited<ReturnType<typeof getAssetFindings>>) {
+function termMatches(value: string, term: string) {
+  const v=value.toLowerCase();
+  if(v.includes(term))return true;
+  const aliases:Record<string,string[]>={ais:["ais700","ais 700","automatic identification"],gps:["gnss"],cooler:["oil cooler","gear cooler"],windlass:["anchor windlass"]};
+  return (aliases[term]||[]).some(alias=>v.includes(alias));
+}
+
+function relevantHistoricalEvidence(question: string, findings: Awaited<ReturnType<typeof getAssetFindings>>) {
   const terms = relevantTerms(question);
   const score = (value: string) => terms.reduce((n, term) => n + (termMatches(value,term) ? 1 : 0), 0);
   const hits = findings.map((finding) => ({ finding, score: score([finding.findingType, finding.statement, finding.documentTitle].join(" ")) })).filter((item) => item.score > 0).sort((a,b) => b.score - a.score).slice(0,8);
   if (!hits.length) return "";
-  return ["HISTORICAL DOCUMENT EVIDENCE (dated evidence, not automatically a current asset fact):", ...hits.map(({finding}) => `- ${finding.observedAt ? `[${finding.observedAt}] ` : ""}${finding.statement} · source ${finding.documentTitle}${finding.pageNumber ? `, p. ${finding.pageNumber}` : ""} · lifecycle status ${finding.status}`)].join("\n");
+  return ["HISTORICAL DOCUMENT EVIDENCE (dated evidence, not automatically a current asset fact):", ...hits.map(({finding}) => `- ${finding.observedAt ? `[${finding.observedAt}] ` : ""}${finding.statement} · source ${finding.documentTitle}${finding.pageNumber ? `, p. ${finding.pageNumber}` : ""} · lifecycle status ${finding.status}`)].join("
+");
 }
 
 function proposalAnswer(proposal: ErnestWriteProposal) {
@@ -260,7 +275,11 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
     if (proposal) return { question, answer: proposalAnswer(proposal), sources: [], proposal };
 
     const contextual = conversation
-      ? `Recent conversation (context only, not verified evidence):\n${conversation}\n\nCurrent question:\n${question}`
+      ? `Recent conversation (context only, not verified evidence):
+${conversation}
+
+Current question:
+${question}`
       : question;
     const verifiedContext = verified(asset, logs, inventory, lifecycles, procedures);
     if (compareMode) {
@@ -279,7 +298,9 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
     }
     const focusedContext = focusedDocuments(question, context);
     const historicalEvidence = relevantHistoricalEvidence(question, findings);
-    const focusedKnowledge = [focusedVerified(question, asset, logs, inventory, lifecycles, procedures), historicalEvidence].filter(Boolean).join("\n\n");
+    const focusedKnowledge = [focusedVerified(question, asset, logs, inventory, lifecycles, procedures), historicalEvidence].filter(Boolean).join("
+
+");
     const focused = await answerThinErnestQuestion(contextual, focusedContext, focusedKnowledge, thinkHarder);
     const answer = focused.answer;
 
