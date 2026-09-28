@@ -1,4 +1,4 @@
-import "server-only";
+import "server-only";\n\nimport { classifyDocument } from "@/data/document-classification";
 
 import {
   getDocumentForAsset,
@@ -50,7 +50,7 @@ export async function processDocument(documentId: string, assetId: string, owner
     stage = "database-write";
     const stored = await replaceDocumentPages(documentId, assetId, ownerId, pages);
     if (!stored) return { ok: false as const, notFound: true as const, message: "Document not found." };
-    return { ok: true as const, pageCount: pages.length };
+    try { await classifyDocument(documentId, assetId, ownerId); } catch (error) { console.error("Classification failed", error); }\n    return { ok: true as const, pageCount: pages.length };
   } catch (error) {
     console.error(`Document text extraction failure at ${stage}`, error);
     const detail = error instanceof Error ? error.message : "Unknown extraction error";
