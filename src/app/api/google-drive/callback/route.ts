@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { getAsset } from "@/data/assets";
 import { exchangeGoogleCode, saveGoogleDriveConnection } from "@/data/google-drive";
 
 export async function GET(request: NextRequest) {
@@ -10,6 +11,8 @@ export async function GET(request: NextRequest) {
   const expected = request.cookies.get("ernest-drive-oauth-state")?.value ?? "";
   const assetId = state.split(":").slice(1).join(":");
   if (!state || state !== expected || !assetId) return new NextResponse("Invalid or expired Google Drive connection request.", { status: 400 });
+  const asset = await getAsset(assetId, session.user.id);
+  if (!asset) return new NextResponse("Asset not found.", { status: 404 });
   const code = request.nextUrl.searchParams.get("code");
   if (!code) return NextResponse.redirect(new URL(`/assets/${encodeURIComponent(assetId)}/documents?drive=denied`, request.url));
   try {
