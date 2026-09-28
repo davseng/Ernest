@@ -13,14 +13,21 @@ function clean(v:unknown,max=1600){return typeof v==="string"&&v.trim()?v.trim()
 export type DocumentFinding={id:string;pageNumber:number|null;findingType:string;statement:string;observedAt:string|null;status:"unknown"|"current"|"resolved"|"superseded";confidence:string|null};
 
 export async function extractDocumentFindings(pages:ExtractedDocumentPage[],documentType?:string|null){
-  const source=pages.slice(0,12).map(p=>`PAGE ${p.pageNumber}\n${p.text.slice(0,6000)}`).join("\n\n---\n\n");
+  const source=pages.slice(0,12).map(p=>`PAGE ${p.pageNumber}
+${p.text.slice(0,6000)}`).join("
+
+---
+
+");
   if(!source.trim())return[];
   const response=await openai().responses.create({
     model:process.env.OPENAI_MODEL||"gpt-5.6-luna",reasoning:{effort:"low"},
     instructions:[
       "Extract durable asset-history findings from this document only.",
       "A finding is a useful historical observation such as work completed, inspection condition, installed/replaced equipment, damage, measurement, or explicitly stated recommendation.",
-      "Do not turn estimates, proposals, quotes, planned work, generic manual instructions, or manufacturer specifications into claims that work occurred on this asset.",\n      "A paid service invoice or receipt that states a repair/replacement scope, has a service date, and shows payment/labor is strong evidence the listed work was completed. Record that as maintenance_completed unless the document itself says the work was only proposed, incomplete, or cancelled.",\n      "Do not add a generic caveat that an invoice cannot prove completion when the document contains those completion signals. Preserve any real ambiguity that is actually present.",
+      "Do not turn estimates, proposals, quotes, planned work, generic manual instructions, or manufacturer specifications into claims that work occurred on this asset.",
+      "A paid service invoice or receipt that states a repair/replacement scope, has a service date, and shows payment/labor is strong evidence the listed work was completed. Record that as maintenance_completed unless the document itself says the work was only proposed, incomplete, or cancelled.",
+      "Do not add a generic caveat that an invoice cannot prove completion when the document contains those completion signals. Preserve any real ambiguity that is actually present.",
       "Use findingType from: maintenance_completed, inspection_observation, equipment_observation, damage_observation, recommendation, other.",
       "statement must preserve the source meaning and make uncertainty explicit.",
       "observedAt is YYYY-MM-DD only when a complete applicable date is explicit; otherwise null.",
@@ -29,7 +36,10 @@ export async function extractDocumentFindings(pages:ExtractedDocumentPage[],docu
       "Keep each finding tied to its supporting page.",
       "Return JSON only: {\"findings\":[{\"pageNumber\":1,\"findingType\":\"maintenance_completed\",\"statement\":\"...\",\"observedAt\":\"YYYY-MM-DD or null\",\"status\":\"unknown\",\"confidence\":0.95}]}."
     ].join(" "),
-    input:`DOCUMENT TYPE: ${documentType||"unknown"}\n\nDOCUMENT TEXT:\n${source}`
+    input:`DOCUMENT TYPE: ${documentType||"unknown"}
+
+DOCUMENT TEXT:
+${source}`
   });
   const raw=response.output_text.trim();const json=raw.startsWith("{")?raw:raw.slice(raw.indexOf("{"),raw.lastIndexOf("}")+1);const parsed=JSON.parse(json) as {findings?:unknown[]};
   if(!Array.isArray(parsed.findings))return[];
