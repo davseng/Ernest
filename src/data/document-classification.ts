@@ -30,7 +30,7 @@ export async function classifyDocument(documentId: string, assetId: string, owne
   const raw = response.output_text.trim();
   const json = raw.startsWith("{") ? raw : raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1);
   const parsed = JSON.parse(json) as Record<string, unknown>;
-  const type = clean(parsed.documentType, 40);
+  const type = clean(parsed.documentType, 40) || "other";
   const documentType = TYPES.includes(type as (typeof TYPES)[number]) ? type : "other";
   const date = clean(parsed.documentDate, 10);
   const documentDate = date && /^\\d{4}-\\d{2}-\\d{2}$/.test(date) ? date : undefined;
