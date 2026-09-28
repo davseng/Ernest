@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { answerErnestQuestion, answerThinErnestQuestion } from "@/data/ask-ernest";
+import { answerThinErnestQuestion } from "@/data/ask-ernest";
 import { getAsset } from "@/data/assets";
 import { getErnestDocumentContext } from "@/data/document-context";
 import { getAssetFindings } from "@/data/document-findings";
