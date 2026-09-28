@@ -300,6 +300,25 @@ export async function replaceDocumentPages(
   return true;
 }
 
+export async function updateDocumentClassification(
+  documentId: string,
+  assetId: string,
+  ownerId: string,
+  classification: { documentType: string; documentDate?: string; summary?: string },
+) {
+  const rows = await database()`
+    UPDATE documents d
+    SET document_type=${classification.documentType},
+        document_date=${classification.documentDate ?? null},
+        summary=${classification.summary ?? null},
+        classified_at=now()
+    FROM assets a
+    WHERE d.id=${documentId} AND d.asset_id=${assetId} AND d.owner_id=${ownerId}
+      AND a.id=d.asset_id AND a.owner_id=${ownerId}
+    RETURNING d.id`;
+  return rows.length === 1;
+}
+
 export async function markDocumentExtractionError(
   documentId: string,
   assetId: string,
