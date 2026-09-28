@@ -65,7 +65,7 @@ export async function importGoogleDriveInbox(assetId: string, _previousState?: {
           await deleteStoredDocument(storageKey).catch((cleanupError) => console.error("Drive import cleanup failed", cleanupError));
           throw error;
         }
-        if (id) imported += 1;
+        if (id) { imported += 1; if (file.md5Checksum) knownHashes.add(file.md5Checksum); }
         else {
           await deleteStoredDocument(storageKey).catch((cleanupError) => console.error("Drive import cleanup failed", cleanupError));
           failed += 1;
