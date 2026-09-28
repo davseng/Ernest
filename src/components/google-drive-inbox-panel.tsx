@@ -29,7 +29,8 @@ export function GoogleDriveInboxPanel({ assetId, configured }: { assetId: string
       {configured ? <>
         <p>Connect your Google account once, then Ernest can read PDFs from <strong>Ernest Inbox</strong>. New imports are preserved, extracted, classified, and added to Ernest’s history automatically.</p>
         <div className="record-action-row">
-          <a className="secondary-button" href={`/api/google-drive/connect?asset=${encodeURIComponent(assetId)}`}>Connect / reconnect Drive</a>\n          <form action={`/api/google-drive/disconnect?asset=${encodeURIComponent(assetId)}`} method="post"><button className="secondary-button" type="submit">Disconnect Drive</button></form>
+          <a className="secondary-button" href={`/api/google-drive/connect?asset=${encodeURIComponent(assetId)}`}>Connect / reconnect Drive</a>
+          <form action={`/api/google-drive/disconnect?asset=${encodeURIComponent(assetId)}`} method="post"><button className="secondary-button" type="submit">Disconnect Drive</button></form>
           <form action={action}><button className="primary-button" disabled={pending}>{pending ? "Checking Drive…" : "Import new documents"}</button></form>
         </div>
         {state.message ? <p className={state.ok ? "write-result success" : "error-notice"}>{state.message}</p> : null}
