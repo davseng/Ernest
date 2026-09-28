@@ -7,7 +7,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getAsset } from "@/data/assets";
 import { createDocumentForAsset, findDocumentBySourceUrl } from "@/data/documents";
-import { storeDocumentBytes } from "@/data/document-storage";
+import { deleteStoredDocument, storeDocumentBytes } from "@/data/document-storage";
 import { downloadDrivePdf, listInboxPdfs } from "@/data/google-drive";
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -41,10 +41,14 @@ export async function importGoogleDriveInbox(assetId: string, _previousState?: {
       try {
         const bytes = await downloadDrivePdf(session.user.id, file.id);
         if (!bytes.byteLength || bytes.byteLength > MAX_FILE_BYTES) { failed += 1; continue; }
+        const signature = new TextDecoder("ascii").decode(bytes.slice(0, 5));
+        if (signature !== "%PDF-") { failed += 1; continue; }
         const filename = safeFilename(file.name.toLowerCase().endsWith(".pdf") ? file.name : `${file.name}.pdf`);
         const storageKey = `assets/${assetId}/documents/${randomUUID()}-${filename}`;
         await storeDocumentBytes(storageKey, bytes, "application/pdf");
-        const id = await createDocumentForAsset(assetId, session.user.id, {
+        let id: string | undefined;
+        try {
+          id = await createDocumentForAsset(assetId, session.user.id, {
           title: titleFromFilename(file.name),
           originalFilename: file.name,
           contentType: "application/pdf",
@@ -53,9 +57,17 @@ export async function importGoogleDriveInbox(assetId: string, _previousState?: {
           sourceType: "google_drive",
           sourceUrl,
           sourceExternalId: file.id,
-          contentHash: file.md5Checksum,
-        });
-        if (id) imported += 1; else failed += 1;
+            contentHash: file.md5Checksum,
+          });
+        } catch (error) {
+          await deleteStoredDocument(storageKey).catch((cleanupError) => console.error("Drive import cleanup failed", cleanupError));
+          throw error;
+        }
+        if (id) imported += 1;
+        else {
+          await deleteStoredDocument(storageKey).catch((cleanupError) => console.error("Drive import cleanup failed", cleanupError));
+          failed += 1;
+        }
       } catch (error) {
         console.error("Drive inbox file import failed", file.id, error);
         failed += 1;
