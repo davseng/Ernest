@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { AssetAppHeader } from "@/components/asset-app-header";
+import { getOwnerKnowledge } from "@/data/knowledge";
 import { getAsset } from "@/data/assets";
 import { getDocumentsForAsset } from "@/data/documents";
 import { getEquipmentCandidates } from "@/data/equipment-candidates";
@@ -29,11 +30,12 @@ export default async function EquipmentKnowledgePage({ params, searchParams }: {
   const asset = await getAsset(id, session.user.id);
   if (!asset) notFound();
 
-  const [documents, links, candidates, lifecycles] = await Promise.all([
+  const [documents, links, candidates, lifecycles, knowledge] = await Promise.all([
     getDocumentsForAsset(id, session.user.id),
     getComponentDocumentLinks(id, session.user.id),
     getEquipmentCandidates(id, session.user.id),
     getComponentLifecycles(id, session.user.id),
+    getOwnerKnowledge(id, session.user.id),
   ]);
 
   const lifecycleByComponent = new Map(lifecycles.map((item) => [item.componentId, item]));
@@ -76,6 +78,12 @@ export default async function EquipmentKnowledgePage({ params, searchParams }: {
             <div><dt>History / unknown</dt><dd>{components.filter((item) => item.lifecycle.status !== "installed").length}</dd></div>
             <div><dt>Review</dt><dd>{pending.length}</dd></div>
           </dl>
+        </section>
+
+        <section className="systems-section" aria-label="Owner-confirmed knowledge">
+          <h2>Owner-confirmed knowledge</h2>
+          <p>Facts confirmed in conversation persist here. Corrections preserve earlier records.</p>
+          {knowledge.length?<div className="log-list">{knowledge.map(fact=><article className="log-entry" key={fact.id}><strong>{fact.subject} · {fact.predicate}</strong><p>{fact.value}</p><small>{fact.supersededBy?"Superseded history":fact.kind==="observation"?"Historical observation":"Current owner-confirmed fact"} · effective {fact.effectiveOn}</small><details><summary>Provenance</summary><p>{fact.provenance}</p></details></article>)}</div>:<p>No confirmed knowledge recorded yet.</p>}
         </section>
 
         <section className="equipment-toolbar" aria-label="Equipment filters">

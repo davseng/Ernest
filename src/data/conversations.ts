@@ -14,6 +14,7 @@ function database() {
 }
 
 export type PersistedSource = {
+  photoId?: string;
   documentId?: string;
   documentTitle: string;
   pageNumber: number;

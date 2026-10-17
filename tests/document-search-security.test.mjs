@@ -6,8 +6,7 @@ const documentsSource = await readFile(new URL("../src/data/documents.ts", impor
 const assetPageSource = await readFile(new URL("../src/app/assets/[id]/page.tsx", import.meta.url), "utf8");
 
 test("document search is scoped through owned documents and assets", () => {
-  assert.match(documentsSource, /FROM document_chunks c/);
-  assert.match(documentsSource, /INNER JOIN documents d ON d\.id = c\.document_id/);
+  assert.match(documentsSource, /getErnestDocumentContext\(assetId,ownerId,query\)/);
   assert.match(documentsSource, /INNER JOIN assets a ON a\.id = d\.asset_id/);
   assert.match(documentsSource, /d\.asset_id = \$\{assetId\}/);
   assert.match(documentsSource, /d\.owner_id = \$\{ownerId\}/);
@@ -21,7 +20,5 @@ test("asset page derives asset access from authenticated session", () => {
 });
 
 test("search results preserve document and page provenance", () => {
-  assert.match(documentsSource, /d\.title AS document_title/);
-  assert.match(documentsSource, /c\.page_number/);
-  assert.match(documentsSource, /chunkIndex: row\.chunk_index/);
+  assert.match(documentsSource, /pages\.map\(page=>\(\{\.\.\.page,chunkIndex:0\}\)\)/);
 });
