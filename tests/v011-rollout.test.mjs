@@ -29,3 +29,31 @@ test('existing cloned schema needs only 025; boat-device absence is not a blocke
 test('025 errors roll back additive DDL and do not create a misleading migration ledger',async()=>{
  const db=await fixture();try{const sql=adapter(db);await assert.rejects(async()=>apply025(sql,(await readFile('migrations/'+migrationName,'utf8'))+'\nSELECT nonexistent_rollout_function();'));assert.equal((await inspect(sql)).migration025ObjectsPresent,false);assert.equal((await db.query("SELECT to_regclass('public.owner_knowledge') AS table_name")).rows[0].table_name,null);}finally{await db.close();}
 });
+test('SQL Editor first-install bundle checks prerequisites, applies exactly 025, preserves the clone and verifies results',async()=>{
+ const db=await fixture();try{
+  const pre=await readFile('scripts/v011/sql-editor/01-preflight.sql','utf8');
+  const apply=await readFile('scripts/v011/sql-editor/02-apply-025.sql','utf8');
+  const verify=await readFile('scripts/v011/sql-editor/03-verify.sql','utf8');
+  assert.equal(apply.split('-- BEGIN UNCHANGED MIGRATION 025\n')[1].split('-- END UNCHANGED MIGRATION 025')[0],await readFile('migrations/'+migrationName,'utf8'));
+  // The live branch uses neondb; the embedded test database has a fixed name.
+  const script=apply.replace("current_database()<>'neondb'", "current_database()<>current_database()");
+  const results=await db.exec(pre);
+  const targets=results.flatMap(r=>r.rows).filter(r=>Object.hasOwn(r,'fk_target_ready'));
+  assert.equal(targets.length,4);assert.ok(targets.every(r=>r.fk_target_ready));
+  assert.equal(results.flatMap(r=>r.rows).find(r=>Object.hasOwn(r,'document_page_key_ready')).document_page_key_ready,true);
+  const before=(await db.query('SELECT count(*)::int AS n FROM users')).rows[0].n;
+  await db.exec(script);await db.exec(verify);
+  assert.deepEqual((await db.query('SELECT name FROM schema_migrations')).rows,[{name:migrationName}]);
+  assert.equal((await db.query("SELECT to_regclass('public.boat_devices') AS boat")).rows[0].boat,null);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM users')).rows[0].n,before);
+  await assert.rejects(()=>db.exec(script),/025 object already exists/);await db.exec('ROLLBACK');
+ }finally{await db.close();}
+});
+test('SQL Editor bundle aborts on missing prerequisites before creating 025 objects',async()=>{
+ const db=await fixture();try{
+  await db.exec('ALTER TABLE documents RENAME COLUMN original_filename TO unexpected_filename');
+  const apply=(await readFile('scripts/v011/sql-editor/02-apply-025.sql','utf8')).replace("current_database()<>'neondb'", "current_database()<>current_database()");
+  await assert.rejects(()=>db.exec(apply),/025 prerequisite mismatch/);await db.exec('ROLLBACK');
+  assert.equal((await db.query("SELECT to_regclass('public.owner_knowledge') AS knowledge")).rows[0].knowledge,null);
+ }finally{await db.close();}
+});
