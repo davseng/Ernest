@@ -48,7 +48,7 @@ function parseStoredSteps(value: unknown): Array<{ instruction: string; note: st
 
 export type ProcedureType = "routine" | "checklist" | "emergency";
 export type ProcedureStep = { id?: string; position: number; instruction: string; note: string | null };
-export type ProcedureRecord = { id:string; title:string; procedureType:ProcedureType; notes:string|null; sourceDocumentId:string|null; sourceDocumentTitle:string|null; sourcePage:number|null; steps:ProcedureStep[] };
+export type ProcedureRecord = { id:string; revision:number; title:string; procedureType:ProcedureType; notes:string|null; sourceDocumentId:string|null; sourceDocumentTitle:string|null; sourcePage:number|null; steps:ProcedureStep[] };
 export type ProcedureCandidate = { id:string; documentId:string; documentTitle:string; pageNumber:number; title:string; procedureType:ProcedureType; notes:string|null; steps:Array<{instruction:string;note:string|null}>; status:"pending"|"approved"|"rejected"; verifiedProcedureId:string|null };
 export type ProcedureEdits = { title:string; procedureType:ProcedureType; notes:string; steps:Array<{instruction:string;note:string|null}> };
 
@@ -132,8 +132,8 @@ export async function getProcedureCandidates(assetId: string, ownerId: string) {
 }
 
 export async function getProcedures(assetId: string, ownerId: string) {
-  const rows = await database()<Array<{ id:string; title:string; procedure_type:ProcedureType; notes:string|null; source_document_id:string|null; document_title:string|null; source_page:number|null; step_id:string|null; step_position:number|null; instruction:string|null; step_note:string|null }>>`
-    SELECT p.id, p.title, p.procedure_type, p.notes, p.source_document_id, d.title AS document_title, p.source_page,
+  const rows = await database()<Array<{ id:string; revision:number; title:string; procedure_type:ProcedureType; notes:string|null; source_document_id:string|null; document_title:string|null; source_page:number|null; step_id:string|null; step_position:number|null; instruction:string|null; step_note:string|null }>>`
+    SELECT p.id, p.revision, p.title, p.procedure_type, p.notes, p.source_document_id, d.title AS document_title, p.source_page,
       s.id AS step_id, s.position AS step_position, s.instruction, s.note AS step_note
     FROM procedures p
     INNER JOIN assets a ON a.id=p.asset_id
@@ -147,7 +147,7 @@ export async function getProcedures(assetId: string, ownerId: string) {
   for (const row of rows) {
     let procedure = map.get(row.id);
     if (!procedure) {
-      procedure = { id:row.id, title:row.title, procedureType:row.procedure_type, notes:row.notes, sourceDocumentId:row.source_document_id, sourceDocumentTitle:row.document_title, sourcePage:row.source_page, steps:[] };
+      procedure = { id:row.id, revision:row.revision, title:row.title, procedureType:row.procedure_type, notes:row.notes, sourceDocumentId:row.source_document_id, sourceDocumentTitle:row.document_title, sourcePage:row.source_page, steps:[] };
       map.set(row.id, procedure);
     }
     if (row.step_id && row.step_position !== null && row.instruction) procedure.steps.push({ id:row.step_id, position:row.step_position, instruction:row.instruction, note:row.step_note });
@@ -179,11 +179,15 @@ export async function createProcedure(assetId: string, ownerId: string, details:
   });
 }
 
-export async function updateProcedure(procedureId: string, assetId: string, ownerId: string, details: ProcedureEdits) {
+export async function updateProcedure(procedureId: string, assetId: string, ownerId: string, details: ProcedureEdits, expectedRevision?:number) {
   if (!details.title.trim() || details.steps.length === 0) return false;
   const sql = database();
   return sql.begin(async (tx) => {
-    const rows = await tx`UPDATE procedures p SET title=${details.title.trim()}, procedure_type=${details.procedureType}, notes=${details.notes.trim() || null}
+    const current=await tx`SELECT p.id,p.revision,p.title,p.procedure_type,p.notes FROM procedures p JOIN assets a ON a.id=p.asset_id WHERE p.id=${procedureId} AND p.asset_id=${assetId} AND p.owner_id=${ownerId} AND a.owner_id=${ownerId} FOR UPDATE`;
+    if(current.length!==1 || expectedRevision!==undefined && current[0].revision!==expectedRevision)return false;
+    const oldSteps=await tx`SELECT instruction,note,position FROM procedure_steps WHERE procedure_id=${procedureId} ORDER BY position`;
+    await tx`INSERT INTO procedure_revisions(procedure_id,asset_id,owner_id,revision,snapshot) VALUES(${procedureId},${assetId},${ownerId},${current[0].revision},${JSON.stringify({...current[0],steps:oldSteps})}::jsonb)`;
+    const rows = await tx`UPDATE procedures p SET revision=p.revision+1, updated_at=now(), title=${details.title.trim()}, procedure_type=${details.procedureType}, notes=${details.notes.trim() || null}
       FROM assets a WHERE p.id=${procedureId} AND p.asset_id=${assetId} AND p.owner_id=${ownerId}
         AND a.id=p.asset_id AND a.owner_id=${ownerId} RETURNING p.id`;
     if (rows.length !== 1) return false;

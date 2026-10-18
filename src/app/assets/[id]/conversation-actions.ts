@@ -22,7 +22,7 @@ export async function saveConversationMessage(
   message: {
     role: "user" | "assistant";
     text: string;
-    sources?: { documentId?: string; documentTitle: string; pageNumber: number }[];
+    sources?: { photoId?: string; documentId?: string; documentTitle: string; pageNumber: number }[];
     proposal?: ErnestWriteProposal;
     writeResult?: { ok: boolean; message: string };
   },

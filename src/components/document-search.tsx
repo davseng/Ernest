@@ -49,7 +49,7 @@ export function DocumentSearch({
             {results.map((result) => (
               <article className="document-search-result" key={`${result.documentId}-${result.pageNumber}-${result.chunkIndex}`}>
                 <div className="document-search-source">
-                  <strong>{result.documentTitle}</strong>
+                  <strong><a href={`/assets/${encodeURIComponent(assetId)}/documents/${encodeURIComponent(result.documentId)}#page-${result.pageNumber}`}>{result.documentTitle}</a></strong>
                   <span>Page {result.pageNumber}</span>
                 </div>
                 <p>{result.text}</p>

@@ -1,6 +1,7 @@
 import "server-only";
 
 import OpenAI from "openai";
+import { parseVisualPages } from "@/domain/visual-evidence";
 
 import type { ExtractedPage } from "@/data/pdf-text";
 
@@ -18,16 +19,6 @@ function stripJsonFence(value: string) {
     .trim()
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/, "")
-    .trim();
-}
-
-function cleanOcrText(value: unknown) {
-  if (typeof value !== "string") return "";
-  return value
-    .replace(/\u0000/g, "")
-    .replace(/\r\n?/g, "\n")
-    .replace(/[ \t]+$/gm, "")
-    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -59,9 +50,9 @@ export async function ocrPdfPages(
       "Read the requested PDF pages visually, including scanned/image-only pages.",
       "Transcribe what is visibly present; do not summarize, infer, correct, complete, or add outside knowledge.",
       "Preserve table row relationships. Use TAB characters between visible columns when practical and newline characters between rows.",
-      "Keep headings and labels that help interpret rows.",
+      "Keep headings and labels that help interpret rows. For schematics and stowage plans include visible labels and explicit connected-to, inside, adjacent-to, and directional relationships. Do not infer connectivity from proximity or a crossing without a visible junction. Relationships are unverified interpretations, never established vessel facts. Include uncertainty and [unclear] whenever a path, label, orientation or compartment cannot be established.",
       "If text is genuinely unreadable, write [unclear] rather than guessing.",
-      "Return JSON only in exactly this shape: {\"pages\":[{\"pageNumber\":1,\"text\":\"...\"}]}",
+      "Return JSON only in exactly this shape: {\"pages\":[{\"pageNumber\":1,\"text\":\"...\",\"relationships\":[\"visible label and supported relationship, with uncertainty\"]}]}",
       "Return only the requested page numbers, once each, in ascending order.",
     ].join(" "),
     input: [
@@ -92,24 +83,5 @@ export async function ocrPdfPages(
     throw new Error("OCR model returned invalid JSON");
   }
 
-  const pagesValue =
-    parsed && typeof parsed === "object" && "pages" in parsed
-      ? (parsed as { pages?: unknown }).pages
-      : undefined;
-  if (!Array.isArray(pagesValue)) throw new Error("OCR model response did not contain pages");
-
-  const requestedSet = new Set(requested);
-  const seen = new Set<number>();
-  const pages: ExtractedPage[] = [];
-
-  for (const candidate of pagesValue) {
-    if (!candidate || typeof candidate !== "object") continue;
-    const pageNumber = (candidate as { pageNumber?: unknown }).pageNumber;
-    const text = cleanOcrText((candidate as { text?: unknown }).text);
-    if (typeof pageNumber !== "number" || !requestedSet.has(pageNumber) || seen.has(pageNumber)) continue;
-    seen.add(pageNumber);
-    pages.push({ pageNumber, text });
-  }
-
-  return pages.sort((a, b) => a.pageNumber - b.pageNumber);
+  return parseVisualPages(parsed, requested);
 }

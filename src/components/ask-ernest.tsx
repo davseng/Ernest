@@ -46,7 +46,7 @@ export function AskErnest({ assetId }: { assetId: string }) {
           </article>
           {state.sources.length > 0 ? (
             <p className="document-search-count">
-              Context used: {state.sources.map((source) => `${source.documentTitle}, p. ${source.pageNumber}`).join(" · ")}
+              Context used: {state.sources.map((source) => source.photoId?`${source.documentTitle} (photo)`:`${source.documentTitle}, p. ${source.pageNumber}`).join(" · ")}
             </p>
           ) : null}
         </div>
