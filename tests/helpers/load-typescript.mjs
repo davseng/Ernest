@@ -7,7 +7,7 @@ const require=createRequire(import.meta.url);
 // Load real TypeScript modules with narrow dependency injection. No production test bypasses.
 export async function loadTypeScript(path, stubs={}) {
   const filename=resolve(path), source=await readFile(filename,'utf8');
-  let code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+  let code=ts.transpileModule(source,{fileName:filename,compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
   const imports=[...code.matchAll(/(?:from\s*|import\s*)(["'])([^"']+)\1/g)];
   for(const m of imports){
     const spec=m[2];let url;
@@ -18,7 +18,7 @@ export async function loadTypeScript(path, stubs={}) {
       url='data:text/javascript;base64,'+Buffer.from(Object.keys(values).map(k=>k==='default'?`export default globalThis.__ernestTestModules[${JSON.stringify(key)}].default;`:`export const ${k}=globalThis.__ernestTestModules[${JSON.stringify(key)}][${JSON.stringify(k)}];`).join('\n')).toString('base64');
     }else if(spec.startsWith('@/')||spec.startsWith('.')){
       const p=spec.startsWith('@/')?resolve('src',spec.slice(2)):resolve(dirname(filename),spec);
-      const loaded=await moduleUrl(p.endsWith('.ts')?p:p+'.ts',stubs);url=loaded;
+      const loaded=await moduleUrl(/\.tsx?$/.test(p)?p:p+'.ts',stubs);url=loaded;
     }else url=spec.startsWith('node:')?spec:pathToFileURL(require.resolve(spec)).href;
     code=code.replace(m[0],m[0].replace(m[1]+spec+m[1],JSON.stringify(url)));
   }

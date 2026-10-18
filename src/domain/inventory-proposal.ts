@@ -5,7 +5,7 @@ import type { ErnestWriteProposal } from "@/data/ernest-write-proposals";
 export function quantityProposal(message: string, inventory: InventoryItem[]): ErnestWriteProposal | null {
   const text = message.trim();
   if (/\b(if|maybe|might|perhaps|hypothetical|suppose|used to|had|not sure|don't|do not)\b/i.test(text)) return null;
-  const possession = text.match(/^I\s+(?:now\s+)?(?:have|carry)\s+(\d+(?:\.\d+)?)\s+([^.!?\n]+)/i);
+  const possession = text.match(/^(?:I\s+(?:now\s+)?(?:have|carry)|there\s+are)\s+(\d+(?:\.\d+)?)\s+([^.!?\n]+)/i);
   const update = text.match(/^(?:please\s+)?(?:set|update|change|correct)\s+(?:the\s+)?(?:quantity|count)\s+(?:of\s+|for\s+)?(.+?)\s+to\s+(\d+(?:\.\d+)?)(?:\s*[.!?]|$)/i);
   if (!possession && !update) return null;
   const quantity = possession?.[1] ?? update![2];

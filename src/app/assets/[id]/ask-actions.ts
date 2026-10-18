@@ -15,6 +15,7 @@ import { getOwnerKnowledge } from "@/data/knowledge";
 import { formatKnowledge, selectKnowledge } from "@/domain/knowledge";
 import { selectEvidence, expandedTerms, evidenceContains } from "@/domain/retrieval";
 import { evidenceSources } from "@/domain/evidence";
+import { requestsWrite, readOnlyAnswer } from "@/domain/write-safety";
 import { inventoryContext } from "@/domain/inventory-context";
 import { getProcedures } from "@/data/procedures";
 
@@ -191,6 +192,10 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
     const classifiedProposal = await proposeErnestWrite(learningMessage, asset, inventory, locations, conversation, lifecycles, procedures, knowledge);
     const proposal = classifiedProposal;
     if (proposal) return { question, answer: proposalAnswer(proposal), sources: [], proposal };
+    if (requestsWrite(question)) return {
+      question, sources: [],
+      answer: "That change has not been saved. Please specify the exact inventory item or fact and its new value; if there are similar items, include its storage code. I will show a real confirmation card before writing anything.",
+    };
 
     const contextual = conversation
       ? `Recent conversation (context only, not verified evidence):
@@ -206,7 +211,7 @@ ${question}`
     const visuals = await getVisualSourceFiles(assetId,session.user.id,subjectQuestion,focusedContext);
     const photoEvidence = await getPhotoEvidence(assetId,session.user.id,subjectQuestion);
     const focused = await answerThinErnestQuestion(contextual, focusedContext, [focusedKnowledge,...visuals.warnings,...photoEvidence.warnings].join("\n"), thinkHarder, visuals.files, photoEvidence.files);
-    const answer = focused.answer;
+    const answer = readOnlyAnswer(focused.answer);
 
     const seen = new Set<string>();
     const sources = focusedContext
