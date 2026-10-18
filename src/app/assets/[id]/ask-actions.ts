@@ -14,6 +14,8 @@ import { getVisualSourceFiles } from "@/data/visual-sources";
 import { getOwnerKnowledge } from "@/data/knowledge";
 import { formatKnowledge, selectKnowledge } from "@/domain/knowledge";
 import { selectEvidence, expandedTerms, evidenceContains } from "@/domain/retrieval";
+import { evidenceSources } from "@/domain/evidence";
+import { inventoryContext } from "@/domain/inventory-context";
 import { getProcedures } from "@/data/procedures";
 
 export type AskErnestState = {
@@ -108,7 +110,6 @@ function focusedVerified(
   question: string,
   asset: NonNullable<Awaited<ReturnType<typeof getAsset>>>,
   logs: Awaited<ReturnType<typeof getLogEntries>>,
-  inventory: Awaited<ReturnType<typeof getInventoryItems>>,
   lifecycles: Awaited<ReturnType<typeof getComponentLifecycles>>,
   procedures: Awaited<ReturnType<typeof getProcedures>>,
 ) {
@@ -122,8 +123,6 @@ function focusedVerified(
     lines.push(`SYSTEM: ${system.name}`);
     lines.push(`Component: ${component.name} · Manufacturer: ${component.manufacturer || ""} · Model: ${component.model || ""} · Location: ${component.location || ""}${lifecycle ? ` · Status: ${lifecycle.status}${lifecycle.changedOn ? ` since ${lifecycle.changedOn}` : ""}${lifecycle.notes ? ` · Lifecycle note: ${lifecycle.notes}` : ""}` : ""}`);
   }
-  const inventoryIntent=/\b(inventory|aboard|stored|storage|where|location|spare|spares|have|carry)\b/i.test(question);
-  if(inventoryIntent){const hits=inventory.map(item=>({item,score:score([item.name,...item.locations].join(" "))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,8);if(hits.length){lines.push("VERIFIED INVENTORY:");for(const {item} of hits)lines.push(`- ${item.name} · locations ${item.locations.join(", ") || "not recorded"} · quantity ${item.quantity || "not recorded"}`);}}
   const procedureIntent=/\b(procedure|steps|checklist|how do i|how should i|operate|shutdown|shut down|start up)\b/i.test(question);
   if(procedureIntent){const hits=procedures.map(p=>({p,score:score([p.title,p.notes||"",...p.steps.map(x=>x.instruction)].join(" "))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,2);if(hits.length){lines.push("VERIFIED PROCEDURES:");for(const {p} of hits){lines.push(`PROCEDURE: ${p.title} · type ${p.procedureType}`);for(const step of p.steps.slice(0,40))lines.push(`${step.position+1}. ${step.instruction}`);}}}
   const logHits=logs.map(log=>({log,score:score(`${log.title} ${log.body} ${log.entryType}`)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,5);
@@ -203,8 +202,8 @@ ${question}`
     const subjectQuestion = retrievalQuestion(question, conversation);
     const focusedContext = focusedDocuments(subjectQuestion, context);
     const historicalEvidence = relevantHistoricalEvidence(subjectQuestion, findings);
-    const focusedKnowledge = [formatKnowledge(selectKnowledge(subjectQuestion,knowledge)), focusedVerified(subjectQuestion, asset, logs, inventory, lifecycles, procedures), historicalEvidence].filter(Boolean).join("\n\n");
-    const visuals = await getVisualSourceFiles(assetId,session.user.id,question,focusedContext);
+    const focusedKnowledge = [formatKnowledge(selectKnowledge(subjectQuestion,knowledge)), focusedVerified(subjectQuestion, asset, logs, lifecycles, procedures), inventoryContext(subjectQuestion, inventory, locations, knowledge), historicalEvidence].filter(Boolean).join("\n\n");
+    const visuals = await getVisualSourceFiles(assetId,session.user.id,subjectQuestion,focusedContext);
     const photoEvidence = await getPhotoEvidence(assetId,session.user.id,subjectQuestion);
     const focused = await answerThinErnestQuestion(contextual, focusedContext, [focusedKnowledge,...visuals.warnings,...photoEvidence.warnings].join("\n"), thinkHarder, visuals.files, photoEvidence.files);
     const answer = focused.answer;
@@ -219,7 +218,7 @@ ${question}`
       })
       .map((page) => ({ documentId: page.documentId, documentTitle: page.documentTitle, pageNumber: page.pageNumber }));
 
-    return { question, answer, sources:[...sources,...photoEvidence.files.map(p=>({photoId:p.photoId,documentTitle:p.title,pageNumber:0}))] };
+    return { question, answer, sources:evidenceSources([...sources,...visuals.files.filter(f=>f.documentId).map(f=>({documentId:f.documentId,documentTitle:f.documentTitle,pageNumber:0})),...photoEvidence.files.map(p=>({photoId:p.photoId,documentTitle:p.title,pageNumber:0}))]) };
   } catch (error) {
     console.error("Ask Ernest failure", error);
     return { question, answer: "", sources: [], error: "Ernest couldn’t answer that right now. Please try again." };

@@ -1,5 +1,6 @@
 import "server-only";
 import OpenAI from "openai";
+import { quantityProposal, inventoryKnowledgeProposal } from "@/domain/inventory-proposal";
 import { parseKnowledgeInput, type KnowledgeFact, type KnowledgeInput } from "@/domain/knowledge";
 import type { Asset } from "@/domain/assets";
 import type { LogEntryType } from "@/domain/log-entries";
@@ -15,7 +16,7 @@ export type ErnestWriteProposal =
   | { kind:"component_lifecycle"; summary:string; lifecycle:{ componentId:string; componentName:string; status:EquipmentLifecycleStatus; changedOn:string|null; notes:string|null } }
   | { kind:"asset_fact"; summary:string; assetFact:{ field:"name"|"make"|"model"|"year"|"summary"|"registrationNumber"; value:string } }
   | { kind:"inventory_add"; summary:string; inventory:{ name:string; quantity:string|null; details:string|null; locationCode:string|null } }
-  | { kind:"inventory_update"; summary:string; inventory:{ itemId:string; currentName:string; name:string|null; quantity:string|null; details:string|null; locationCode:string|null } }
+  | { kind:"inventory_update"; summary:string; inventory:{ itemId:string; currentName:string; name:string|null; quantity:string|null; details:string|null; locationCode:string|null; expectedQuantity?:string|null; currentLocations?:string[] } }
   | { kind:"procedure_add"; summary:string; procedure:{ title:string; procedureType:ProcedureType; notes:string; steps:Array<{instruction:string;note:string|null}> } }
   | { kind:"procedure_update"; summary:string; procedure:{ procedureId:string; currentTitle:string; expectedRevision:number; title:string; procedureType:ProcedureType; notes:string; steps:Array<{instruction:string;note:string|null}> } };
 
@@ -27,6 +28,14 @@ function cleanSteps(v:unknown){if(!Array.isArray(v))return[];return v.flatMap(it
 function candidateText(asset:Asset,inventory:InventoryItem[],locations:InventoryLocation[],lifecycles:ComponentLifecycle[],procedures:ProcedureRecord[]){const life=new Map(lifecycles.map(x=>[x.componentId,x]));const lines=[`ASSET id=${asset.id} name=${JSON.stringify(asset.name)}`];for(const s of asset.systems){lines.push(`SYSTEM id=${s.id} name=${JSON.stringify(s.name)}`);for(const c of s.components){const lc=life.get(c.id);lines.push(`COMPONENT systemId=${s.id} id=${c.id} name=${JSON.stringify(c.name)} manufacturer=${JSON.stringify(c.manufacturer)} model=${JSON.stringify(c.model)} serial=${JSON.stringify(c.serialNumber)} location=${JSON.stringify(c.location)} lifecycle=${lc?.status??"installed"}`);}}for(const i of inventory)lines.push(`INVENTORY id=${i.id} name=${JSON.stringify(i.name)} quantity=${JSON.stringify(i.quantity)} details=${JSON.stringify(i.details)} locations=${JSON.stringify(i.locations)}`);for(const l of locations)lines.push(`LOCATION code=${JSON.stringify(l.code)} label=${JSON.stringify(l.label)}`);for(const p of procedures)lines.push(`PROCEDURE id=${p.id} title=${JSON.stringify(p.title)} type=${p.procedureType} notes=${JSON.stringify(p.notes)} steps=${JSON.stringify(p.steps.map(s=>({instruction:s.instruction,note:s.note})))}`);return lines.join("\n");}
 
 export async function proposeErnestWrite(message:string,asset:Asset,inventory:InventoryItem[]=[],locations:InventoryLocation[]=[],conversation="",lifecycles:ComponentLifecycle[]=[],procedures:ProcedureRecord[]=[],knowledge:KnowledgeFact[]=[]):Promise<ErnestWriteProposal|null>{
+ const direct = quantityProposal(message,inventory) ?? inventoryKnowledgeProposal(message,locations,knowledge);
+ if(direct)return direct;
+ if (/^(?:please\s+)?(?:present|show|prepare|give|create).*?(?:card|proposal)|^(?:confirm|confirmed|save it|remember that)[.!]?$/i.test(message.trim())) {
+   const ownerTurns = [...conversation.matchAll(/Owner:\s*([^\n]+)/g)].map(m => m[1]);
+   // Recover owner-supplied values, never an assistant's invented prose card.
+   const recovered = quantityProposal(ownerTurns.at(-1) ?? "",inventory);
+   if(recovered)return recovered;
+ }
  const response=await openai().responses.create({model:process.env.OPENAI_MODEL||"gpt-5.6-sol",reasoning:{effort:"low"},instructions:[
   "Classify whether the asset owner clearly intends Ernest to save or change durable information. Recent conversation may resolve references, but it is NOT verified evidence. Never invent missing values.",
   "If the owner explicitly asks for a confirmation card, proposal, save card, or asks Ernest to save/remember/record a concrete fact discussed in the recent conversation, that IS clear write intent. Use the recent conversation to recover the exact owner-provided fact and its subject, then return the safest matching proposal. Do not answer with prose saying a card could be prepared. The application itself will render the confirmation card from your proposal.",
@@ -39,11 +48,18 @@ export async function proposeErnestWrite(message:string,asset:Asset,inventory:In
   "For a learning observation or explicit card request, record only facts the owner actually established. Use conversation only to identify the subject and recover the owner's stated fact. Do not add document-derived specifications, recommendations, calculations, assumptions, or general knowledge to the saved body.",
   "Nothing is written now; this output is only a proposal that the owner must confirm.",
   "Return ONLY compact JSON. kind is one of none,knowledge_fact,log,component_add,component_fact,component_lifecycle,asset_fact,inventory_add,inventory_update,procedure_add,procedure_update.",
+  'inventory_update: {"kind":"inventory_update","summary":"...","itemId":"listed inventory id","name":null,"quantity":"4","details":null,"locationCode":null}. Use exact listed item IDs. Quantity is an absolute non-negative count, not a delta. Select the exact existing item rather than making a knowledge fact for its quantity. If more than one item fits, return none and ask for disambiguation.',
+  'inventory_add: {"kind":"inventory_add","summary":"...","name":"owner-provided name","quantity":"4","details":null,"locationCode":null}. Do not invent a new item when an existing one fits.',
   "component_add: {\"kind\":\"component_add\",\"summary\":\"...\",\"systemId\":\"listed system id\",\"systemName\":\"listed system name\",\"name\":\"equipment name\",\"manufacturer\":\"explicit manufacturer or empty\",\"model\":\"explicit model or empty\",\"serialNumber\":null,\"location\":\"explicit location or empty\",\"notes\":\"explicit owner note or empty\"}.",
   "component_lifecycle: {\"kind\":\"component_lifecycle\",\"summary\":\"...\",\"componentId\":\"...\",\"componentName\":\"...\",\"status\":\"installed|removed_replaced|unknown\",\"changedOn\":\"YYYY-MM-DD or null\",\"notes\":null}.",
   "procedure_add/update must contain complete owner-provided steps. log occurredAt must be YYYY-MM-DD."
  ].join(" "),input:`CURRENT DATE: ${new Date().toISOString().slice(0,10)}\n\nRECENT CONVERSATION (UNVERIFIED CONTEXT):\n${conversation||"(none)"}\n\nCURRENT OWNER MESSAGE:\n${message}\n\nCURRENT VERIFIED/OWNER-CONTROLLED RECORDS:\n${candidateText(asset,inventory,locations,lifecycles,procedures)}\nOWNER KNOWLEDGE:\n${JSON.stringify(knowledge.filter(k=>!k.supersededBy))}`});
- const p=parse(response.output_text);if(!p)return null;const kind=clean(p.kind,30);if(!kind||kind==="none")return null;
+ let p=parse(response.output_text);if(!p)return null;
+ // Providers may mirror the application's nested proposal shape. Accept either
+ // envelope, then validate identifiers against owner-scoped records below.
+ if((p.kind==="inventory_update"||p.kind==="inventory_add") && p.inventory && typeof p.inventory==="object" && !Array.isArray(p.inventory))p={...p,...p.inventory,kind:p.kind};
+ if(typeof p.quantity==="number" && Number.isFinite(p.quantity))p.quantity=String(p.quantity);
+ if(p.quantity!=null && p.quantity!=="" && (typeof p.quantity!=="string" || !/^\d+(?:\.\d+)?$/.test(p.quantity.trim()) || !Number.isFinite(Number(p.quantity))))return null;const kind=clean(p.kind,30);if(!kind||kind==="none")return null;
  if(kind==="knowledge_fact"){
    const raw=p.knowledge;if(!raw||typeof raw!=="object")return null;
    const value=parseKnowledgeInput({...raw,provenance:`Owner confirmation; message: ${message.slice(-1600)}`});
@@ -54,7 +70,7 @@ export async function proposeErnestWrite(message:string,asset:Asset,inventory:In
  }
  if(kind==="component_add"){const systemId=clean(p.systemId,100),system=asset.systems.find(s=>s.id===systemId),name=clean(p.name,200),manufacturer=clean(p.manufacturer,200),model=clean(p.model,200),serialNumber=clean(p.serialNumber,200)||null,location=clean(p.location,200),notes=clean(p.notes,1000);if(!system||!name)return null;return{kind,summary:clean(p.summary,300)||`Add ${name} to ${system.name}`,component:{systemId,systemName:system.name,name,manufacturer,model,serialNumber,location,notes}};}
  if(kind==="inventory_add"){const name=clean(p.name,200),quantity=clean(p.quantity,40)||null,details=clean(p.details,1000)||null,locationCode=clean(p.locationCode,100)||null;if(!name||locationCode&&!locations.some(l=>l.code.toLowerCase()===locationCode.toLowerCase()))return null;return{kind,summary:clean(p.summary,300)||`Add ${name} to inventory`,inventory:{name,quantity,details,locationCode}};}
- if(kind==="inventory_update"){const itemId=clean(p.itemId,100),item=inventory.find(i=>i.id===itemId),name=clean(p.name,200)||null,quantity=clean(p.quantity,40)||null,details=clean(p.details,1000)||null,locationCode=clean(p.locationCode,100)||null;if(!item||(!name&&!quantity&&!details&&!locationCode)||locationCode&&!locations.some(l=>l.code.toLowerCase()===locationCode.toLowerCase()))return null;return{kind,summary:clean(p.summary,300)||`Update ${item.name}`,inventory:{itemId,currentName:item.name,name,quantity,details,locationCode}};}
+ if(kind==="inventory_update"){const itemId=clean(p.itemId,100),item=inventory.find(i=>i.id===itemId),name=clean(p.name,200)||null,quantity=clean(p.quantity,40)||null,details=clean(p.details,1000)||null,locationCode=clean(p.locationCode,100)||null;if(!item||(!name&&!quantity&&!details&&!locationCode)||locationCode&&!locations.some(l=>l.code.toLowerCase()===locationCode.toLowerCase()))return null;return{kind,summary:clean(p.summary,300)||`Update ${item.name}`,inventory:{itemId,currentName:item.name,name,quantity,details,locationCode,expectedQuantity:item.quantity,currentLocations:item.locations}};}
  if(kind==="log"){const occurredAt=clean(p.occurredAt,10),entryType=clean(p.entryType,20) as LogEntryType,title=clean(p.title,200),body=clean(p.body,2000);if(!/^\d{4}-\d{2}-\d{2}$/.test(occurredAt)||!["note","maintenance","passage","observation","incident"].includes(entryType)||!title||!body)return null;return{kind,summary:clean(p.summary,300)||`Save ${title}`,log:{occurredAt,entryType,title,body}};}
  if(kind==="component_fact"){const systemId=clean(p.systemId,100),componentId=clean(p.componentId,100),field=clean(p.field,30) as "name"|"manufacturer"|"model"|"serialNumber"|"location"|"notes",value=clean(p.value,field==="notes"?1000:200),system=asset.systems.find(s=>s.id===systemId),component=system?.components.find(c=>c.id===componentId);if(!component||!["name","manufacturer","model","serialNumber","location","notes"].includes(field)||!value)return null;return{kind,summary:clean(p.summary,300)||`Update ${component.name}`,componentFact:{systemId,componentId,componentName:component.name,field,value}};}
  if(kind==="component_lifecycle"){const componentId=clean(p.componentId,100),component=asset.systems.flatMap(s=>s.components).find(c=>c.id===componentId),status=clean(p.status,30) as EquipmentLifecycleStatus,changedOn=clean(p.changedOn,10)||null,notes=clean(p.notes,1000)||null;if(!component||!["installed","removed_replaced","unknown"].includes(status)||changedOn&&!/^\d{4}-\d{2}-\d{2}$/.test(changedOn))return null;return{kind,summary:clean(p.summary,300)||`Change ${component.name} lifecycle`,lifecycle:{componentId,componentName:component.name,status,changedOn,notes}};}

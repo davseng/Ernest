@@ -1,5 +1,7 @@
 "use client";
 
+import {EvidenceList} from "@/components/evidence-list";
+import {ErnestWriteCard} from "@/components/ernest-write-card";
 import { useActionState } from "react";
 
 import { askErnest, type AskErnestState } from "@/app/assets/[id]/ask-actions";
@@ -37,6 +39,7 @@ export function AskErnest({ assetId }: { assetId: string }) {
           <button type="submit" disabled={pending}>{pending ? "Thinking…" : "Ask"}</button>
         </div>
       </form>
+      {state.proposal ? <ErnestWriteCard key={JSON.stringify(state.proposal)} assetId={assetId} proposal={state.proposal}/> : null}
       {state.error ? <p className="error-notice">{state.error}</p> : null}
       {state.answer ? (
         <div className="document-search-results" aria-live="polite">
@@ -44,11 +47,7 @@ export function AskErnest({ assetId }: { assetId: string }) {
             <div className="document-search-source"><strong>Ernest</strong></div>
             <p style={{ whiteSpace: "pre-wrap" }}>{state.answer}</p>
           </article>
-          {state.sources.length > 0 ? (
-            <p className="document-search-count">
-              Context used: {state.sources.map((source) => source.photoId?`${source.documentTitle} (photo)`:`${source.documentTitle}, p. ${source.pageNumber}`).join(" · ")}
-            </p>
-          ) : null}
+          <EvidenceList assetId={assetId} sources={state.sources}/>
         </div>
       ) : null}
     </section>

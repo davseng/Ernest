@@ -120,7 +120,7 @@ test('proposal classification binds durable corrections to the current version a
 test('document dates are serialized and source links retain document and page identity',async()=>{
  const {readFile}=await import('node:fs/promises');
  const docs=await readFile('src/data/documents.ts','utf8');assert.match(docs,/document_date::text AS document_date/);
- const chat=await readFile('src/components/ernest-chat.tsx','utf8');assert.match(chat,/encodeURIComponent\(s.documentId\)/);assert.match(chat,/#page-\$\{s.pageNumber\}/);
+ const evidence=await readFile('src/components/evidence-list.tsx','utf8');assert.match(evidence,/encodeURIComponent\(s.documentId!/);assert.match(evidence,/#page-\$\{s.pageNumber\}/);
  const detail=await readFile('src/app/assets/[id]/documents/[documentId]/page.tsx','utf8');assert.match(detail,/id=\{`page-\$\{page.pageNumber\}`\}/);
 });
 test('procedure outcomes identify the concrete steps changed',async()=>{
