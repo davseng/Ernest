@@ -57,3 +57,28 @@ test('SQL Editor bundle aborts on missing prerequisites before creating 025 obje
   assert.equal((await db.query("SELECT to_regclass('public.owner_knowledge') AS knowledge")).rows[0].knowledge,null);
  }finally{await db.close();}
 });
+test('production owner-run bundle applies unchanged 025 only, preserves records, and refuses repeated/invalid targets',async()=>{
+ const source=await readFile('scripts/v011/sql-editor/04-production-apply-025.sql','utf8');
+ assert.equal(source.split('-- BEGIN UNCHANGED MIGRATION 025\n')[1].split('-- END UNCHANGED MIGRATION 025')[0],await readFile('migrations/'+migrationName,'utf8'));
+ assert.match(source,/production-before-v011/);
+ const db=await fixture();try{
+  // A database-name mismatch must abort before application DDL.
+  await assert.rejects(()=>db.exec(source.replace("current_database()<>'neondb'","true")),/Unexpected database/);await db.exec('ROLLBACK');
+  assert.equal((await db.query("SELECT to_regclass('public.owner_knowledge') AS relation")).rows[0].relation,null);
+  const before=(await db.query('SELECT count(*)::int AS n FROM users')).rows[0].n;
+  const script=source.replace("current_database()<>'neondb'","current_database()<>current_database()");
+  await db.exec(script);
+  await db.exec(await readFile('scripts/v011/sql-editor/05-production-verify.sql','utf8'));
+  assert.deepEqual((await db.query('SELECT name FROM schema_migrations')).rows,[{name:migrationName}]);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM users')).rows[0].n,before);
+  await assert.rejects(()=>db.exec(script),/already exists/);await db.exec('ROLLBACK');
+ }finally{await db.close();}
+});
+test('production bundle refuses a missing composite page key before creating new schema',async()=>{
+ const db=await fixture();try{
+  await db.exec('ALTER TABLE document_pages DROP CONSTRAINT document_pages_document_id_page_number_key');
+  const script=(await readFile('scripts/v011/sql-editor/04-production-apply-025.sql','utf8')).replace("current_database()<>'neondb'","current_database()<>current_database()");
+  await assert.rejects(()=>db.exec(script),/document page unique key is unavailable/);await db.exec('ROLLBACK');
+  assert.equal((await db.query("SELECT to_regclass('public.owner_knowledge') AS relation")).rows[0].relation,null);
+ }finally{await db.close();}
+});
