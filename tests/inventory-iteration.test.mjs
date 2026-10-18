@@ -41,6 +41,8 @@ test('explicit absence and code definitions create confirmation proposals withou
  assert.equal(inventoryKnowledgeProposal('Does AH mean aft head?',locations,[]),null);
  assert.equal(inventoryKnowledgeProposal('ZZ99 is the aft head',locations,[]),null);
  assert.equal(inventoryKnowledgeProposal('Maybe there is no sextant on board',locations,[]),null);
+ assert.equal(inventoryKnowledgeProposal('There is not a one on board',locations,[]),null);
+ assert.equal(inventoryKnowledgeProposal('AH is not the aft head',locations,[]),null);
 });
 test('provider numeric/nested inventory output and explicit card requests produce executable proposals',async()=>{
  let output,calls=0;class AI{responses={create:async()=>{calls++;return{output_text:JSON.stringify(output)}}}}
@@ -57,6 +59,9 @@ test('provider numeric/nested inventory output and explicit card requests produc
  output={kind:'inventory_update',itemId:item.id,quantity:-1};
  assert.equal(await proposeErnestWrite('Please correct the filter count',asset,[item],locations),null);
  const before=calls;
+ const wrapped='LEARNING FOLLOW-UP: The owner answers a clarification.\nERNEST CLARIFICATION: How many filters?\nOWNER ANSWER: I have 4 fuel filters';
+ assert.equal((await proposeErnestWrite(wrapped,asset,[item],locations)).inventory.quantity,'4');
+ assert.equal(calls,before);
  assert.equal((await proposeErnestWrite('present the confirmation card',asset,[item],locations,'Owner: I have 4 fuel filters\nErnest: Not saved yet')).inventory.quantity,'4');
  assert.equal(calls,before);
  assert.equal(await proposeErnestWrite('present the confirmation card',asset,[item],locations,'Ernest: I have 4 fuel filters'),null);

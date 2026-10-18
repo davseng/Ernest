@@ -29,14 +29,14 @@ export function inventoryKnowledgeProposal(message: string, locations: import("@
  const text=message.trim();
  if(/[?]|\b(if|maybe|might|perhaps|suppose|not sure|used to)\b/i.test(text))return null;
  const location=text.match(/^([a-z][a-z0-9_-]*)\s+(?:is|means)\s+(?:the\s+)?([^.!\n]+)[.!]?$/i);
- const absence=text.match(/^(?:there is (?:no|not (?:a|an))|we (?:do not|don't) have (?:a |an )?)\s*(.+?)\s+(?:aboard|on board)[.!]?$/i);
+ const absence=text.match(/^(?:there is (?:no|not (?:a|an))|we (?:do not|don't) have(?: (?:a|an))?)\s+(.+?)\s+(?:aboard|on board)[.!]?$/i);
  let subject:string,predicate:string,value:string;
  if(location && locations.some(l=>l.code.toLowerCase()===location[1].toLowerCase())){
   subject=locations.find(l=>l.code.toLowerCase()===location[1].toLowerCase())!.code;
   predicate="location name";value=location[2].trim();
  }else if(absence){subject=absence[1].trim();predicate="presence aboard";value="not aboard";}
  else return null;
- if(!subject||subject.length>160||!value||value.length>2000)return null;
+ if(!subject||subject.length>160||!value||value.length>2000||/^(one|it|this|that|any|anything)$/i.test(subject)||(predicate==="location name"&&/^not\b/i.test(value)))return null;
  const previous=knowledge.find(k=>!k.supersededBy&&k.kind!=="observation"&&k.subject.toLowerCase()===subject.toLowerCase()&&k.predicate.toLowerCase()===predicate);
  return{kind:"knowledge_fact",summary:`Remember ${subject}: ${value}.`,knowledge:{subject,predicate,value,kind:"current_fact",effectiveOn:new Date().toISOString().slice(0,10),provenance:`Owner statement: ${text}`,supersedesId:previous?.id??null},previousValue:previous?.value};
 }
