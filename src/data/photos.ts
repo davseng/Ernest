@@ -16,6 +16,7 @@ export type PhotoRecord = {
   assetId: string;
   ownerId: string;
   componentId?: string;
+  componentName?: string;
   title: string;
   originalFilename: string;
   contentType: string;
@@ -29,13 +30,14 @@ export type PhotoRecord = {
 function mapPhoto(row: {
   id: string; asset_id: string; owner_id: string; component_id: string | null;
   title: string; original_filename: string; content_type: string; size_bytes: number;
-  storage_key: string; notes: string | null; taken_at: Date | null; created_at: Date;
+  component_name?:string|null; storage_key: string; notes: string | null; taken_at: Date | null; created_at: Date;
 }): PhotoRecord {
   return {
     id: row.id,
     assetId: row.asset_id,
     ownerId: row.owner_id,
     componentId: row.component_id ?? undefined,
+    componentName: row.component_name ?? undefined,
     title: row.title,
     originalFilename: row.original_filename,
     contentType: row.content_type,
@@ -51,11 +53,12 @@ export async function listPhotos(assetId: string, ownerId: string) {
   const rows = await database()<Array<{
     id: string; asset_id: string; owner_id: string; component_id: string | null;
     title: string; original_filename: string; content_type: string; size_bytes: number;
-    storage_key: string; notes: string | null; taken_at: Date | null; created_at: Date;
+    component_name?:string|null; storage_key: string; notes: string | null; taken_at: Date | null; created_at: Date;
   }>>`
-    SELECT p.*
+    SELECT p.*,c.name AS component_name
     FROM photos p
     INNER JOIN assets a ON a.id = p.asset_id
+    LEFT JOIN components c ON c.id=p.component_id AND EXISTS(SELECT 1 FROM systems s WHERE s.id=c.system_id AND s.asset_id=p.asset_id)
     WHERE p.asset_id = ${assetId}
       AND p.owner_id = ${ownerId}
       AND a.owner_id = ${ownerId}

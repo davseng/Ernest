@@ -2,6 +2,7 @@ import "server-only";
 
 import postgres from "postgres";
 
+import { getErnestDocumentContext } from "@/data/document-context";
 import { chunkExtractedPages } from "@/data/document-chunks";
 import type { AssetDocument, ExtractedDocumentPage, NewAssetDocument } from "@/domain/documents";
 
@@ -34,14 +35,6 @@ type DocumentRow = {
   extracted_at: Date | null;
   page_count: number | null;
   extraction_error: string | null;
-};
-
-type DocumentSearchRow = {
-  document_id: string;
-  document_title: string;
-  page_number: number;
-  chunk_index: number;
-  page_text: string;
 };
 
 type DocumentPageRow = {
@@ -83,7 +76,7 @@ export async function getDocumentsForAsset(assetId: string, ownerId: string) {
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
-      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date::text AS document_date, d.summary, d.classified_at,
       d.extracted_at, d.page_count, d.extraction_error
     FROM documents d
     INNER JOIN assets a ON a.id = d.asset_id
@@ -98,7 +91,7 @@ export async function getNextUnprocessedDocumentForAsset(assetId: string, ownerI
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
-      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date::text AS document_date, d.summary, d.classified_at,
       d.extracted_at, d.page_count, d.extraction_error
     FROM documents d
     INNER JOIN assets a ON a.id = d.asset_id
@@ -112,59 +105,17 @@ export async function getNextUnprocessedDocumentForAsset(assetId: string, ownerI
   return rows[0] ? mapDocument(rows[0]) : undefined;
 }
 
-export async function searchDocumentChunks(assetId: string, ownerId: string, query: string) {
-  const normalized = query.trim().slice(0, 200);
-  if (!normalized) return [];
-
-  const rows = await database()<DocumentSearchRow[]>`
-    SELECT
-      c.document_id,
-      d.title AS document_title,
-      c.page_number,
-      c.chunk_index,
-      p.text_content AS page_text
-    FROM document_chunks c
-    INNER JOIN documents d ON d.id = c.document_id
-    INNER JOIN assets a ON a.id = d.asset_id
-    INNER JOIN document_pages p
-      ON p.document_id = c.document_id
-      AND p.page_number = c.page_number
-    WHERE d.asset_id = ${assetId}
-      AND d.owner_id = ${ownerId}
-      AND a.owner_id = ${ownerId}
-      AND to_tsvector('english', c.text_content) @@ plainto_tsquery('english', ${normalized})
-    ORDER BY
-      ts_rank(to_tsvector('english', c.text_content), plainto_tsquery('english', ${normalized})) DESC,
-      d.title,
-      c.page_number,
-      c.chunk_index
-    LIMIT 24`;
-
-  const seenPages = new Set<string>();
-  const results = [];
-
-  for (const row of rows) {
-    const pageKey = `${row.document_id}:${row.page_number}`;
-    if (seenPages.has(pageKey)) continue;
-    seenPages.add(pageKey);
-    results.push({
-      documentId: row.document_id,
-      documentTitle: row.document_title,
-      pageNumber: row.page_number,
-      chunkIndex: row.chunk_index,
-      text: row.page_text,
-    });
-    if (results.length >= 8) break;
-  }
-
-  return results;
+/** The search UI and chat share the same owner-scoped retrieval pipeline. */
+export async function searchDocumentChunks(assetId:string,ownerId:string,query:string){
+  const pages=await getErnestDocumentContext(assetId,ownerId,query);
+  return pages.map(page=>({...page,chunkIndex:0}));
 }
 
 export async function getDocumentForAsset(documentId: string, assetId: string, ownerId: string) {
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
-      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date::text AS document_date, d.summary, d.classified_at,
       d.extracted_at, d.page_count, d.extraction_error
     FROM documents d
     INNER JOIN assets a ON a.id = d.asset_id
@@ -192,7 +143,7 @@ export async function findDocumentBySourceUrl(assetId: string, ownerId: string, 
   const rows = await database()<DocumentRow[]>`
     SELECT d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
-      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date::text AS document_date, d.summary, d.classified_at,
       d.extracted_at, d.page_count, d.extraction_error
     FROM documents d
     INNER JOIN assets a ON a.id=d.asset_id
@@ -249,7 +200,7 @@ export async function deleteDocumentRecord(documentId: string, assetId: string, 
       AND a.owner_id = ${ownerId}
     RETURNING d.id, d.asset_id, d.title, d.original_filename, d.content_type,
       d.size_bytes, d.storage_key, d.created_at, d.source_type, d.source_url,
-      d.source_external_id, d.content_hash, d.document_type, d.document_date, d.summary, d.classified_at,
+      d.source_external_id, d.content_hash, d.document_type, d.document_date::text AS document_date, d.summary, d.classified_at,
       d.extracted_at, d.page_count, d.extraction_error`;
   return rows[0] ? mapDocument(rows[0]) : undefined;
 }

@@ -38,7 +38,7 @@ export default async function Home({ searchParams }: { searchParams?: Promise<{ 
           key={`${selectedAsset.id}:${selectedConversation?.id ?? "new"}`}
           assetId={selectedAsset.id} assetName={selectedAsset.name}
           initialConversationId={selectedConversation?.id}
-          initialMessages={initialMessages.map((message) => ({ id: message.id, role: message.role, text: message.text, sources: message.sources?.map((source) => ({ documentTitle: source.documentTitle, pageNumber: source.pageNumber })), proposal: message.proposal, writeResult: message.writeResult }))}
+          initialMessages={initialMessages.map((message) => ({ id: message.id, role: message.role, text: message.text, sources: message.sources?.map((source) => ({ photoId: source.photoId, documentId: source.documentId, documentTitle: source.documentTitle, pageNumber: source.pageNumber })), proposal: message.proposal, writeResult: message.writeResult }))}
           recentConversations={recentConversations.map((conversation) => ({ id: conversation.id, title: conversation.title, updatedAt: conversation.updatedAt.toISOString() }))}
         />
       </main>

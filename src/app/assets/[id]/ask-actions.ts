@@ -9,12 +9,20 @@ import { proposeErnestWrite, type ErnestWriteProposal } from "@/data/ernest-writ
 import { getComponentLifecycles } from "@/data/equipment-knowledge";
 import { getInventoryItems, getInventoryLocations } from "@/data/inventory";
 import { getLogEntries } from "@/data/log-entries";
+import { getPhotoEvidence } from "@/data/photo-evidence";
+import { getVisualSourceFiles } from "@/data/visual-sources";
+import { getOwnerKnowledge } from "@/data/knowledge";
+import { formatKnowledge, selectKnowledge } from "@/domain/knowledge";
+import { selectEvidence, expandedTerms, evidenceContains } from "@/domain/retrieval";
+import { evidenceSources } from "@/domain/evidence";
+import { requestsWrite, readOnlyAnswer } from "@/domain/write-safety";
+import { inventoryContext } from "@/domain/inventory-context";
 import { getProcedures } from "@/data/procedures";
 
 export type AskErnestState = {
   question: string;
   answer: string;
-  sources: { documentTitle: string; pageNumber: number }[];
+  sources: { photoId?:string; documentId?: string; documentTitle: string; pageNumber: number }[];
   proposal?: ErnestWriteProposal;
   error?: string;
   comparison?: { current: string; thin: string; context: string };
@@ -33,12 +41,12 @@ function retrievalQuestion(question: string, conversation: string) {
   const ownerTurns = [...conversation.matchAll(/Owner:\s*([^\n]+)/gi)]
     .map((match) => match[1]?.trim() || "")
     .filter(Boolean);
-  const priorOwnerQuestion = ownerTurns.at(-1) || "";
+  const priorOwnerQuestion = ownerTurns.slice(-3).join(" ");
   return [question, priorOwnerQuestion].filter(Boolean).join(" ").slice(0, 800);
 }
 
 function ernestTurns(conversation: string) {
-  return [...conversation.matchAll(new RegExp("Ernest:\\\\s*([^]*?)(?=\\\\nOwner:|$)", "gi"))]
+  return [...conversation.matchAll(/Ernest:\s*([^]*?)(?=\nOwner:|$)/gi)]
     .map((match) => match[1]?.trim() || "")
     .filter(Boolean);
 }
@@ -80,77 +88,12 @@ function learningProposalMessage(question: string, conversation: string) {
     "Do not propose a write for opinions, plans, guesses, uncertain answers, ordinary discussion, or anything that cannot be mapped without invention. Never infer more than the owner's actual answer. The proposal still requires owner confirmation before anything is written or verified.",
     `ERNEST CLARIFICATION: ${clarification}`,
     `OWNER ANSWER: ${question}`,
-  ].join("\\n");
+  ].join("\n");
 }
 
-function clarificationFallback(question: string, conversation: string): ErnestWriteProposal | null {
-  const clarification = clarificationContext(question, conversation);
-  if (!clarification) return null;
-  const uncertain = /\b(i (?:don't|do not) know|not sure|unsure|maybe|probably|i think|guess)\b/i.test(question);
-  if (uncertain || question.length < 3) return null;
-  return {
-    kind: "log",
-    summary: "Remember owner clarification",
-    log: {
-      occurredAt: new Date().toISOString().slice(0, 10),
-      entryType: "observation",
-      title: "Owner-provided asset clarification",
-      body: question,
-    },
-  };
-}
 
-function verified(
-  asset: NonNullable<Awaited<ReturnType<typeof getAsset>>>,
-  logs: Awaited<ReturnType<typeof getLogEntries>>,
-  inventory: Awaited<ReturnType<typeof getInventoryItems>>,
-  lifecycles: Awaited<ReturnType<typeof getComponentLifecycles>>,
-  procedures: Awaited<ReturnType<typeof getProcedures>>,
-) {
-  const lines = ["ASSET RECORD:", `Name: ${asset.name}`];
-  const lifecycleByComponent = new Map(lifecycles.map((item) => [item.componentId, item]));
 
-  for (const system of asset.systems) {
-    lines.push(`SYSTEM: ${system.name}`);
-    for (const component of system.components) {
-      const lifecycle = lifecycleByComponent.get(component.id);
-      const lifecycleText = lifecycle
-        ? ` · Status: ${lifecycle.status}${lifecycle.changedOn ? ` since ${lifecycle.changedOn}` : ""}${lifecycle.notes ? ` · Lifecycle note: ${lifecycle.notes}` : ""}`
-        : "";
-      lines.push(`Component: ${component.name} · Manufacturer: ${component.manufacturer || ""} · Model: ${component.model || ""} · Location: ${component.location || ""}${lifecycleText}`);
-    }
-  }
-
-  if (inventory.length) {
-    lines.push("VERIFIED INVENTORY:");
-    for (const item of inventory) {
-      lines.push(`- ${item.name} · locations ${item.locations.join(", ") || "not recorded"} · quantity ${item.quantity || "not recorded"}`);
-    }
-  }
-
-  if (procedures.length) {
-    lines.push("VERIFIED PROCEDURES:");
-    for (const procedure of procedures.slice(0, 12)) {
-      lines.push(`PROCEDURE: ${procedure.title} · type ${procedure.procedureType}`);
-      if (procedure.notes) lines.push(`Notes: ${procedure.notes}`);
-      for (const step of procedure.steps.slice(0, 12)) {
-        lines.push(`${step.position + 1}. ${step.instruction}${step.note ? ` — ${step.note}` : ""}`);
-      }
-    }
-  }
-
-  if (logs.length) lines.push("OPERATING / MAINTENANCE HISTORY:");
-  for (const log of logs.slice(0, 20)) {
-    lines.push(`[${log.occurredAt.toISOString().slice(0, 10)}] ${log.entryType}: ${log.title} — ${log.body}`);
-  }
-
-  return lines.join("\\n");
-}
-
-function relevantTerms(question: string) {
-  const stop = new Set(["what","which","where","when","why","how","does","should","could","would","about","with","from","have","your","mine","this","that","these","those","there","their","boat","far","better"]);
-  return [...new Set((question.toLowerCase().match(/[a-z0-9][a-z0-9_-]*/g) || []).filter((x) => x.length > 2 && !stop.has(x)))];
-}
+function relevantTerms(question:string){return expandedTerms(question);}
 
 type RetrievalIntent = "fact" | "procedure" | "troubleshooting" | "maintenance" | "judgment" | "evidence";
 
@@ -168,12 +111,11 @@ function focusedVerified(
   question: string,
   asset: NonNullable<Awaited<ReturnType<typeof getAsset>>>,
   logs: Awaited<ReturnType<typeof getLogEntries>>,
-  inventory: Awaited<ReturnType<typeof getInventoryItems>>,
   lifecycles: Awaited<ReturnType<typeof getComponentLifecycles>>,
   procedures: Awaited<ReturnType<typeof getProcedures>>,
 ) {
   const terms = relevantTerms(question);
-  const score = (text: string) => terms.reduce((n,t) => n + (text.toLowerCase().includes(t) ? 1 : 0), 0);
+  const score = (text: string) => terms.reduce((n,t) => n + (evidenceContains(text,t) ? 1 : 0), 0);
   const lines = ["ASSET RECORD:", `Name: ${asset.name}`];
   const lifecycleByComponent = new Map(lifecycles.map((item) => [item.componentId, item]));
   const components = asset.systems.flatMap(system => system.components.map(component => ({system,component,score:score([system.name,component.name,component.manufacturer,component.model,component.location].filter(Boolean).join(" "))}))).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
@@ -182,39 +124,20 @@ function focusedVerified(
     lines.push(`SYSTEM: ${system.name}`);
     lines.push(`Component: ${component.name} · Manufacturer: ${component.manufacturer || ""} · Model: ${component.model || ""} · Location: ${component.location || ""}${lifecycle ? ` · Status: ${lifecycle.status}${lifecycle.changedOn ? ` since ${lifecycle.changedOn}` : ""}${lifecycle.notes ? ` · Lifecycle note: ${lifecycle.notes}` : ""}` : ""}`);
   }
-  const inventoryIntent=/\b(inventory|aboard|stored|storage|where|location|spare|spares|have|carry)\b/i.test(question);
-  if(inventoryIntent){const hits=inventory.map(item=>({item,score:score([item.name,...item.locations].join(" "))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,8);if(hits.length){lines.push("VERIFIED INVENTORY:");for(const {item} of hits)lines.push(`- ${item.name} · locations ${item.locations.join(", ") || "not recorded"} · quantity ${item.quantity || "not recorded"}`);}}
   const procedureIntent=/\b(procedure|steps|checklist|how do i|how should i|operate|shutdown|shut down|start up)\b/i.test(question);
-  if(procedureIntent){const hits=procedures.map(p=>({p,score:score([p.title,p.notes||"",...p.steps.map(x=>x.instruction)].join(" "))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,2);if(hits.length){lines.push("VERIFIED PROCEDURES:");for(const {p} of hits){lines.push(`PROCEDURE: ${p.title} · type ${p.procedureType}`);for(const step of p.steps.slice(0,8))lines.push(`${step.position+1}. ${step.instruction}`);}}}
+  if(procedureIntent){const hits=procedures.map(p=>({p,score:score([p.title,p.notes||"",...p.steps.map(x=>x.instruction)].join(" "))})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,2);if(hits.length){lines.push("VERIFIED PROCEDURES:");for(const {p} of hits){lines.push(`PROCEDURE: ${p.title} · type ${p.procedureType}`);for(const step of p.steps.slice(0,40))lines.push(`${step.position+1}. ${step.instruction}`);}}}
   const logHits=logs.map(log=>({log,score:score(`${log.title} ${log.body} ${log.entryType}`)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,5);
   if(logHits.length){lines.push("RELEVANT OPERATING / MAINTENANCE HISTORY:");for(const {log} of logHits)lines.push(`[${log.occurredAt.toISOString().slice(0,10)}] ${log.entryType}: ${log.title} — ${log.body}`);}
-  return lines.join("\\n");
+  return lines.join("\n");
 }
 
 function focusedDocuments(question: string, context: Awaited<ReturnType<typeof getErnestDocumentContext>>) {
-  const intent = retrievalIntent(question);
-  const maxPages = intent === "judgment" ? 2 : intent === "fact" ? 4 : intent === "evidence" ? 5 : 4;
-  const maxChars = intent === "judgment" ? 4500 : intent === "fact" ? 8000 : intent === "evidence" ? 12000 : 9000;
-  const checklistish = (page: Awaited<ReturnType<typeof getErnestDocumentContext>>[number]) =>
-    /checklist/i.test(page.documentTitle) || (page.text.match(/☐/g)?.length || 0) >= 4;
-  const ranked = [...context].sort((a,b) => {
-    const ap = intent === "judgment" && checklistish(a) ? 0.35 : 1;
-    const bp = intent === "judgment" && checklistish(b) ? 0.35 : 1;
-    return b.relevance * bp - a.relevance * ap;
-  });
-  const seen=new Set<string>(); const out=[]; let chars=0; let checklistPages=0;
-  for(const page of ranked){
-    if(intent === "judgment" && checklistish(page) && checklistPages >= 1) continue;
-    const key=`${page.documentId}:${page.pageNumber}`; if(seen.has(key))continue; seen.add(key);
-    if(out.length >= maxPages || (chars + page.text.length > maxChars && out.length > 0)) break;
-    out.push(page); chars += page.text.length; if(checklistish(page)) checklistPages++;
-  }
-  return out;
+  return selectEvidence(question, context, retrievalIntent(question) === "evidence" ? 18000 : 14000);
 }
 
 function termMatches(value: string, term: string) {
   const v=value.toLowerCase();
-  if(v.includes(term))return true;
+  if(evidenceContains(v,term))return true;
   const aliases:Record<string,string[]>={ais:["ais700","ais 700","automatic identification"],gps:["gnss"],cooler:["oil cooler","gear cooler"],windlass:["anchor windlass"]};
   return (aliases[term]||[]).some(alias=>v.includes(alias));
 }
@@ -224,10 +147,11 @@ function relevantHistoricalEvidence(question: string, findings: Awaited<ReturnTy
   const score = (value: string) => terms.reduce((n, term) => n + (termMatches(value,term) ? 1 : 0), 0);
   const hits = findings.map((finding) => ({ finding, score: score([finding.findingType, finding.statement, finding.documentTitle].join(" ")) })).filter((item) => item.score > 0).sort((a,b) => b.score - a.score).slice(0,8);
   if (!hits.length) return "";
-  return ["HISTORICAL DOCUMENT EVIDENCE (dated evidence, not automatically a current asset fact):", ...hits.map(({finding}) => `- ${finding.observedAt ? `[${finding.observedAt}] ` : ""}${finding.statement} · source ${finding.documentTitle}${finding.pageNumber ? `, p. ${finding.pageNumber}` : ""} · lifecycle status ${finding.status}`)].join("\\n");
+  return ["HISTORICAL DOCUMENT EVIDENCE (dated evidence, not automatically a current asset fact):", ...hits.map(({finding}) => `- ${finding.observedAt ? `[${finding.observedAt}] ` : ""}${finding.statement} · source ${finding.documentTitle}${finding.pageNumber ? `, p. ${finding.pageNumber}` : ""} · lifecycle status ${finding.status}`)].join("\n");
 }
 
 function proposalAnswer(proposal: ErnestWriteProposal) {
+  if (proposal.kind === "knowledge_fact") return "I can remember this as owner-confirmed knowledge. Review the fact, effective date, and any superseded record below before saving.";
   if (proposal.kind === "component_add") return `I can add ${proposal.component.name} to the ${proposal.component.systemName} equipment list. Review the proposed equipment entry below before I write anything.`;
   if (proposal.kind === "log") return `That's useful to remember. I can save it to ${proposal.log.entryType} history; review the proposed record below first.`;
   if (proposal.kind === "component_fact") return `That's useful to pin down. I can update ${proposal.componentFact.componentName}; review the proposed fact below first.`;
@@ -250,7 +174,7 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
   const thinkHarder = String(formData.get("thinkHarder") ?? "") === "true";
 
   try {
-    const [asset, logs, inventory, locations, lifecycles, procedures, context, findings] = await Promise.all([
+    const [asset, logs, inventory, locations, lifecycles, procedures, context, findings, knowledge] = await Promise.all([
       getAsset(assetId, session.user.id),
       getLogEntries(assetId, session.user.id),
       getInventoryItems(assetId, session.user.id),
@@ -259,14 +183,19 @@ export async function askErnest(assetId: string, _previous: AskErnestState, form
       getProcedures(assetId, session.user.id),
       getErnestDocumentContext(assetId, session.user.id, retrievalQuestion(question, conversation)),
       getAssetFindings(assetId, session.user.id),
+      getOwnerKnowledge(assetId, session.user.id),
     ]);
 
     if (!asset) return { ...empty(), question, error: "I couldn’t find that asset." };
 
     const learningMessage = learningProposalMessage(question, conversation);
-    const classifiedProposal = await proposeErnestWrite(learningMessage, asset, inventory, locations, conversation, lifecycles, procedures);
-    const proposal = classifiedProposal ?? (learningMessage !== question ? clarificationFallback(question, conversation) : null);
+    const classifiedProposal = await proposeErnestWrite(learningMessage, asset, inventory, locations, conversation, lifecycles, procedures, knowledge);
+    const proposal = classifiedProposal;
     if (proposal) return { question, answer: proposalAnswer(proposal), sources: [], proposal };
+    if (requestsWrite(question)) return {
+      question, sources: [],
+      answer: "That change has not been saved. Please specify the exact inventory item or fact and its new value; if there are similar items, include its storage code. I will show a real confirmation card before writing anything.",
+    };
 
     const contextual = conversation
       ? `Recent conversation (context only, not verified evidence):
@@ -275,11 +204,14 @@ ${conversation}
 Current question:
 ${question}`
       : question;
-    const focusedContext = focusedDocuments(question, context);
-    const historicalEvidence = relevantHistoricalEvidence(question, findings);
-    const focusedKnowledge = [focusedVerified(question, asset, logs, inventory, lifecycles, procedures), historicalEvidence].filter(Boolean).join("\\n\\n");
-    const focused = await answerThinErnestQuestion(contextual, focusedContext, focusedKnowledge, thinkHarder);
-    const answer = focused.answer;
+    const subjectQuestion = retrievalQuestion(question, conversation);
+    const focusedContext = focusedDocuments(subjectQuestion, context);
+    const historicalEvidence = relevantHistoricalEvidence(subjectQuestion, findings);
+    const focusedKnowledge = [formatKnowledge(selectKnowledge(subjectQuestion,knowledge)), focusedVerified(subjectQuestion, asset, logs, lifecycles, procedures), inventoryContext(subjectQuestion, inventory, locations, knowledge), historicalEvidence].filter(Boolean).join("\n\n");
+    const visuals = await getVisualSourceFiles(assetId,session.user.id,subjectQuestion,focusedContext);
+    const photoEvidence = await getPhotoEvidence(assetId,session.user.id,subjectQuestion);
+    const focused = await answerThinErnestQuestion(contextual, focusedContext, [focusedKnowledge,...visuals.warnings,...photoEvidence.warnings].join("\n"), thinkHarder, visuals.files, photoEvidence.files);
+    const answer = readOnlyAnswer(focused.answer);
 
     const seen = new Set<string>();
     const sources = focusedContext
@@ -289,9 +221,9 @@ ${question}`
         seen.add(key);
         return true;
       })
-      .map((page) => ({ documentTitle: page.documentTitle, pageNumber: page.pageNumber }));
+      .map((page) => ({ documentId: page.documentId, documentTitle: page.documentTitle, pageNumber: page.pageNumber }));
 
-    return { question, answer, sources };
+    return { question, answer, sources:evidenceSources([...sources,...visuals.files.filter(f=>f.documentId).map(f=>({documentId:f.documentId,documentTitle:f.documentTitle,pageNumber:0})),...photoEvidence.files.map(p=>({photoId:p.photoId,documentTitle:p.title,pageNumber:0}))]) };
   } catch (error) {
     console.error("Ask Ernest failure", error);
     return { question, answer: "", sources: [], error: "Ernest couldn’t answer that right now. Please try again." };

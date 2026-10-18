@@ -12,7 +12,10 @@ export async function POST(request: Request, context: {
     return NextResponse.redirect(new URL("/sign-in", request.url), 303);
   }
 
-  const result = await processDocument(documentId, assetId, session.user.id);
+  const form = await request.formData();
+  const visualStart=Number(form.get("visualStart")??1);
+  if(!Number.isInteger(visualStart)||visualStart<1)return new NextResponse("Invalid visual start page",{status:400});
+  const result = await processDocument(documentId, assetId, session.user.id, form.get("visual")==="true",visualStart);
   if (!result.ok && result.notFound) return new NextResponse("Not found", { status: 404 });
 
   return NextResponse.redirect(

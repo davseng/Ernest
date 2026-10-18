@@ -86,7 +86,7 @@ export async function addInventoryItem(
   const name = input.name.trim();
   if (!name) return false;
   const quantity = input.quantity?.trim() ? Number(input.quantity) : null;
-  if (input.quantity?.trim() && !Number.isFinite(quantity)) return false;
+  if (input.quantity?.trim() && (!Number.isFinite(quantity) || quantity! < 0)) return false;
   return db.begin(async (tx) => {
     const [item] = await tx<Array<{id:string}>>`
       INSERT INTO inventory_items (asset_id, owner_id, name, quantity, details, source_label)
@@ -111,18 +111,23 @@ export async function updateInventoryItem(
   assetId: string,
   ownerId: string,
   itemId: string,
-  input: { name?: string | null; quantity?: string | null; details?: string | null; locationCode?: string | null },
+  input: { name?: string | null; quantity?: string | null; details?: string | null; locationCode?: string | null; expectedQuantity?: string | null },
 ) {
+  const quantity = input.quantity?.trim() ? Number(input.quantity) : null;
+  if (input.quantity != null && input.quantity.trim() && (!Number.isFinite(quantity) || quantity! < 0)) return false;
   const db = database();
   return db.begin(async (tx) => {
-    const [existing] = await tx<Array<{id:string}>>`
-      SELECT id FROM inventory_items WHERE id=${itemId} AND asset_id=${assetId} AND owner_id=${ownerId} LIMIT 1
+    const [existing] = await tx<Array<{id:string;quantity:string|null}>>`
+      SELECT id,quantity::text FROM inventory_items WHERE id=${itemId} AND asset_id=${assetId} AND owner_id=${ownerId} FOR UPDATE
     `;
     if (!existing) return false;
+    if (input.expectedQuantity !== undefined) {
+      const same = existing.quantity === null ? input.expectedQuantity === null
+        : input.expectedQuantity !== null && Number(existing.quantity) === Number(input.expectedQuantity);
+      if (!same) return false;
+    }
     if (input.name?.trim()) await tx`UPDATE inventory_items SET name=${input.name.trim()}, updated_at=now() WHERE id=${itemId}`;
     if (input.quantity !== undefined && input.quantity !== null && input.quantity.trim()) {
-      const quantity = Number(input.quantity);
-      if (!Number.isFinite(quantity)) return false;
       await tx`UPDATE inventory_items SET quantity=${quantity}, updated_at=now() WHERE id=${itemId}`;
     }
     if (input.details !== undefined && input.details !== null) await tx`UPDATE inventory_items SET details=${input.details.trim() || null}, updated_at=now() WHERE id=${itemId}`;
