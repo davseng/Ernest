@@ -5,7 +5,7 @@ import { visualPageNumbers } from "@/domain/visual-evidence";
 import { replaceVisualPages, setProcessingStatus, visualCoverage } from "@/data/document-processing";
 
 import { classifyDocument } from "@/data/document-classification";
-import { extractDocumentFindings, reconcileAssetFindings, replaceDocumentFindings } from "@/data/document-findings";
+import { extractDocumentFindings, replaceDocumentFindings } from "@/data/document-findings";
 
 import {
   getDocumentForAsset,
@@ -76,7 +76,7 @@ export async function processDocument(documentId: string, assetId: string, owner
       const classification = await classifyDocument(documentId, assetId, ownerId);
       const findings = await extractDocumentFindings(pages, classification.ok ? classification.documentType : undefined);
       await replaceDocumentFindings(documentId, assetId, ownerId, findings);
-      await reconcileAssetFindings(assetId, ownerId);
+      // Source processing extracts evidence only; status changes require owner review.
     } catch (error) {
       console.error("Document understanding failed", error);
       await setProcessingStatus(documentId,assetId,ownerId,"understanding_failed",visualStatus,"Text indexed; classification or historical finding extraction failed. Retry processing to refresh understanding.");

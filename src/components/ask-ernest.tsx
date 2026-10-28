@@ -1,7 +1,6 @@
 "use client";
 
 import {EvidenceList} from "@/components/evidence-list";
-import {ErnestWriteCard} from "@/components/ernest-write-card";
 import { useActionState } from "react";
 
 import { askErnest, type AskErnestState } from "@/app/assets/[id]/ask-actions";
@@ -32,14 +31,14 @@ export function AskErnest({ assetId }: { assetId: string }) {
             id="ernestQuestion"
             name="question"
             defaultValue={state.question}
-            maxLength={500}
+            maxLength={6000}
             placeholder="How do I winterize the freshwater system?"
             required
           />
           <button type="submit" disabled={pending}>{pending ? "Thinking…" : "Ask"}</button>
         </div>
       </form>
-      {state.proposal ? <ErnestWriteCard key={JSON.stringify(state.proposal)} assetId={assetId} proposal={state.proposal}/> : null}
+      {state.reviewId ? <a className="primary-button" href={`/assets/${encodeURIComponent(assetId)}/reviews/${encodeURIComponent(state.reviewId)}`}>Open editable update form</a> : null}
       {state.error ? <p className="error-notice">{state.error}</p> : null}
       {state.answer ? (
         <div className="document-search-results" aria-live="polite">

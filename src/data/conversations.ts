@@ -32,6 +32,7 @@ export type PersistedConversationMessage = {
   role: "user" | "assistant";
   text: string;
   sources?: PersistedSource[];
+  reviewId?: string;
   proposal?: ErnestWriteProposal;
   writeResult?: { ok: boolean; message: string };
   createdAt: Date;
@@ -49,6 +50,7 @@ type MessageRow = {
   role: "user" | "assistant";
   text_content: string;
   sources: PersistedSource[] | null;
+  review_id: string | null;
   proposal: ErnestWriteProposal | null;
   write_result: { ok: boolean; message: string } | null;
   created_at: Date;
@@ -96,7 +98,7 @@ export async function createConversation(assetId: string, ownerId: string, first
 
 export async function getConversationMessages(conversationId: string, assetId: string, ownerId: string) {
   const rows = await database()<MessageRow[]>`
-    SELECT m.id, m.role, m.text_content, m.sources, m.proposal, m.write_result, m.created_at
+    SELECT m.id, m.role, m.text_content, m.sources, m.review_id, m.proposal, m.write_result, m.created_at
     FROM conversation_messages m
     INNER JOIN conversations c ON c.id = m.conversation_id
     INNER JOIN assets a ON a.id = c.asset_id
@@ -112,6 +114,7 @@ export async function getConversationMessages(conversationId: string, assetId: s
     role: row.role,
     text: row.text_content,
     sources: row.sources ?? undefined,
+    reviewId: row.review_id ?? undefined,
     proposal: row.proposal ?? undefined,
     writeResult: row.write_result ?? undefined,
     createdAt: row.created_at,
@@ -139,20 +142,25 @@ export async function appendConversationMessage(
     role: "user" | "assistant";
     text: string;
     sources?: PersistedSource[];
-    proposal?: ErnestWriteProposal;
+    reviewId?: string;
+  proposal?: ErnestWriteProposal;
     writeResult?: { ok: boolean; message: string };
   },
 ) {
   const sql = database();
   const owned = await conversationBelongsToOwner(conversationId, assetId, ownerId);
   if (!owned) return undefined;
+  if (message.reviewId) {
+    const review=await sql`SELECT id FROM update_reviews WHERE id=${message.reviewId} AND asset_id=${assetId} AND owner_id=${ownerId}`;
+    if(review.length!==1)return undefined;
+  }
 
   const rows = await sql<{ id: string }[]>`
     INSERT INTO conversation_messages (
-      conversation_id, asset_id, owner_id, role, text_content, sources, proposal, write_result
+      conversation_id, asset_id, owner_id, role, text_content, sources, review_id, proposal, write_result
     ) VALUES (
       ${conversationId}, ${assetId}, ${ownerId}, ${message.role}, ${message.text},
-      ${message.sources ? sql.json(message.sources) : null},
+      ${message.sources ? sql.json(message.sources) : null}, ${message.reviewId ?? null},
       ${message.proposal ? sql.json(message.proposal) : null},
       ${message.writeResult ? sql.json(message.writeResult) : null}
     )

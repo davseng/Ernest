@@ -2,7 +2,7 @@ import type { Sql } from "postgres";
 import type { KnowledgeInput, KnowledgeFact } from "../domain/knowledge";
 
 type Row = {id:string;subject:string;predicate:string;value:string;kind:KnowledgeInput["kind"];effective_on:string;provenance:string;supersedes_id:string|null;superseded_by:string|null;created_at:Date|string};
-export function createKnowledgeStore(sql: Sql) {
+export function createKnowledgeStore(sql: Sql, options: {inTransaction?: boolean} = {}) {
   return {
     async list(assetId:string, ownerId:string):Promise<KnowledgeFact[]> {
       const rows=await sql<Row[]>`SELECT k.id,k.subject,k.predicate,k.value,k.kind,k.effective_on::text,k.provenance,k.supersedes_id,k.superseded_by,k.created_at
@@ -12,7 +12,7 @@ export function createKnowledgeStore(sql: Sql) {
       return rows.map(r=>({id:r.id,subject:r.subject,predicate:r.predicate,value:r.value,kind:r.kind,effectiveOn:r.effective_on,provenance:r.provenance,supersedesId:r.supersedes_id,supersededBy:r.superseded_by,verification:"owner_confirmed",confidence:1,createdAt:new Date(r.created_at).toISOString()}));
     },
     async record(assetId:string,ownerId:string,input:KnowledgeInput):Promise<boolean> {
-      return sql.begin(async tx=>{
+      const write = async (tx: Sql) => {
         // Serialize confirmation for this owner's asset; a stale proposal must not replace a newer correction.
         const owned=await tx`SELECT id FROM assets WHERE id=${assetId} AND owner_id=${ownerId} FOR UPDATE`;
         if(owned.length!==1)return false;
@@ -32,7 +32,8 @@ export function createKnowledgeStore(sql: Sql) {
           await tx`UPDATE owner_knowledge SET superseded_by=NULL WHERE id=${inserted[0].id} AND owner_id=${ownerId} AND asset_id=${assetId}`;
         }
         return true;
-      }) as Promise<boolean>;
+      };
+      return options.inTransaction ? write(sql) : sql.begin(tx=>write(tx as unknown as Sql)) as Promise<boolean>;
     }
   };
 }

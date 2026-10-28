@@ -22,29 +22,25 @@ test('read-only answers cannot masquerade as completed updates',()=>{
  assert.equal(readOnlyAnswer('Inventory records quantity 4. (Inventory record)'),'Inventory records quantity 4. (Inventory record)');
 });
 const OWNER='11111111-1111-4111-8111-111111111111';
-function askStubs(propose,answer){return{
- '@/auth':{auth:async()=>({user:{id:OWNER}})},'@/data/assets':{getAsset:async()=>({id:'vessel',name:'Synthetic',systems:[]})},
- '@/data/inventory':{getInventoryItems:async()=>inventory,getInventoryLocations:async()=>[]},
- '@/data/ernest-write-proposals':{proposeErnestWrite:propose},'@/data/ask-ernest':{answerThinErnestQuestion:answer},
- '@/data/document-context':{getErnestDocumentContext:async()=>[]},'@/data/document-findings':{getAssetFindings:async()=>[]},
- '@/data/equipment-knowledge':{getComponentLifecycles:async()=>[]},'@/data/log-entries':{getLogEntries:async()=>[]},
- '@/data/photo-evidence':{getPhotoEvidence:async()=>({files:[],warnings:[]})},'@/data/visual-sources':{getVisualSourceFiles:async()=>({files:[],warnings:[]})},
- '@/data/knowledge':{getOwnerKnowledge:async()=>[]},'@/data/procedures':{getProcedures:async()=>[]},
-};}
-test('a rejected classifier proposal on an explicit update never reaches a generative answer',async()=>{
- let called=0;
- const{askErnest}=await loadTypeScript('src/app/assets/[id]/ask-actions.ts',askStubs(async()=>null,async()=>{called++;return{answer:'Updated for Far Better'}}));
+test('the new planner receives both Engine and Racor records before producing a pending editable form',async()=>{
+ let planned=0,created=0;
+ const {askErnest}=await loadTypeScript('src/app/assets/[id]/ask-actions.ts',{
+  '@/auth':{auth:async()=>({user:{id:OWNER}})},
+  '@/data/reviews':{reviews:()=>({available:async()=>true,create:async()=>{created++;return 'editable-review';}})},
+  '@/data/review-context':{reviewContext:async()=>({inventory,documents:[]})},
+  '@/data/review-planner':{planReview:async(a,o,q,c,records)=>{planned++;assert.equal(records.inventory.length,2);return{answer:'Review the quantity before saving',draft:{rows:[{kind:'inventory',itemId:'engine',quantity:'4'}]},evidence:[]};}}
+ });
  const fd=new FormData();fd.set('question','There are 4 engine filters. Can you please update?');
- const result=await askErnest('vessel',{},fd);
- assert.equal(called,0);assert.equal(result.proposal,undefined);assert.match(result.answer,/not been saved/);
+ const result=await askErnest('vessel',{},fd);assert.equal(planned,1);assert.equal(created,1);assert.equal(result.reviewId,'editable-review');assert.doesNotMatch(result.answer,/Updated for|Yanmar/);
 });
-test('exact feedback produces a real card through the actual parser/action without any model call',async()=>{
- class AI{responses={create:async()=>{throw new Error('Model must not handle this correction');}}}
- const proposal=await loadTypeScript('src/data/ernest-write-proposals.ts',{openai:{default:AI}});
- const{askErnest}=await loadTypeScript('src/app/assets/[id]/ask-actions.ts',askStubs(proposal.proposeErnestWrite,async()=>{throw new Error('No answer generation for writes');}));
- const fd=new FormData();fd.set('question','There are 4 engine filters. Can you please update?');
- const result=await askErnest('vessel',{},fd);
- assert.equal(result.proposal.inventory.quantity,'4');assert.equal(result.proposal.inventory.itemId,'engine');assert.match(result.answer,/review/i);
+test('a read question can return evidence without preparing a mutation',async()=>{
+ const {askErnest}=await loadTypeScript('src/app/assets/[id]/ask-actions.ts',{
+  '@/auth':{auth:async()=>({user:{id:OWNER}})},
+  '@/data/reviews':{reviews:()=>({available:async()=>true,create:()=>{throw Error('must not create')}})},
+  '@/data/review-context':{reviewContext:async()=>({documents:[]})},
+  '@/data/review-planner':{planReview:async()=>({answer:'Two recorded filter types, quantities unknown.',evidence:[]})}
+ });
+ const fd=new FormData();fd.set('question','How many filters are recorded?');const result=await askErnest('vessel',{},fd);assert.equal(result.reviewId,undefined);assert.match(result.answer,/quantities unknown/);
 });
 test('optional document section failure does not discard successful sections or leak the underlying exception',async()=>{
  const seen=[];

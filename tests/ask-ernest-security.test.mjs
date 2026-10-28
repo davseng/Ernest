@@ -1,53 +1,32 @@
-import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
-import test from "node:test";
-
-const actionSource = await readFile(new URL("../src/app/assets/[id]/ask-actions.ts", import.meta.url), "utf8");
-const answerSource = await readFile(new URL("../src/data/ask-ernest.ts", import.meta.url), "utf8");
-const proposalSource = await readFile(new URL("../src/data/ernest-write-proposals.ts", import.meta.url), "utf8");
-
-test("Ask Ernest derives owner from authenticated session and preserves grounded competence", () => {
-  assert.match(actionSource, /getErnestDocumentContext\(\s*assetId,\s*session\.user\.id,\s*retrievalQuestion\(question, conversation\)\s*\)/);
-  assert.doesNotMatch(actionSource, /ownerId.*formData/);
-  assert.match(answerSource, /Never turn general knowledge, inference, ambiguous text, or conversation into a verified fact about this asset/);
-  assert.match(answerSource, /still give useful general domain expertise/);
-  assert.match(answerSource, /Never claim an action was completed unless the application explicitly confirms it was completed/);
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {loadTypeScript} from './helpers/load-typescript.mjs';
+import {readFile} from 'node:fs/promises';
+const OWNER='11111111-1111-4111-8111-111111111111';
+function stubs({session={user:{id:OWNER}},ready=true,context={},plan=async()=>({answer:'Advice only',evidence:[]}),create=async()=>{throw Error('No draft expected')}}={}){
+ return{'@/auth':{auth:async()=>session},'@/data/reviews':{reviews:()=>({available:async()=>ready,create})},'@/data/review-context':{reviewContext:async(id,owner)=>{assert.equal(owner,OWNER);return{documents:[],...context}}},'@/data/review-planner':{planReview:plan}};
+}
+test('unauthenticated requests never read records, invoke models or create pending updates',async()=>{
+ const{askErnest}=await loadTypeScript('src/app/assets/[id]/ask-actions.ts',stubs({session:null,plan:async()=>{throw Error('must not call model')}}));
+ const fd=new FormData();fd.set('question','Update records');assert.match((await askErnest('vessel',{},fd)).error,/sign in/);
 });
-
-test("Ask Ernest uses conversation only to recover retrieval subjects for short follow-ups", () => {
-  assert.match(actionSource, /function looksLikeFollowUp/);
-  assert.match(actionSource, /ownerTurns/);
-  assert.match(actionSource, /priorOwnerQuestion/);
-  assert.doesNotMatch(actionSource, /conversation\\.slice\\(-1200\\)/);
-  assert.match(actionSource, /context only, not verified evidence/);
+test('one evidence-aware planner receives the authenticated owner and complete record context; updates create pending forms only',async()=>{
+ let called=0;const context={documents:[],logs:[{title:'Earlier repair'}],inventory:[{name:'Impeller'}],survey:[{identifier:'A1'}]};const draft={title:'Review',summary:'Pending',rows:[]};
+ const{askErnest}=await loadTypeScript('src/app/assets/[id]/ask-actions.ts',stubs({context,plan:async(id,owner,q,conversation,c)=>{assert.equal(owner,OWNER);assert.match(q,/impeller/);assert.equal(c.logs[0].title,'Earlier repair');return{answer:'Review before saving',draft,evidence:[]}},create:async(id,owner,q,input,snapshot)=>{called++;assert.equal(owner,OWNER);assert.equal(input,draft);assert.equal(snapshot.inventory[0].name,'Impeller');return'pending-review';}}));
+ const fd=new FormData();fd.set('question','I replaced the impeller on October 22, 2026. Please update our records.');fd.set('owner_id','not-the-session-owner');
+ const result=await askErnest('vessel',{},fd);assert.equal(result.reviewId,'pending-review');assert.equal(called,1);assert.equal(result.proposal,undefined);
 });
-
-test("Ask Ernest turns definite clarification answers into confirmation-gated learning", () => {
-  assert.match(actionSource, /function clarificationContext/);
-  assert.match(actionSource, /function clarificationQuestion/);
-  assert.match(actionSource, /paragraphs\.slice\(-2\)\.reverse\(\)/);
-  assert.match(actionSource, /function referencesEarlierQuestion/);
-  assert.match(actionSource, /turns\.slice\(-3\)\.reverse\(\)/);
-  assert.match(actionSource, /function learningProposalMessage/);
-  assert.doesNotMatch(actionSource, /function clarificationFallback/);
-  assert.match(actionSource, /getOwnerKnowledge\(assetId, session\.user\.id\)/);
-  assert.match(actionSource, /Do not propose a write for opinions, plans, guesses, uncertain answers/i);
-  assert.match(proposalSource, /Treat a definite answer as save intent/i);
-  assert.match(proposalSource, /Use knowledge_fact for durable current facts/i);
-  assert.match(proposalSource, /knowledge_fact rather than returning none/i);
+test('ordinary advice and typed confirmation use the same read/prepare planner, never a chat write action',async()=>{
+ let asked=[];const{askErnest}=await loadTypeScript('src/app/assets/[id]/ask-actions.ts',stubs({plan:async(id,owner,q)=>{asked.push(q);return{answer:'No confirmed write result',evidence:[]}}}));
+ for(const q of ['What was repaired?','confirmed']){const fd=new FormData();fd.set('question',q);assert.equal((await askErnest('vessel',{},fd)).reviewId,undefined);}
+ assert.deepEqual(asked,['What was repaired?','confirmed']);
+ const source=await readFile('src/components/ernest-chat.tsx','utf8');assert.doesNotMatch(source,/confirmErnestWrite|latestAssistant.*proposal/);
 });
-
-test("Explicit confirmation-card requests must become proposals rather than simulated prose cards", () => {
-  assert.match(proposalSource, /explicitly asks for a confirmation card, proposal, save card/i);
-  assert.match(proposalSource, /that IS clear write intent/i);
-  assert.match(proposalSource, /Do not answer with prose saying a card could be prepared/i);
-  assert.match(proposalSource, /application itself will render the confirmation card/i);
-  assert.match(proposalSource, /identity corrections/i);
+test('missing review setup and provider errors fail clearly without exposing credentials or an inventory-specific refusal',async()=>{
+ const{askErnest}=await loadTypeScript('src/app/assets/[id]/ask-actions.ts',stubs({ready:false}));const fd=new FormData();fd.set('question','Reconcile the survey');
+ assert.match((await askErnest('vessel',{},fd)).error,/awaiting its database setup/);
+ const broken=await loadTypeScript('src/app/assets/[id]/ask-actions.ts',stubs({plan:async()=>{throw Error('postgres://private-credential')}}));const result=await broken.askErnest('vessel',{},fd);assert.doesNotMatch(result.error,/postgres|inventory item|private-credential/);
 });
-
-test("Ask Ernest exposes approved procedures and lifecycle state as verified asset context", () => {
-  assert.match(actionSource, /VERIFIED PROCEDURES:/);
-  assert.match(actionSource, /lifecycleByComponent/);
-  assert.match(actionSource, /getProcedures\(assetId, session\.user\.id\)/);
-  assert.match(actionSource, /getComponentLifecycles\(assetId, session\.user\.id\)/);
+test('document extraction no longer automatically resolves or supersedes findings',async()=>{
+ const source=await readFile('src/data/document-extraction.ts','utf8');assert.doesNotMatch(source,/reconcileAssetFindings/);assert.match(source,/replaceDocumentFindings/);
 });
