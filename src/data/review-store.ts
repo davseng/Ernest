@@ -382,17 +382,34 @@ export function createReviewStore(sql: Sql) {
                 );
             }
             if (row.spareItemId) {
+              if (row.remainingQuantity != null && row.deductSpare)
+                throw Error(
+                  "Choose a verified remaining quantity or a deduction, not both.",
+                );
               // Lock/check even when recording unknown balance without deducting.
               const item = await inventoryLock(
                 row.spareItemId,
-                row.deductSpare,
-                "deduction",
+                row.deductSpare || row.remainingQuantity != null,
+                row.remainingQuantity != null ? "absolute" : "deduction",
               );
               if (row.deductSpare && !row.spareUsed)
                 throw Error(
                   "Enter how many spares were used before deducting stock, or turn deduction off.",
                 );
-              if (row.deductSpare) {
+              if (row.remainingQuantity != null) {
+                await tx`UPDATE inventory_items SET quantity=${row.remainingQuantity}::numeric,updated_at=now() WHERE id=${item.id}`;
+                audit.push({
+                  kind: "inventory",
+                  recordId: item.id,
+                  before: item,
+                  after: { quantity: row.remainingQuantity },
+                });
+                receipt.changes.push({
+                  kind: "inventory",
+                  recordId: item.id,
+                  description: `${item.name}: verified remaining quantity ${row.remainingQuantity}`,
+                });
+              } else if (row.deductSpare) {
                 if (item.quantity === null)
                   throw Error(
                     "The spare balance is unknown. Record consumption without deduction, or supply a verified balance separately.",
@@ -419,7 +436,11 @@ export function createReviewStore(sql: Sql) {
                   recordId: item.id,
                   description: `Recorded ${row.spareUsed ?? "an unknown number of"} ${item.name} used; inventory balance unchanged${item.quantity === null ? " (unknown)" : ""}.`,
                 });
-            } else if (row.deductSpare || row.spareUsed)
+            } else if (
+              row.deductSpare ||
+              row.spareUsed ||
+              row.remainingQuantity != null
+            )
               throw Error("Choose the spare item to record consumption.");
             if (eventId) {
               await tx`UPDATE maintenance_events SET occurred_on=${row.date},title=${row.title},description=${row.description},component_id=${row.componentId},engine_hours=${row.engineHours},spare_item_id=${row.spareItemId},spare_used=${row.spareUsed},evidence=${tx.json(row.evidence)}::jsonb,revision=revision+1,approved_at=now() WHERE id=${eventId} AND asset_id=${assetId} AND owner_id=${ownerId}`;

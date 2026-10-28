@@ -657,3 +657,55 @@ test("driver JSON parameters store objects and legacy string drafts still open a
     await db.close();
   }
 });
+
+test("owner can set an unknown spare balance after work without a second deduction", async () => {
+  const { db, store } = await reviewDatabase();
+  try {
+    await db.query("UPDATE inventory_items SET quantity=NULL WHERE id=$1", [
+      ITEM,
+    ]);
+    const row = maintenance({ deductSpare: false, remainingQuantity: "4" });
+    const input = draft([row]);
+    const id = await store.create(
+      "vessel",
+      OWNER,
+      "Owner counted four remaining",
+      input,
+    );
+    await store.approve("vessel", OWNER, id, input);
+    await store.approve("vessel", OWNER, id, input);
+    assert.equal(
+      (
+        await db.query(
+          "SELECT quantity::text AS quantity FROM inventory_items WHERE id=$1",
+          [ITEM],
+        )
+      ).rows[0].quantity,
+      "4",
+    );
+    assert.equal((await store.events("vessel", OWNER)).length, 1);
+    const other = draft([
+      maintenance({
+        remainingQuantity: "0",
+        deductSpare: true,
+        allowDuplicate: true,
+      }),
+    ]);
+    const otherId = await store.create("vessel", OWNER, "Another count", other);
+    await assert.rejects(
+      () => store.approve("vessel", OWNER, otherId, other),
+      /not both/,
+    );
+    assert.equal(
+      (
+        await db.query(
+          "SELECT quantity::text AS quantity FROM inventory_items WHERE id=$1",
+          [ITEM],
+        )
+      ).rows[0].quantity,
+      "4",
+    );
+  } finally {
+    await db.close();
+  }
+});

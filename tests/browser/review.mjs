@@ -261,6 +261,12 @@ try {
   await page.getByRole("button", { name: "↑", exact: true }).click();
   await page.getByRole("link", { name: "Open editable update form" }).click();
   await page.getByRole("form", { name: "Editable update review" }).waitFor();
+  const remainingCount = page.getByLabel("event: Remaining quantity after this work", { exact: true });
+  await remainingCount.fill("4");
+  assert.equal(await page.getByText("Deduct from the recorded balance", {exact:true}).locator("input").isChecked(), false);
+  await remainingCount.fill("");
+  await page.getByText("Deduct from the recorded balance", {exact:true}).locator("input").check();
+  assert.equal(await page.locator("details").filter({has:page.getByText("Guidance and evidence notes", {exact:true})}).getAttribute("open"), null);
   assert.equal(
     await page.getByLabel("event: Work date", { exact: true }).inputValue(),
     "2026-10-22",

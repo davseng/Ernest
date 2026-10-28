@@ -63,7 +63,6 @@ export function ReviewForm({
           } as Partial<ReviewRow>)
         }
       />
-      {extra.hint ? <small>{extra.hint}</small> : null}
     </label>
   );
   const long = (row: ReviewRow, key: string, label: string, value: string) => (
@@ -131,33 +130,6 @@ export function ReviewForm({
       aria-label="Editable update review"
     >
       <h1>{draft.title}</h1>
-      <p>{draft.summary}</p>
-      <p>
-        <strong>
-          These are proposed changes. You decide which become definitive.
-        </strong>{" "}
-        Edit any field, exclude rows you do not approve, then save once.
-      </p>
-      {draft.missing.length ? (
-        <aside>
-          <h2>Information to check or add</h2>
-          <ul>
-            {draft.missing.map((m, i) => (
-              <li key={i}>{m}</li>
-            ))}
-          </ul>
-          <p>
-            Unknown optional fields can stay blank. Required fields are
-            identified below.
-          </p>
-        </aside>
-      ) : null}
-      {draft.coverage ? (
-        <aside>
-          <h2>Evidence coverage</h2>
-          <p>{draft.coverage}</p>
-        </aside>
-      ) : null}
       {draft.rows.map((row) => (
         <fieldset
           key={row.id}
@@ -181,15 +153,9 @@ export function ReviewForm({
             />{" "}
             Include this change
           </label>
-          {row.reason ? <p>{row.reason}</p> : null}
+
           {row.kind === "maintenance" ? (
             <>
-              {row.eventId ? (
-                <p>
-                  Correction to an existing event. Previous versions are
-                  retained; spares are not consumed again.
-                </p>
-              ) : null}
               {field(row, "title", "Title (required)", row.title, {
                 required: true,
               })}
@@ -232,6 +198,7 @@ export function ReviewForm({
                     patch(row.id, {
                       spareItemId: e.target.value || null,
                       deductSpare: false,
+                      remainingQuantity: null,
                       spareUsed: e.target.value ? (row.spareUsed ?? "1") : null,
                     })
                   }
@@ -250,11 +217,28 @@ export function ReviewForm({
                     hint: "Leave blank if unknown; stock cannot be deducted without a quantity.",
                   })}
                   <label>
+                    Remaining quantity after this work
+                    <input
+                      aria-label={`${row.id}: Remaining quantity after this work`}
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={row.remainingQuantity ?? ""}
+                      onChange={(e) =>
+                        patch(row.id, {
+                          remainingQuantity: e.target.value || null,
+                          deductSpare: false,
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
                     <input
                       type="checkbox"
                       checked={row.deductSpare}
                       disabled={
                         !!row.eventId ||
+                        row.remainingQuantity != null ||
                         choices.inventory.find((i) => i.id === row.spareItemId)
                           ?.quantity == null
                       }
@@ -264,10 +248,6 @@ export function ReviewForm({
                     />{" "}
                     Deduct from the recorded balance
                   </label>
-                  <p>
-                    With deduction off, consumption is recorded and the balance
-                    remains unchanged. Unknown balance is never guessed.
-                  </p>
                 </>
               ) : null}
               {!row.eventId ? (
@@ -501,10 +481,6 @@ export function ReviewForm({
           {error}
         </p>
       ) : null}
-      <p>
-        All selected changes save together. “Confirmed” means approved by you,
-        not independently proven by Ernest.
-      </p>
       <button
         className="primary-button"
         disabled={saving || !draft.rows.some((r) => r.include)}
@@ -512,8 +488,31 @@ export function ReviewForm({
         {saving ? "Saving…" : "Save selected changes"}
       </button>{" "}
       <button type="button" disabled={saving} onClick={() => void cancel()}>
-        Cancel without saving
+        Cancel
       </button>
+      <details>
+        <summary>Guidance and evidence notes</summary>
+        <p>
+          Save approves the selected changes together. Leave unknown fields
+          blank. A remaining quantity is your count after the work; it replaces
+          the balance without another deduction. Corrections do not consume
+          spares again.
+        </p>
+        {draft.summary ? <p>{draft.summary}</p> : null}
+        {draft.missing.length ? (
+          <ul>
+            {draft.missing.map((m, i) => (
+              <li key={i}>{m}</li>
+            ))}
+          </ul>
+        ) : null}
+        {draft.coverage ? <p>{draft.coverage}</p> : null}
+        {draft.rows
+          .filter((r) => r.reason)
+          .map((r) => (
+            <p key={r.id}>{r.reason}</p>
+          ))}
+      </details>
     </form>
   );
 }

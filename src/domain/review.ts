@@ -31,6 +31,7 @@ export type ReviewRow =
       spareItemId: string | null;
       spareUsed: string | null;
       deductSpare: boolean;
+      remainingQuantity?: string | null;
       expectedQuantity: string | null;
       allowDuplicate: boolean;
     })
@@ -162,6 +163,7 @@ export function parseDraft(input: unknown): ReviewDraft {
         spareItemId: text(r.spareItemId, 80) || null,
         spareUsed: amount(r.spareUsed, true),
         deductSpare: r.deductSpare === true,
+        remainingQuantity: amount(r.remainingQuantity),
         expectedQuantity: amount(r.expectedQuantity),
         allowDuplicate: r.allowDuplicate === true,
       };
