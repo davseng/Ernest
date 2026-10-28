@@ -193,10 +193,18 @@ export function ReviewForm({
                 Spare used
                 <select
                   aria-label={`${row.id}: Spare used`}
-                  value={row.spareItemId ?? ""}
+                  value={
+                    row.newItemName != null
+                      ? "__new__"
+                      : (row.spareItemId ?? "")
+                  }
                   onChange={(e) =>
                     patch(row.id, {
-                      spareItemId: e.target.value || null,
+                      spareItemId:
+                        e.target.value === "__new__"
+                          ? null
+                          : e.target.value || null,
+                      newItemName: e.target.value === "__new__" ? "" : null,
                       deductSpare: false,
                       remainingQuantity: null,
                       spareUsed: e.target.value ? (row.spareUsed ?? "1") : null,
@@ -204,6 +212,7 @@ export function ReviewForm({
                   }
                 >
                   <option value="">No linked spare / unknown</option>
+                  <option value="__new__">+ Add new inventory item</option>
                   {choices.inventory.map((i) => (
                     <option value={i.id} key={i.id}>
                       {i.name} — balance {i.quantity ?? "unknown"}
@@ -211,7 +220,16 @@ export function ReviewForm({
                   ))}
                 </select>
               </label>
-              {row.spareItemId ? (
+              {row.newItemName != null
+                ? field(
+                    row,
+                    "newItemName",
+                    "New item name (required)",
+                    row.newItemName,
+                    { required: true },
+                  )
+                : null}
+              {row.spareItemId || row.newItemName != null ? (
                 <>
                   {field(row, "spareUsed", "Number used", row.spareUsed, {
                     hint: "Leave blank if unknown; stock cannot be deducted without a quantity.",
@@ -239,6 +257,7 @@ export function ReviewForm({
                       disabled={
                         !!row.eventId ||
                         row.remainingQuantity != null ||
+                        row.newItemName != null ||
                         choices.inventory.find((i) => i.id === row.spareItemId)
                           ?.quantity == null
                       }
@@ -269,10 +288,17 @@ export function ReviewForm({
               <label>
                 Inventory item
                 <select
-                  value={row.itemId}
-                  onChange={(e) => patch(row.id, { itemId: e.target.value })}
+                  value={row.newItemName != null ? "__new__" : row.itemId}
+                  onChange={(e) =>
+                    patch(row.id, {
+                      itemId:
+                        e.target.value === "__new__" ? "" : e.target.value,
+                      newItemName: e.target.value === "__new__" ? "" : null,
+                    })
+                  }
                 >
                   <option value="">Choose recorded item</option>
+                  <option value="__new__">+ Add new inventory item</option>
                   {choices.inventory.map((i) => (
                     <option value={i.id} key={i.id}>
                       {i.name}
@@ -280,6 +306,15 @@ export function ReviewForm({
                   ))}
                 </select>
               </label>
+              {row.newItemName != null
+                ? field(
+                    row,
+                    "newItemName",
+                    "New item name (required)",
+                    row.newItemName,
+                    { required: true },
+                  )
+                : null}
               {field(row, "quantity", "New absolute quantity", row.quantity, {
                 hint: "Blank leaves the balance unchanged.",
               })}

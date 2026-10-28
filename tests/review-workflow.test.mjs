@@ -709,3 +709,123 @@ test("owner can set an unknown spare balance after work without a second deducti
     await db.close();
   }
 });
+
+test("new spare creation is owner-approved, atomic, deduplicated and linked to maintenance", async () => {
+  const { db, store } = await reviewDatabase();
+  try {
+    const input = draft([
+      maintenance({
+        spareItemId: null,
+        newItemName: "New pump impeller",
+        deductSpare: false,
+        remainingQuantity: "4",
+      }),
+    ]);
+    const id = await store.create("vessel", OWNER, "New spare", input);
+    assert.equal(
+      (
+        await db.query(
+          "SELECT id FROM inventory_items WHERE name='New pump impeller'",
+        )
+      ).rows.length,
+      0,
+    );
+    await store.approve("vessel", OWNER, id, input);
+    await store.approve("vessel", OWNER, id, input);
+    const items = (
+      await db.query(
+        "SELECT id,quantity::text AS quantity,owner_id FROM inventory_items WHERE name='New pump impeller'",
+      )
+    ).rows;
+    assert.equal(items.length, 1);
+    assert.equal(items[0].quantity, "4");
+    assert.equal(items[0].owner_id, OWNER);
+    assert.equal(
+      (await store.events("vessel", OWNER))[0].spare_item_id,
+      items[0].id,
+    );
+    const duplicate = draft([
+      {
+        id: "new",
+        kind: "inventory",
+        include: true,
+        evidence: [],
+        reason: "",
+        itemId: "",
+        newItemName: " new  PUMP impeller ",
+        quantity: "0",
+        details: null,
+      },
+    ]);
+    const dup = await store.create("vessel", OWNER, "Duplicate", duplicate);
+    await assert.rejects(
+      () => store.approve("vessel", OWNER, dup, duplicate),
+      /already exists/,
+    );
+    const rollback = draft([
+      maintenance({
+        spareItemId: null,
+        newItemName: "Rollback spare",
+        deductSpare: false,
+        allowDuplicate: true,
+      }),
+      {
+        id: "bad",
+        kind: "inventory",
+        include: true,
+        evidence: [],
+        reason: "",
+        itemId: "missing",
+        quantity: "2",
+        details: null,
+      },
+    ]);
+    const failed = await store.create(
+      "vessel",
+      OWNER,
+      "Rollback new spare",
+      rollback,
+    );
+    await assert.rejects(() =>
+      store.approve("vessel", OWNER, failed, rollback),
+    );
+    assert.equal(
+      (
+        await db.query(
+          "SELECT id FROM inventory_items WHERE name='Rollback spare'",
+        )
+      ).rows.length,
+      0,
+    );
+    const blank = draft([
+      {
+        id: "new",
+        kind: "inventory",
+        include: true,
+        evidence: [],
+        reason: "",
+        itemId: "",
+        newItemName: "Uncounted spare",
+        quantity: null,
+        details: null,
+      },
+    ]);
+    const blankId = await store.create(
+      "vessel",
+      OWNER,
+      "New unknown stock",
+      blank,
+    );
+    await store.approve("vessel", OWNER, blankId, blank);
+    assert.equal(
+      (
+        await db.query(
+          "SELECT quantity FROM inventory_items WHERE name='Uncounted spare'",
+        )
+      ).rows[0].quantity,
+      null,
+    );
+  } finally {
+    await db.close();
+  }
+});

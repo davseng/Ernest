@@ -261,12 +261,32 @@ try {
   await page.getByRole("button", { name: "↑", exact: true }).click();
   await page.getByRole("link", { name: "Open editable update form" }).click();
   await page.getByRole("form", { name: "Editable update review" }).waitFor();
-  const remainingCount = page.getByLabel("event: Remaining quantity after this work", { exact: true });
+  const remainingCount = page.getByLabel(
+    "event: Remaining quantity after this work",
+    { exact: true },
+  );
   await remainingCount.fill("4");
-  assert.equal(await page.getByText("Deduct from the recorded balance", {exact:true}).locator("input").isChecked(), false);
+  assert.equal(
+    await page
+      .getByText("Deduct from the recorded balance", { exact: true })
+      .locator("input")
+      .isChecked(),
+    false,
+  );
   await remainingCount.fill("");
-  await page.getByText("Deduct from the recorded balance", {exact:true}).locator("input").check();
-  assert.equal(await page.locator("details").filter({has:page.getByText("Guidance and evidence notes", {exact:true})}).getAttribute("open"), null);
+  await page
+    .getByText("Deduct from the recorded balance", { exact: true })
+    .locator("input")
+    .check();
+  assert.equal(
+    await page
+      .locator("details")
+      .filter({
+        has: page.getByText("Guidance and evidence notes", { exact: true }),
+      })
+      .getAttribute("open"),
+    null,
+  );
   assert.equal(
     await page.getByLabel("event: Work date", { exact: true }).inputValue(),
     "2026-10-22",
@@ -365,6 +385,54 @@ try {
   assert.equal(
     (await store.get(assetId, OWNER, survey.id)).receipt.coverage.confirmed,
     false,
+  );
+  const newItemReview = await store.create(
+    assetId,
+    OWNER,
+    "Use an unlisted spare",
+    draft([
+      maintenance({
+        spareItemId: null,
+        spareUsed: null,
+        deductSpare: false,
+        title: "New unlisted spare work",
+        allowDuplicate: true,
+      }),
+    ]),
+  );
+  await page.goto(origin + "/assets/vessel/reviews/" + newItemReview);
+  await page
+    .getByLabel("event: Spare used", { exact: true })
+    .selectOption("__new__");
+  await page
+    .getByLabel("event: New item name (required)", { exact: true })
+    .fill("Browser new spare");
+  await page.getByLabel("event: Number used", { exact: true }).fill("1");
+  await page
+    .getByLabel("event: Remaining quantity after this work", { exact: true })
+    .fill("4");
+  assert.equal(
+    (
+      await db.query(
+        "SELECT id FROM inventory_items WHERE name='Browser new spare'",
+      )
+    ).rows.length,
+    0,
+  );
+  await page.getByRole("button", { name: "Save selected changes" }).click();
+  await page.getByRole("heading", { name: "Saved", exact: true }).waitFor();
+  const newStock = (
+    await db.query(
+      "SELECT id,quantity::text AS quantity FROM inventory_items WHERE name='Browser new spare'",
+    )
+  ).rows;
+  assert.equal(newStock.length, 1);
+  assert.equal(newStock[0].quantity, "4");
+  assert.equal(
+    (await store.events(assetId, OWNER)).find(
+      (e) => e.title === "New unlisted spare work",
+    ).spare_item_id,
+    newStock[0].id,
   );
   assert.deepEqual(errors, []);
   console.log(

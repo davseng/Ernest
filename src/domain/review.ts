@@ -29,6 +29,7 @@ export type ReviewRow =
       componentId: string | null;
       engineHours: string | null;
       spareItemId: string | null;
+      newItemName?: string | null;
       spareUsed: string | null;
       deductSpare: boolean;
       remainingQuantity?: string | null;
@@ -38,6 +39,7 @@ export type ReviewRow =
   | (Base & {
       kind: "inventory";
       itemId: string;
+      newItemName?: string | null;
       quantity: string | null;
       details: string | null;
       expectedQuantity: string | null;
@@ -161,6 +163,7 @@ export function parseDraft(input: unknown): ReviewDraft {
         componentId: text(r.componentId, 100) || null,
         engineHours: amount(r.engineHours),
         spareItemId: text(r.spareItemId, 80) || null,
+        newItemName: r.newItemName == null ? null : text(r.newItemName, 200),
         spareUsed: amount(r.spareUsed, true),
         deductSpare: r.deductSpare === true,
         remainingQuantity: amount(r.remainingQuantity),
@@ -172,6 +175,7 @@ export function parseDraft(input: unknown): ReviewDraft {
         ...base,
         kind: r.kind,
         itemId: text(r.itemId, 80),
+        newItemName: r.newItemName == null ? null : text(r.newItemName, 200),
         quantity: amount(r.quantity),
         details: r.details == null ? null : text(r.details),
         expectedQuantity: amount(r.expectedQuantity),

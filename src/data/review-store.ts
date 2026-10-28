@@ -323,6 +323,38 @@ export function createReviewStore(sql: Sql) {
             );
           return item;
         }
+        async function createItem(
+          name: string,
+          quantity: string | null,
+          details: string | null,
+        ) {
+          if (!name) throw Error("Enter a name for the new inventory item.");
+          const existing = await tx<
+            { name: string }[]
+          >`SELECT name FROM inventory_items WHERE asset_id=${assetId} AND owner_id=${ownerId}`;
+          if (
+            existing.some((item) => normalized(item.name) === normalized(name))
+          )
+            throw Error(
+              "An inventory item with that name already exists. Select it from the list.",
+            );
+          const [item] = await tx<
+            { id: string }[]
+          >`INSERT INTO inventory_items(asset_id,owner_id,name,quantity,details,source_label) VALUES(${assetId},${ownerId},${name},${quantity}::numeric,${details},'Owner provided') RETURNING id`;
+          review.draft.pins.inventory[item.id] = quantity;
+          audit.push({
+            kind: "inventory",
+            recordId: item.id,
+            before: null,
+            after: { name, quantity, details },
+          });
+          receipt.changes.push({
+            kind: "inventory",
+            recordId: item.id,
+            description: `Added ${name}; quantity ${quantity ?? "unknown"}`,
+          });
+          return item.id;
+        }
         for (const row of draft.rows) {
           await evidenceCheck(row.evidence);
           if (row.kind === "maintenance") {
@@ -380,6 +412,13 @@ export function createReviewStore(sql: Sql) {
                 throw Error(
                   "A matching maintenance event already exists. Correct it, or explicitly confirm this is a separate event.",
                 );
+            }
+            if (row.newItemName != null) {
+              if (row.spareItemId || row.deductSpare)
+                throw Error(
+                  "A new spare needs a remaining count, not a deduction or another item.",
+                );
+              row.spareItemId = await createItem(row.newItemName, null, null);
             }
             if (row.spareItemId) {
               if (row.remainingQuantity != null && row.deductSpare)
@@ -462,6 +501,12 @@ export function createReviewStore(sql: Sql) {
               description: `${row.eventId ? "Corrected" : "Recorded"} ${row.title} — ${row.date ?? "work date unknown"}`,
             });
           } else if (row.kind === "inventory") {
+            if (row.newItemName != null) {
+              if (row.itemId)
+                throw Error("Choose a new item or an existing item, not both.");
+              await createItem(row.newItemName, row.quantity, row.details);
+              continue;
+            }
             const item = await inventoryLock(row.itemId);
             if (row.quantity === null && row.details === null)
               throw Error("Enter a quantity or inventory detail.");
