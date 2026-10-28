@@ -608,3 +608,52 @@ test("correcting an approved survey identifier updates the same record and retai
     await db.close();
   }
 });
+
+test("driver JSON parameters store objects and legacy string drafts still open and save", async () => {
+  const { db } = await reviewDatabase();
+  try {
+    const { adapt } = await import("./helpers/review-database.mjs");
+    const { createReviewStore } = await loadTypeScript(
+      "src/data/review-store.ts",
+    );
+    const store = createReviewStore(adapt(db, true));
+    const input = draft([maintenance()]);
+    const id = await store.create("vessel", OWNER, "Replace impeller", input);
+    assert.equal(
+      (
+        await db.query(
+          "SELECT jsonb_typeof(draft) AS kind FROM update_reviews WHERE id=$1",
+          [id],
+        )
+      ).rows[0].kind,
+      "object",
+    );
+    // Reproduce the representation persisted by the previous inferred-jsonb write.
+    const original = (await store.get("vessel", OWNER, id)).draft;
+    await db.query("UPDATE update_reviews SET draft=$1::jsonb WHERE id=$2", [
+      JSON.stringify(JSON.stringify(original)),
+      id,
+    ]);
+    const reopened = await store.get("vessel", OWNER, id);
+    assert.equal(reopened.draft.rows[0].title, "Impeller replacement");
+    const receipt = await store.approve("vessel", OWNER, id, reopened.draft);
+    assert.equal((await store.get("vessel", OWNER, id)).receipt.reviewId, id);
+    assert.deepEqual(
+      await store.approve("vessel", OWNER, id, reopened.draft),
+      receipt,
+    );
+    const kinds = (
+      await db.query(
+        "SELECT jsonb_typeof(receipt) AS receipt,(SELECT jsonb_typeof(changes) FROM update_audit WHERE review_id=$1) AS audit,(SELECT jsonb_typeof(evidence) FROM maintenance_events LIMIT 1) AS evidence FROM update_reviews WHERE id=$1",
+        [id],
+      )
+    ).rows[0];
+    assert.deepEqual(kinds, {
+      receipt: "object",
+      audit: "array",
+      evidence: "array",
+    });
+  } finally {
+    await db.close();
+  }
+});

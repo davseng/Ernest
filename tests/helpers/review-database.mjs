@@ -7,16 +7,24 @@ export const ITEM = "33333333-3333-4333-8333-333333333333",
   SURVEY = "44444444-4444-4444-8444-444444444444",
   WORK = "55555555-5555-4555-8555-555555555555",
   FOREIGN = "66666666-6666-4666-8666-666666666666";
-export function adapt(conn) {
+export function adapt(conn, driverJson = false) {
   const sql = async (strings, ...values) =>
     (
       await conn.query(
         strings.reduce((s, t, i) => s + (i ? `$${i}` : "") + t, ""),
-        values,
+        values.map((value, i) =>
+          driverJson && /^::jsonb/.test(strings[i + 1])
+            ? JSON.stringify(
+                value && value.__jsonParameter ? value.value : value,
+              )
+            : value && value.__jsonParameter
+              ? JSON.stringify(value.value)
+              : value,
+        ),
       )
     ).rows;
-  sql.begin = (fn) => conn.transaction((tx) => fn(adapt(tx)));
-  sql.json = (value) => JSON.stringify(value);
+  sql.begin = (fn) => conn.transaction((tx) => fn(adapt(tx, driverJson)));
+  sql.json = (value) => ({ __jsonParameter: true, value });
   sql.unsafe = async (query, values = []) =>
     (await conn.query(query, values)).rows;
   return sql;

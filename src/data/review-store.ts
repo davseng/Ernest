@@ -49,6 +49,11 @@ export type SurveyItem = {
   evidence: Evidence[];
   revision: number;
 };
+// Older releases passed pre-stringified values to inferred jsonb parameters.
+// Decode that legacy representation on read; new writes use typed JSON parameters.
+function decoded<T>(value: T): T {
+  return typeof value === "string" ? (JSON.parse(value) as T) : value;
+}
 const normalized = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 const fingerprint = (s: string) =>
   createHash("sha256").update(normalized(s)).digest("hex");
@@ -144,14 +149,20 @@ export function createReviewStore(sql: Sql) {
       const stored = { ...draft, pins };
       const rows = await sql<
         { id: string }[]
-      >`INSERT INTO update_reviews(asset_id,owner_id,request,draft) VALUES(${assetId},${ownerId},${request.slice(0, 6000)},${JSON.stringify(stored)}::jsonb) RETURNING id`;
+      >`INSERT INTO update_reviews(asset_id,owner_id,request,draft) VALUES(${assetId},${ownerId},${request.slice(0, 6000)},${sql.json(stored)}::jsonb) RETURNING id`;
       return rows[0].id;
     },
     async get(assetId: string, ownerId: string, id: string) {
       const r = await sql<
         Review[]
       >`SELECT r.id,r.request,r.draft,r.status,r.receipt,r.created_at FROM update_reviews r JOIN assets a ON a.id=r.asset_id WHERE r.id=${id} AND r.asset_id=${assetId} AND r.owner_id=${ownerId} AND a.owner_id=${ownerId}`;
-      return r[0] ?? null;
+      return r[0]
+        ? {
+            ...r[0],
+            draft: decoded(r[0].draft),
+            receipt: decoded(r[0].receipt),
+          }
+        : null;
     },
     async pending(assetId: string, ownerId: string) {
       return sql<
@@ -210,6 +221,8 @@ export function createReviewStore(sql: Sql) {
         >`SELECT id,request,draft,status,receipt FROM update_reviews WHERE id=${id} AND asset_id=${assetId} AND owner_id=${ownerId} FOR UPDATE`;
         const review = reviews[0];
         if (!review) throw Error("Update not found.");
+        review.draft = decoded(review.draft);
+        review.receipt = decoded(review.receipt);
         if (review.status === "saved" && review.receipt) return review.receipt;
         if (review.status !== "pending")
           throw Error("This update has been cancelled.");
@@ -409,11 +422,11 @@ export function createReviewStore(sql: Sql) {
             } else if (row.deductSpare || row.spareUsed)
               throw Error("Choose the spare item to record consumption.");
             if (eventId) {
-              await tx`UPDATE maintenance_events SET occurred_on=${row.date},title=${row.title},description=${row.description},component_id=${row.componentId},engine_hours=${row.engineHours},spare_item_id=${row.spareItemId},spare_used=${row.spareUsed},evidence=${JSON.stringify(row.evidence)}::jsonb,revision=revision+1,approved_at=now() WHERE id=${eventId} AND asset_id=${assetId} AND owner_id=${ownerId}`;
+              await tx`UPDATE maintenance_events SET occurred_on=${row.date},title=${row.title},description=${row.description},component_id=${row.componentId},engine_hours=${row.engineHours},spare_item_id=${row.spareItemId},spare_used=${row.spareUsed},evidence=${tx.json(row.evidence)}::jsonb,revision=revision+1,approved_at=now() WHERE id=${eventId} AND asset_id=${assetId} AND owner_id=${ownerId}`;
             } else {
               const inserted = await tx<
                 { id: string }[]
-              >`INSERT INTO maintenance_events(asset_id,owner_id,occurred_on,title,description,component_id,engine_hours,spare_item_id,spare_used,evidence,request_fingerprint) VALUES(${assetId},${ownerId},${row.date},${row.title},${row.description},${row.componentId},${row.engineHours},${row.spareItemId},${row.spareUsed},${JSON.stringify(row.evidence)}::jsonb,${eventFingerprint}) RETURNING id`;
+              >`INSERT INTO maintenance_events(asset_id,owner_id,occurred_on,title,description,component_id,engine_hours,spare_item_id,spare_used,evidence,request_fingerprint) VALUES(${assetId},${ownerId},${row.date},${row.title},${row.description},${row.componentId},${row.engineHours},${row.spareItemId},${row.spareUsed},${tx.json(row.evidence)}::jsonb,${eventFingerprint}) RETURNING id`;
               eventId = inserted[0].id;
             }
             audit.push({
@@ -526,10 +539,10 @@ export function createReviewStore(sql: Sql) {
             const result = previous
               ? await tx<
                   { id: string }[]
-                >`UPDATE survey_items SET document_id=${row.documentId},identifier=${row.identifier},priority=${row.priority},wording=${row.wording},page_number=${row.pageNumber},status=${row.status},notes=${row.notes},evidence=${JSON.stringify(row.evidence)}::jsonb,revision=revision+1,approved_at=now() WHERE id=${previous.id} AND asset_id=${assetId} AND owner_id=${ownerId} RETURNING id`
+                >`UPDATE survey_items SET document_id=${row.documentId},identifier=${row.identifier},priority=${row.priority},wording=${row.wording},page_number=${row.pageNumber},status=${row.status},notes=${row.notes},evidence=${tx.json(row.evidence)}::jsonb,revision=revision+1,approved_at=now() WHERE id=${previous.id} AND asset_id=${assetId} AND owner_id=${ownerId} RETURNING id`
               : await tx<
                   { id: string }[]
-                >`INSERT INTO survey_items(asset_id,owner_id,document_id,identifier,priority,wording,page_number,status,notes,evidence) VALUES(${assetId},${ownerId},${row.documentId},${row.identifier},${row.priority},${row.wording},${row.pageNumber},${row.status},${row.notes},${JSON.stringify(row.evidence)}::jsonb) RETURNING id`;
+                >`INSERT INTO survey_items(asset_id,owner_id,document_id,identifier,priority,wording,page_number,status,notes,evidence) VALUES(${assetId},${ownerId},${row.documentId},${row.identifier},${row.priority},${row.wording},${row.pageNumber},${row.status},${row.notes},${tx.json(row.evidence)}::jsonb) RETURNING id`;
             audit.push({
               kind: row.kind,
               recordId: result[0].id,
@@ -555,9 +568,9 @@ export function createReviewStore(sql: Sql) {
               identifier: r.identifier,
             })),
         };
-        await tx`INSERT INTO update_audit(review_id,asset_id,owner_id,changes) VALUES(${id},${assetId},${ownerId},${JSON.stringify(audit)}::jsonb)`;
+        await tx`INSERT INTO update_audit(review_id,asset_id,owner_id,changes) VALUES(${id},${assetId},${ownerId},${tx.json(JSON.parse(JSON.stringify(audit)))}::jsonb)`;
         receipt.coverage = coverage;
-        await tx`UPDATE update_reviews SET status='saved',receipt=${JSON.stringify(receipt)}::jsonb,saved_at=now() WHERE id=${id}`;
+        await tx`UPDATE update_reviews SET status='saved',receipt=${tx.json(receipt)}::jsonb,saved_at=now() WHERE id=${id}`;
         return receipt;
       }) as Promise<Receipt>;
     },
