@@ -208,3 +208,20 @@ proxy (403), so deployment Ready status and live acceptance are not verified.
 No DNS, Production variables or production data were changed. Email enablement
 and allowlisting remain an owner Vercel configuration step. No live invitations
 were sent. Wait for Preview / 0b95172 / Ready before acceptance.
+
+## Preview email-switch follow-up
+
+Owner reports the available application tests generally worked, but actual email
+and emailed-link acceptance remain blocked: the running Preview reported delivery
+not enabled despite the setting being visible in Vercel. Its live runtime value
+has not been inspected, so the exact configuration/deployment cause is unverified.
+
+The enable switch now trims whitespace and accepts case-insensitive true; missing,
+empty, false, quoted and other invalid values remain disabled. Disabled errors
+identify missing/empty/false/invalid configuration and only non-sensitive build
+identity, never the raw value or credentials. The invitation origin is also
+trimmed consistently before validation and link construction. Preview allowlisting
+is unchanged. A new Preview push will pick up saved settings; reload after Ready.
+
+Validation: 137 tests, both browser suites, type checking, lint (existing warnings)
+and build passed. No live emails were sent by Codex and production is unchanged.

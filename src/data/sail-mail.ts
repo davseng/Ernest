@@ -3,8 +3,26 @@ import { createTransport } from "nodemailer";
 import { departureLabel } from "../domain/sail";
 import type { Voyage } from "./sail-store";
 export function sailMailProblem(email: string): string | null {
-  if (process.env.SAIL_EMAIL_ENABLED !== "true")
-    return "Email delivery is not enabled. The person is saved; no invitation was sent.";
+  const raw = process.env.SAIL_EMAIL_ENABLED;
+  if (raw?.trim().toLowerCase() !== "true") {
+    // Only non-sensitive deployment identity is included, never environment values.
+    const sha = process.env.VERCEL_GIT_COMMIT_SHA ?? "";
+    const build = /^[a-f0-9]{40}$/i.test(sha) ? sha.slice(0, 7) : "unknown";
+    const env = ["production", "preview", "development"].includes(
+      process.env.VERCEL_ENV ?? "",
+    )
+      ? process.env.VERCEL_ENV
+      : "unspecified environment";
+    const setting =
+      raw === undefined
+        ? "missing from this running deployment"
+        : !raw.trim()
+          ? "empty in this running deployment"
+          : raw.trim().toLowerCase() === "false"
+            ? "set to false in this running deployment"
+            : "present but not a valid true/false value; enter true without quotation marks";
+    return `Email delivery is not enabled: SAIL_EMAIL_ENABLED is ${setting}. Deployment: ${env}, build ${build}. The person is saved; no invitation was sent.`;
+  }
   if (process.env.VERCEL_ENV !== "production") {
     const allowed = (process.env.SAIL_TEST_RECIPIENTS ?? "")
       .split(",")
@@ -13,7 +31,7 @@ export function sailMailProblem(email: string): string | null {
     if (!allowed.includes(email.toLowerCase()))
       return "Preview invitations can only be sent to configured test recipients.";
   }
-  const origin = process.env.SAIL_BASE_URL;
+  const origin = process.env.SAIL_BASE_URL?.trim();
   try {
     const u = new URL(origin ?? "");
     if (
@@ -45,7 +63,7 @@ export async function sendSailInvitation(input: {
 }) {
   const problem = sailMailProblem(input.email);
   if (problem) throw Error(problem);
-  const origin = process.env.SAIL_BASE_URL!.replace(/\/$/, "");
+  const origin = process.env.SAIL_BASE_URL!.trim().replace(/\/$/, "");
   const transport = createTransport({
     host: process.env.EMAIL_SERVER_HOST ?? "smtp-relay.brevo.com",
     port: Number(process.env.EMAIL_SERVER_PORT ?? 587),

@@ -99,12 +99,35 @@ test("Sail email is disabled by default and Preview can send only to allowlisted
       SAIL_EMAIL_ENABLED: "true",
       VERCEL_ENV: "preview",
       SAIL_TEST_RECIPIENTS: "test@example.invalid",
-      SAIL_BASE_URL: "https://preview.example.invalid",
+      SAIL_BASE_URL: "https://preview.example.invalid \n",
       EMAIL_FROM: "synthetic@example.invalid",
       EMAIL_SERVER_USER: "synthetic",
       EMAIL_SERVER_PASSWORD: "synthetic",
     });
     assert.equal(sailMailProblem("test@example.invalid"), null);
+    process.env.SAIL_EMAIL_ENABLED = " true\n";
+    assert.equal(sailMailProblem("test@example.invalid"), null);
+    process.env.SAIL_EMAIL_ENABLED = "TRUE";
+    assert.equal(sailMailProblem("test@example.invalid"), null);
+    for (const flag of [
+      "",
+      "false",
+      "yes",
+      "1",
+      '\"true\"',
+      "do-not-echo-this-value",
+    ]) {
+      process.env.SAIL_EMAIL_ENABLED = flag;
+      const problem = sailMailProblem("test@example.invalid");
+      assert.match(problem, /not enabled/);
+      assert.equal(problem.includes("do-not-echo-this-value"), false);
+    }
+    delete process.env.SAIL_EMAIL_ENABLED;
+    assert.match(
+      sailMailProblem("test@example.invalid"),
+      /missing from this running deployment/,
+    );
+    process.env.SAIL_EMAIL_ENABLED = "true";
     assert.match(sailMailProblem("other@example.invalid"), /only/);
     process.env.SAIL_BASE_URL = "http://untrusted.invalid";
     assert.match(sailMailProblem("test@example.invalid"), /address/);
@@ -299,7 +322,7 @@ test("Sail invitation mail contains the actual plan and personal URL, with TLS a
       SAIL_EMAIL_ENABLED: "true",
       VERCEL_ENV: "preview",
       SAIL_TEST_RECIPIENTS: "test@example.invalid",
-      SAIL_BASE_URL: "https://preview.example.invalid",
+      SAIL_BASE_URL: "https://preview.example.invalid \n",
       EMAIL_FROM: "sender@example.invalid",
       EMAIL_SERVER_USER: "synthetic",
       EMAIL_SERVER_PASSWORD: "synthetic",
