@@ -197,7 +197,7 @@ export async function submitSailInterest(
     return {
       ok: true,
       message:
-        "Your enquiry has been received. The skipper can review it; this is not a booking.",
+        "Your note has been received. We can work out the details together.",
     };
   } catch (e) {
     return errorResult(e);

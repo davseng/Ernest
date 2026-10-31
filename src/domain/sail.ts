@@ -23,9 +23,9 @@ export type VoyageInput = {
   boardingNotes: string;
 };
 export const expectationTemplates = {
-  crew: "Discuss your sailing experience and the tasks you are comfortable with before joining. Confirm watchkeeping, safety preparation and what to bring with the skipper.",
+  crew: "Let’s talk through your sailing experience, the jobs you’re comfortable with and what you’d like to try. We’ll agree watches, safety preparation and what to bring before the trip.",
   passenger:
-    "Discuss what life aboard will be like, any accessibility or health needs, and what to bring with the skipper. Ask about the route and safety briefing before joining.",
+    "Let’s talk about life aboard, the route, and anything you’d like me to know about your needs. We’ll work through sleeping arrangements, the safety briefing and what to bring before you come.",
 };
 export function sailText(
   value: unknown,

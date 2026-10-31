@@ -1,7 +1,13 @@
 "use client";
 import { useState } from "react";
 import { submitSailInterest } from "@/app/sail/actions";
-export function SailInterestForm({ voyageId }: { voyageId: string }) {
+export function SailInterestForm({
+  voyageId,
+  preferredRole = "crew",
+}: {
+  voyageId: string;
+  preferredRole?: "crew" | "passenger";
+}) {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [message, setMessage] = useState("");
@@ -39,14 +45,14 @@ export function SailInterestForm({ voyageId }: { voyageId: string }) {
           </label>
           <label>
             Interested in joining as
-            <select name="role">
+            <select name="role" defaultValue={preferredRole}>
               <option value="crew">Crew</option>
               <option value="passenger">Passenger</option>
             </select>
           </label>
         </div>
         <label>
-          What would you like us to know?
+          Anything you’d like to ask or tell me?
           <textarea name="message" maxLength={2000} rows={3} />
         </label>
         <div className="sail-honeypot" aria-hidden="true">
@@ -57,7 +63,7 @@ export function SailInterestForm({ voyageId }: { voyageId: string }) {
         </div>
         {error ? <p role="alert">{error}</p> : null}
         <button className="sail-button">
-          {busy ? "Sending…" : "Send enquiry"}
+          {busy ? "Sending…" : "Send note"}
         </button>
       </fieldset>
     </form>

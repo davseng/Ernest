@@ -12,6 +12,7 @@ export async function loadTypeScript(path, stubs={}) {
   const imports=[...code.matchAll(/(?:from\s*|import\s*)(["'])([^"']+)\1/g)];
   for(const m of imports){
     const spec=m[2];let url;
+    if(spec.endsWith('.css')){code=code.replace(m[0],'import \"data:text/javascript,export{}\"');continue;}
     if(spec==='server-only'){code=code.replace(m[0],'import "data:text/javascript,export{}"');continue;}
     if(Object.hasOwn(stubs,spec)){
       const key=crypto.randomUUID();globalThis.__ernestTestModules??={};globalThis.__ernestTestModules[key]=stubs[spec];

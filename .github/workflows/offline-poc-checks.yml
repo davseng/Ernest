@@ -25,5 +25,6 @@ jobs:
       - run: npm run test:review-browser
       - run: npm run test:sail-browser
       - run: npm run test:sail-photos-browser
+      - run: npm run test:sail-design-browser
       - run: npm run build
       - run: git diff --check

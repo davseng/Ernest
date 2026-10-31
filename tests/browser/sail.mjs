@@ -280,9 +280,9 @@ try {
       .getByLabel("Email", { exact: true })
       .fill("interest@example.invalid");
     await enquiry
-      .getByLabel("What would you like us to know?")
+      .getByLabel("Anything you’d like to ask or tell me?")
       .fill("Synthetic enquiry.");
-    await enquiry.getByRole("button", { name: "Send enquiry" }).click();
+    await enquiry.getByRole("button", { name: "Send note" }).click();
     await page.getByRole("status").filter({ hasText: "received" }).waitFor();
     assert.equal((await store.enquiries(id, OWNER)).length, 1);
   } finally {

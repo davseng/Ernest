@@ -2,6 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { sailPhotos } from "@/data/sail-photos";
 import { sail } from "@/data/sail";
+import { sailPosition } from "@/data/sail-position";
+import { SailJourney } from "@/components/sail/journey";
 import { departureLabel } from "@/domain/sail";
 export const dynamic = "force-dynamic";
 export default async function SailHomePage() {
@@ -19,22 +21,28 @@ export default async function SailHomePage() {
   const photos = photoReady ? await sailPhotos().publicPhotos() : [],
     covers = photoReady ? await sailPhotos().publicCovers() : [];
   const hero = photos.find((p) => p.homeCover);
+  let position = null;
+  try {
+    if (await sailPosition().available())
+      position = await sailPosition().publicLatest();
+  } catch {}
   return (
     <main id="sail-main" className="sail-main">
       <section className="sail-hero">
         <div>
           <p className="sail-kicker">Sail Far Better</p>
           <h1>
-            Good company.
+            Come sailing
             <br />
-            An open horizon.
+            with me.
           </h1>
           <p>
-            Explore the next voyage, find out what joining involves, and stay in
-            step as the plan takes shape.
+            I’m putting the plans here so it’s easier for friends and family to
+            join me. Take a look at the boat, see what’s coming up, and let’s
+            figure out a trip together.
           </p>
           <Link className="sail-button" href="#voyages">
-            Explore the voyages <span aria-hidden="true">↗</span>
+            See the plans <span aria-hidden="true">↗</span>
           </Link>
         </div>
         {hero ? (
@@ -51,19 +59,20 @@ export default async function SailHomePage() {
           </figure>
         ) : (
           <div className="sail-horizon" aria-hidden="true">
-            <span>Room for the unexpected.</span>
+            <span>A bit of time on the water.</span>
           </div>
         )}
       </section>
+      <SailJourney position={position} voyages={voyages} />
       <section id="voyages" className="sail-section">
         <div className="sail-section-heading">
           <div>
-            <p className="sail-kicker">The next chapter</p>
+            <p className="sail-kicker">What I’m thinking about next</p>
             <h2>Voyages</h2>
           </div>
           <p>
-            Dates are a plan, not a promise. Weather and vessel readiness come
-            first.
+            These are the plans so far. Weather and boat jobs can move things
+            around—we’ll keep talking.
           </p>
         </div>
         {voyages.length ? (
@@ -105,7 +114,7 @@ export default async function SailHomePage() {
                 </strong>
                 {v.timingNote ? <p>{v.timingNote}</p> : null}
                 <Link href={`/sail/voyages/${v.id}`} className="sail-text-link">
-                  See the plan →
+                  Have a look →
                 </Link>
               </article>
             ))}
@@ -114,13 +123,13 @@ export default async function SailHomePage() {
           <div className="sail-empty">
             <h3>
               {ready
-                ? "The next voyage is taking shape."
-                : "Voyage planning is getting ready."}
+                ? "I’m working out the next trip."
+                : "The plans are on their way."}
             </h3>
             <p>
               {ready
-                ? "Published voyages will appear here."
-                : "The public site will show voyages once setup is complete."}
+                ? "I’ll put the plans here when they’re ready to share."
+                : "I’ll put the next trips here as things take shape."}
             </p>
           </div>
         )}
@@ -128,41 +137,47 @@ export default async function SailHomePage() {
       <section className="sail-section sail-boat-teaser">
         <div>
           <p className="sail-kicker">Step aboard</p>
-          <h2>A boat becomes part of the journey.</h2>
+          <h2>Come and have a look around.</h2>
           <p>
-            Explore the cockpit, galley, salon and berths before joining a
-            voyage.
+            From the cockpit to the cabins: here’s the boat we’ll be spending
+            time aboard.
           </p>
           <Link className="sail-text-link" href="/sail/boat">
-            Get to know the boat →
+            Meet Far Better →
           </Link>
         </div>
       </section>
       <section id="joining" className="sail-section">
-        <p className="sail-kicker">Find your place aboard</p>
-        <h2>Two ways to join.</h2>
+        <p className="sail-kicker">Fancy coming along?</p>
+        <h2>A bit of sailing. A bit of company.</h2>
         <div className="sail-cards">
           <article className="sail-card">
             <span className="sail-number">01 / Crew</span>
-            <h3>Be part of the sailing.</h3>
+            <h3>Fancy helping with the sailing?</h3>
             <p>
-              Share your experience and talk with the skipper about how you
-              would like to contribute. Your invitation will explain what to
-              expect for that voyage.
+              Tell me what you’ve done before and what you’d like to try. We’ll
+              talk through how you’d like to take part.
+              <Link className="sail-text-link" href="/sail/join#crew">
+                Joining as crew →
+              </Link>
             </p>
           </article>
           <article className="sail-card">
             <span className="sail-number">02 / Passenger</span>
-            <h3>Come along for the journey.</h3>
+            <h3>Coming along for the ride?</h3>
             <p>
-              Ask about life aboard, the route and what to bring. Passenger
-              invitations have their own joining guidance.
+              Have a look at life aboard and bring your questions. We’ll work
+              through the practical bits together.
+              <Link className="sail-text-link" href="/sail/join#passenger">
+                Joining as a passenger →
+              </Link>
             </p>
           </article>
         </div>
         <p className="sail-footnote">
-          Interested? Open a voyage to send an enquiry. Already invited? Use the
-          personal link in your email.
+          Not sure where to start?{" "}
+          <Link href="/sail/join">Here’s how joining works.</Link> Already
+          invited? Use the personal link in your email.
         </p>
       </section>
     </main>

@@ -7,10 +7,14 @@ import { SailInterestForm } from "@/components/sail/interest-form";
 export const dynamic = "force-dynamic";
 export default async function PublicVoyagePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ voyageId: string }>;
+  searchParams?: Promise<{ as?: string }>;
 }) {
   const { voyageId } = await params;
+  const query = await searchParams,
+    preferredRole = query?.as === "passenger" ? "passenger" : "crew";
   if (!(await sail().available())) notFound();
   const voyage = await sail().publicVoyage(voyageId);
   if (!voyage) notFound();
@@ -33,13 +37,17 @@ export default async function PublicVoyagePage({
         </section>
       ) : null}
       {!["completed", "cancelled"].includes(voyage.status) ? (
-        <section className="sail-section">
-          <h2>Interested in joining?</h2>
+        <section className="sail-section" id="enquiry">
+          <h2>Let’s talk about this trip.</h2>
           <p>
-            Tell the skipper a little about yourself. This is an enquiry, not a
-            booking.
+            Let me know what you’re thinking about, and we’ll work out the
+            details together.
           </p>
-          <SailInterestForm voyageId={voyage.id} />
+          <SailInterestForm
+            key={preferredRole}
+            voyageId={voyage.id}
+            preferredRole={preferredRole}
+          />
           <p className="sail-footnote">
             Your name, email and message are private to the vessel owner.
           </p>

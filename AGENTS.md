@@ -143,3 +143,17 @@ is owner-run after isolated preflight using scripts/sail/photos-sql-editor.
 Run `test:sail-photos-browser` in addition to both existing browser suites. The
 inline chat images were not available as original workspace files; do not claim
 they were uploaded or published when only the controls have been implemented.
+
+The owner subsequently confirmed website photos were uploaded through the UI.
+The personal Boat/Joining redesign uses only published Sail photo read models;
+never expose private invitation guidance in those public introductions. Role
+query parameters preselect enquiries only and grant no access. Preserve the
+native photo dialog's keyboard navigation, focus and scroll restoration.
+
+Position reports are optional, explicit owner publications, never live tracking
+or inferred from plans/private logs. Migration 029 is owner-run after isolated
+preflight (`scripts/sail/position-sql-editor`). The visual redesign may deploy
+before 029: retain availability guards and pending owner setup state. No automatic
+migration, seed, production/DNS changes or feature-branch deployment. Run
+`test:sail-design-browser` in addition to the three existing browser suites.
+See docs/SAIL_DESIGN.md for the rollout and live acceptance limits.

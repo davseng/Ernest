@@ -83,13 +83,13 @@ export async function sendSailInvitation(input: {
     subject: `Sail Far Better: ${v.title}`,
     text: [
       `Hello ${input.fullName},`,
-      `You are invited to join ${v.assetName} as ${input.role === "crew" ? "crew" : "a passenger"}.`,
+      `I’d love you to join me aboard ${v.assetName} as ${input.role === "crew" ? "crew" : "a passenger"}.`,
       `${v.departurePort || "Departure to be arranged"} → ${v.arrivalPort || "Destination to be arranged"}`,
       departureLabel(v.departureFrom, v.departureTo),
       v.timingNote,
-      "Weather and vessel readiness may change the plan. Open your private invitation for the latest details, what to expect, and to accept or decline.",
+      "Weather and boat jobs can move things around. Your personal invitation has the latest plan, what to expect, and a place to let me know whether you can join.",
       `${origin}/sail/invitations/${input.token}`,
-      "This personal link expires in 30 days. Do not forward it. If it expires, ask the skipper for another invitation.",
+      "Keep this personal link to yourself. It lasts for 30 days; if it has expired, ask me for a fresh one.",
     ]
       .filter(Boolean)
       .join("\n\n"),

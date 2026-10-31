@@ -206,6 +206,7 @@
   text-decoration: none;
   display: inline-block;
 }
+.sail-site a.sail-button,
 .sail-button,
 .sail-site button.sail-button {
   background: var(--sail-accent);
@@ -530,5 +531,412 @@
   }
   .sail-voyage-photo img {
     height: 200px;
+  }
+}
+/* A personal look around, with room for the photographs. */
+.sail-story {
+  padding-top: 50px;
+}
+.sail-story-hero {
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  gap: 64px;
+  align-items: center;
+  padding: 10px 0 70px;
+}
+.sail-story-hero h1 {
+  font-size: clamp(3rem, 6vw, 5.8rem);
+}
+.sail-story-lede {
+  max-width: 570px;
+  font-size: 1.16rem;
+  color: var(--sail-muted);
+  line-height: 1.8;
+}
+.sail-story-hero .sail-button {
+  margin-top: 18px;
+}
+.sail-story-jumps {
+  display: flex;
+  gap: 22px;
+  margin-top: 35px;
+  font-size: 0.85rem;
+}
+.sail-story-section {
+  padding: 65px 0;
+  border-top: 1px solid var(--sail-line);
+}
+.sail-story-heading {
+  max-width: 680px;
+  margin-bottom: 30px;
+}
+.sail-story-heading h2 {
+  font-size: clamp(2.2rem, 4.3vw, 3.5rem);
+}
+.sail-story-heading > p:not(.sail-kicker) {
+  font-size: 1.05rem;
+  color: var(--sail-muted);
+}
+.sail-photo-open.sail-photo-open {
+  display: block;
+  position: relative;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: #e8ece3;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.sail-photo-open img {
+  transition: transform 0.3s;
+}
+.sail-photo-open:hover img {
+  transform: scale(1.015);
+}
+.sail-photo-enlarge {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  color: #fff;
+  background: #153f3bd9;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.sail-photo-collage {
+  grid-template-columns: 1.35fr 1fr;
+  align-items: start;
+  gap: 28px;
+}
+.sail-photo-collage > figure:nth-child(2n) {
+  margin-top: 75px;
+}
+.sail-photo-portrait {
+  grid-template-columns: 1fr;
+  max-width: 650px;
+}
+.sail-photo-portrait img {
+  max-height: 740px;
+  object-fit: contain;
+}
+.sail-photo-berths {
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+.sail-photo-berths figure {
+  padding: 20px;
+  background: #f0f1e8;
+  border-radius: 6px;
+}
+.sail-photo-berths figcaption {
+  font-family: Georgia, serif;
+  font-size: 1.5rem;
+  padding-top: 18px;
+  color: var(--sail-ink);
+}
+.sail-story-moment {
+  padding: 48px;
+  background: #173f3d;
+  border-radius: 8px;
+  color: #fff;
+  margin: 0 0 30px;
+}
+.sail-story-moment .sail-kicker,
+.sail-story-moment figcaption {
+  color: #d0ded4;
+}
+.sail-story-moment h2 {
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+}
+.sail-story-moment .sail-photo-collage {
+  margin-top: 30px;
+}
+.sail-story-practical {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+.sail-story-invite {
+  padding: 65px 40px;
+  background: #eceee0;
+  border-radius: 8px;
+}
+.sail-story-invite h2 {
+  font-size: clamp(2.3rem, 5vw, 4rem);
+}
+.sail-join-intro {
+  max-width: 800px;
+  padding: 10px 0 50px;
+}
+.sail-join-intro h1 {
+  font-size: clamp(3rem, 7vw, 6.8rem);
+}
+.sail-join-paths {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 35px;
+  margin-bottom: 65px;
+}
+.sail-join-path {
+  border: 1px solid var(--sail-line);
+  border-radius: 7px;
+  overflow: hidden;
+  background: white;
+}
+.sail-join-path > .sail-photo-grid {
+  display: block;
+}
+.sail-join-path .sail-photo-grid img {
+  width: 100%;
+  height: 320px;
+  object-fit: cover;
+}
+.sail-join-path figcaption {
+  padding: 8px 24px;
+  font-size: 0.8rem;
+}
+.sail-join-path > div:not(.sail-photo-grid) {
+  padding: 30px;
+}
+.sail-join-path h2 {
+  font-size: clamp(2rem, 3.6vw, 3rem);
+}
+.sail-join-path p:not(.sail-kicker) {
+  color: var(--sail-muted);
+}
+.sail-join-steps {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 25px;
+}
+.sail-join-steps span {
+  display: block;
+  color: #9b793f;
+  font-size: 0.8rem;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--sail-line);
+}
+.sail-join-steps h3 {
+  font-size: 1.45rem;
+}
+.sail-join-steps p {
+  font-size: 0.9rem;
+  color: var(--sail-muted);
+}
+.sail-join-questions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 50px;
+}
+.sail-join-questions details {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--sail-line);
+}
+.sail-join-questions summary {
+  font-weight: 600;
+}
+.sail-join-questions details p {
+  font-size: 0.95rem;
+  color: var(--sail-muted);
+}
+.sail-lightbox {
+  padding: 0;
+  border: 0;
+  background: #112c2bf5;
+  color: white;
+  width: min(1200px, 96vw);
+  max-height: 96dvh;
+  border-radius: 8px;
+}
+.sail-lightbox::backdrop {
+  background: #071817e8;
+}
+.sail-lightbox-inner {
+  padding: 20px;
+}
+.sail-lightbox header,
+.sail-lightbox nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.sail-lightbox figure {
+  margin: 12px 0;
+}
+.sail-lightbox img {
+  display: block;
+  width: 100%;
+  height: calc(90dvh - 160px);
+  object-fit: contain;
+}
+.sail-lightbox figcaption {
+  padding: 12px 0;
+  color: #eee;
+  overflow-wrap: anywhere;
+}
+.sail-lightbox button {
+  background: transparent !important;
+  color: white !important;
+  border-color: #aec3ba !important;
+}
+.sail-journey-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 45px;
+}
+.sail-report {
+  padding: 30px;
+  background: #eef1e7;
+  border-radius: 7px;
+}
+.sail-report h3 {
+  font-size: 2.2rem;
+  margin: 0.4em 0;
+}
+.sail-report-date {
+  color: var(--sail-muted);
+  font-size: 0.85rem;
+}
+.sail-report-photo {
+  margin: 25px 0 0;
+}
+.sail-report-photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+.sail-report-photo figcaption {
+  font-size: 0.85rem;
+  color: var(--sail-muted);
+}
+.sail-map-wrap {
+  margin: 20px 0;
+}
+.sail-map {
+  height: 320px;
+  min-height: 280px;
+  border-radius: 5px;
+  z-index: 0;
+}
+.sail-map-load.sail-map-load {
+  width: 100%;
+  min-height: 210px;
+  border: 1px solid #b4c9bd;
+  border-radius: 6px;
+  background: repeating-linear-gradient(
+    25deg,
+    #d9e4db,
+    #d9e4db 35px,
+    #d1ded7 35px,
+    #d1ded7 70px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 9px;
+}
+.sail-map-load > span {
+  font-size: 2rem;
+}
+.sail-map-pin {
+  color: #a74d32;
+  font-size: 26px;
+  line-height: 28px;
+  text-shadow: 0 0 3px white;
+}
+.sail-next-plans > a {
+  display: flex;
+  flex-direction: column;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--sail-line);
+  text-decoration: none;
+}
+.sail-next-plans > a span,
+.sail-next-plans > p:not(.sail-kicker) {
+  font-size: 0.9rem;
+  color: var(--sail-muted);
+}
+.sail-next-plans h3 {
+  font-size: 2.2rem;
+}
+@media (max-width: 700px) {
+  .sail-story {
+    padding-top: 25px;
+  }
+  .sail-story-hero {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding-bottom: 35px;
+  }
+  .sail-story-hero h1 {
+    font-size: 3.3rem;
+  }
+  .sail-story-section {
+    padding: 40px 0;
+  }
+  .sail-photo-collage,
+  .sail-photo-berths {
+    grid-template-columns: 1fr;
+  }
+  .sail-photo-collage > figure:nth-child(2n) {
+    margin-top: 0;
+  }
+  .sail-story-moment {
+    padding: 25px 20px;
+  }
+  .sail-story-practical,
+  .sail-join-questions {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .sail-story-invite {
+    padding: 35px 25px;
+  }
+  .sail-join-paths {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+  .sail-join-steps {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .sail-join-path .sail-photo-grid img {
+    height: 260px;
+  }
+  .sail-lightbox-inner {
+    padding: 12px;
+  }
+  .sail-lightbox img {
+    height: calc(86dvh - 160px);
+  }
+  .sail-journey-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .sail-report {
+    padding: 22px;
+  }
+  .sail-map {
+    height: 280px;
+  }
+  .sail-story-jumps {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sail-photo-open img {
+    transition: none;
+  }
+  .sail-photo-open:hover img {
+    transform: none;
   }
 }
