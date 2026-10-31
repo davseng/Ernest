@@ -15,6 +15,7 @@ export default async function SailManagePage() {
         </div>
         <div className="sail-actions">
           <Link href="/">Open Ernest</Link>
+          <Link href="/sail/manage/photos">Website photos</Link>
           {ready ? (
             <Link href="/sail/manage/new" className="sail-button">
               Plan a voyage

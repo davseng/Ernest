@@ -425,3 +425,110 @@
     gap: 10px;
   }
 }
+.sail-home-photo {
+  margin: 0;
+  position: relative;
+  align-self: stretch;
+  min-height: 390px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #d8dfda;
+}
+.sail-home-photo img {
+  width: 100%;
+  height: 100%;
+  max-height: 550px;
+  object-fit: cover;
+  display: block;
+}
+.sail-home-photo figcaption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 35px 20px 16px;
+  color: #fff;
+  background: linear-gradient(transparent, #102b2be6);
+  font-size: 0.85rem;
+}
+.sail-voyage-photo {
+  display: block;
+  margin: -28px -28px 22px;
+  overflow: hidden;
+  border-radius: 5px 5px 0 0;
+}
+.sail-voyage-photo img {
+  display: block;
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+.sail-boat-teaser {
+  padding: 48px 28px;
+  background: #eef1e8;
+  border-radius: 5px;
+}
+.sail-boat-teaser p:not(.sail-kicker) {
+  color: var(--sail-muted);
+}
+.sail-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 28px;
+}
+.sail-photo-grid figure {
+  margin: 0;
+  min-width: 0;
+}
+.sail-photo-grid img {
+  width: 100%;
+  height: auto;
+  max-height: 650px;
+  object-fit: contain;
+  background: #eff1ea;
+  display: block;
+  border-radius: 4px;
+}
+.sail-photo-grid figcaption {
+  padding: 10px 0;
+  color: var(--sail-muted);
+  font-size: 0.9rem;
+}
+.sail-photo-admin {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
+  gap: 24px;
+}
+.sail-photo-admin article > img {
+  display: block;
+  width: 100%;
+  height: 220px;
+  object-fit: contain;
+  background: #edf0e9;
+}
+.sail-photo-admin .sail-form label {
+  margin-bottom: 12px;
+}
+.sail-photo-admin .sail-form {
+  margin: 15px 0;
+}
+.sail-photo-admin details {
+  font-size: 0.85rem;
+}
+.sail-boat-intro {
+  max-width: 650px;
+  font-size: 1.1rem;
+  color: var(--sail-muted);
+}
+@media (max-width: 700px) {
+  .sail-home-photo {
+    min-height: 250px;
+  }
+  .sail-home-photo img {
+    min-height: 250px;
+    max-height: 420px;
+  }
+  .sail-voyage-photo img {
+    height: 200px;
+  }
+}

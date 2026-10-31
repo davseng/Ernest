@@ -130,3 +130,18 @@ export async function readDocument(key: string) {
   if (!response.Body) throw new Error("Stored document has no body.");
   return response.Body.transformToByteArray();
 }
+
+/** Bounded read for untrusted website uploads; existing document reads are unchanged. */
+export async function readStoredUpload(key: string, maxBytes: number) {
+  const config = storageConfig();
+  const response = await storageClient().send(new GetObjectCommand({ Bucket: config.bucket, Key: key }));
+  if (!response.Body) throw new Error("Uploaded file is unavailable.");
+  const stream = response.Body.transformToWebStream();
+  if ((response.ContentLength ?? 0) > maxBytes) { await stream.cancel(); throw new Error("Photo is too large."); }
+  const reader = stream.getReader(), chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    while (true) { const {done,value} = await reader.read(); if(done)break; length += value.byteLength; if(length>maxBytes)throw new Error("Photo is too large."); chunks.push(value); }
+  } finally { await reader.cancel().catch(()=>{}); reader.releaseLock(); }
+  return Buffer.concat(chunks,length);
+}

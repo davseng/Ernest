@@ -128,3 +128,18 @@ bindings, merge to main or change DNS without the applicable release approval.
 Run the required checks and both browser suites (`test:review-browser` and
 `test:sail-browser`). Browser/SSR tests use synthetic PostgreSQL and injected
 session/SMTP boundaries; distinguish these from live acceptance.
+
+Sail website photographs use separate sail_media metadata and generated R2 keys.
+Never publish/reuse private Ernest evidence keys through this feature. Uploads
+start private, validate real bytes and bounded streams, and produce orientation-
+correct WebP copies without location metadata. Finalise under a record lock;
+ready images cannot be overwritten by retrying an old upload ticket. Public
+photo reads must verify ready/published/asset ownership and voyage publication on
+every request, and must not expose private metadata or signed storage reads.
+Keep gateway responses no-store so unpublishing takes effect for new requests.
+Owner preview/action paths require authenticated ownership. Only safe validation
+errors may be returned; never echo raw storage errors/credentials. Migration 028
+is owner-run after isolated preflight using scripts/sail/photos-sql-editor.
+Run `test:sail-photos-browser` in addition to both existing browser suites. The
+inline chat images were not available as original workspace files; do not claim
+they were uploaded or published when only the controls have been implemented.

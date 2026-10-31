@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
+import { sailPhotos } from "@/data/sail-photos";
 import { sail } from "@/data/sail";
 import { departureLabel } from "@/domain/sail";
 export const dynamic = "force-dynamic";
@@ -10,6 +12,13 @@ export default async function SailHomePage() {
     /* No services configured is a setup state, never sample live content. */
   }
   const voyages = ready ? await sail().publicList() : [];
+  let photoReady = false;
+  try {
+    photoReady = await sailPhotos().available();
+  } catch {}
+  const photos = photoReady ? await sailPhotos().publicPhotos() : [],
+    covers = photoReady ? await sailPhotos().publicCovers() : [];
+  const hero = photos.find((p) => p.homeCover);
   return (
     <main id="sail-main" className="sail-main">
       <section className="sail-hero">
@@ -28,9 +37,23 @@ export default async function SailHomePage() {
             Explore the voyages <span aria-hidden="true">↗</span>
           </Link>
         </div>
-        <div className="sail-horizon" aria-hidden="true">
-          <span>Room for the unexpected.</span>
-        </div>
+        {hero ? (
+          <figure className="sail-home-photo">
+            <Image
+              unoptimized
+              src={`/sail/media/${hero.id}`}
+              alt={hero.altText}
+              width={hero.width ?? 1600}
+              height={hero.height ?? 1000}
+              priority
+            />
+            <figcaption>{hero.caption}</figcaption>
+          </figure>
+        ) : (
+          <div className="sail-horizon" aria-hidden="true">
+            <span>Room for the unexpected.</span>
+          </div>
+        )}
       </section>
       <section id="voyages" className="sail-section">
         <div className="sail-section-heading">
@@ -47,6 +70,24 @@ export default async function SailHomePage() {
           <div className="sail-cards">
             {voyages.map((v) => (
               <article key={v.id} className="sail-card">
+                {covers
+                  .filter((p) => p.voyageId === v.id)
+                  .slice(0, 1)
+                  .map((p) => (
+                    <Link
+                      href={`/sail/voyages/${v.id}`}
+                      key={p.id}
+                      className="sail-voyage-photo"
+                    >
+                      <Image
+                        unoptimized
+                        src={`/sail/media/${p.id}`}
+                        alt={p.altText}
+                        width={p.width ?? 1200}
+                        height={p.height ?? 800}
+                      />
+                    </Link>
+                  ))}
                 <div className="sail-kicker">
                   {v.assetName}
                   <span className="sail-pill">
@@ -83,6 +124,19 @@ export default async function SailHomePage() {
             </p>
           </div>
         )}
+      </section>
+      <section className="sail-section sail-boat-teaser">
+        <div>
+          <p className="sail-kicker">Step aboard</p>
+          <h2>A boat becomes part of the journey.</h2>
+          <p>
+            Explore the cockpit, galley, salon and berths before joining a
+            voyage.
+          </p>
+          <Link className="sail-text-link" href="/sail/boat">
+            Get to know the boat →
+          </Link>
+        </div>
       </section>
       <section id="joining" className="sail-section">
         <p className="sail-kicker">Find your place aboard</p>

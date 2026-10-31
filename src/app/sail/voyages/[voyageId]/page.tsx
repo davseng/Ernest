@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { sail } from "@/data/sail";
+import { sailPhotos } from "@/data/sail-photos";
+import { SailPhotoGallery } from "@/components/sail/photo-gallery";
 import { SailVoyageOverview } from "@/components/sail/voyage-overview";
 import { SailInterestForm } from "@/components/sail/interest-form";
 export const dynamic = "force-dynamic";
@@ -12,9 +14,24 @@ export default async function PublicVoyagePage({
   if (!(await sail().available())) notFound();
   const voyage = await sail().publicVoyage(voyageId);
   if (!voyage) notFound();
+  let photoReady = false;
+  try {
+    photoReady = await sailPhotos().available();
+  } catch {}
+  const photos = photoReady ? await sailPhotos().publicPhotos(voyage.id) : [];
   return (
     <main id="sail-main" className="sail-main sail-narrow">
       <SailVoyageOverview voyage={voyage} />
+      {photos.length ? (
+        <section className="sail-section">
+          <h2>A glimpse of the journey</h2>
+          <SailPhotoGallery photos={photos} />
+          <p className="sail-footnote">
+            Photographs offer a sense of the voyage; weather and readiness
+            determine the final route.
+          </p>
+        </section>
+      ) : null}
       {!["completed", "cancelled"].includes(voyage.status) ? (
         <section className="sail-section">
           <h2>Interested in joining?</h2>

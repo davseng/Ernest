@@ -26,6 +26,7 @@ export default function SailLayout({
         </Link>
         <nav aria-label="Sail Far Better">
           <Link href="/sail#voyages">Voyages</Link>
+          <Link href="/sail/boat">The Boat</Link>
           <Link href="/sail#joining">Joining us</Link>
           <Link href="/sail/manage" className="sail-owner-link">
             Owner sign-in

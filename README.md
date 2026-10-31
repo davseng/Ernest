@@ -78,3 +78,7 @@ The new owner-managed voyage and invitation module is documented in
 separate crew/passenger guidance and no guest access to Ernest. Follow its
 isolated SQL Editor setup and email testing instructions; do not use historical
 migration/seed commands against existing environments.
+
+Website photo galleries, cover selection and owner upload controls are documented
+in [SAIL_PHOTOS.md](docs/SAIL_PHOTOS.md). Their additive metadata migration is a
+separate owner-run isolated rollout; private Ernest evidence is not published.

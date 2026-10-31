@@ -225,3 +225,7 @@ is unchanged. A new Preview push will pick up saved settings; reload after Ready
 
 Validation: 137 tests, both browser suites, type checking, lint (existing warnings)
 and build passed. No live emails were sent by Codex and production is unchanged.
+
+Website photo controls and The Boat page are implemented in the follow-up
+[SAIL_PHOTOS.md](SAIL_PHOTOS.md), requiring isolated migration 028. Their live
+setup and original-photo uploads are separate from the verified 027 baseline.

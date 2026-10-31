@@ -27,6 +27,9 @@ test("Sail server actions derive owner from session, fail closed without sign-in
     const actions = await loadTypeScript("src/app/sail/actions.ts", {
       "@/auth": { auth: async () => session },
       "@/data/sail": { sail: () => store },
+      "@/data/sail-photos": {
+        sailPhotos: () => ({ available: async () => false }),
+      },
       "@/data/sail-mail": mail,
       "next/cache": { revalidatePath() {} },
       "next/headers": {
@@ -152,6 +155,9 @@ test("Sail public page renders published data without owner guidance, private no
       createElement("a", { href, ...props }, children);
     const Home = await loadTypeScript("src/app/sail/page.tsx", {
       "@/data/sail": { sail: () => store },
+      "@/data/sail-photos": {
+        sailPhotos: () => ({ available: async () => false }),
+      },
       "next/link": { default: Link },
     });
     const html = renderToStaticMarkup(await Home.default());
@@ -163,6 +169,9 @@ test("Sail public page renders published data without owner guidance, private no
       "src/app/sail/voyages/[voyageId]/page.tsx",
       {
         "@/data/sail": { sail: () => store },
+        "@/data/sail-photos": {
+          sailPhotos: () => ({ available: async () => false }),
+        },
         "next/navigation": {
           notFound() {
             throw Error("Not found");
@@ -190,6 +199,9 @@ test("Sail invitation HTML includes only the assigned guidance, is private to in
       "src/app/sail/invitations/[token]/page.tsx",
       {
         "@/data/sail": { sail: () => store },
+        "@/data/sail-photos": {
+          sailPhotos: () => ({ available: async () => false }),
+        },
         "@/components/sail/guest-response": { SailGuestResponse: () => null },
       },
     );
