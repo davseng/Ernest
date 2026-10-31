@@ -20,7 +20,8 @@ Initial routes:
 - `/sail/invitations/[token]`: one personal invitation, without an account.
 
 Development does not authorize a production merge, production migration, email
-to real crew/passengers, or DNS change. Nothing in this release is deployed yet.
+to real crew/passengers, or DNS change. The tested application commit was published to the isolated preview branch after
+owner schema verification; live Vercel readiness is still pending confirmation.
 
 ## Product behavior
 
@@ -194,3 +195,16 @@ These do not prove live Neon schema, Auth.js magic-link delivery/callbacks, SMTP
 inbox receipt, Vercel deployment or DNS. Those checks remain pending after the
 owner completes isolated setup. No live emails, migrations, deployments or
 production changes were performed while implementing this release.
+
+## Preview handoff · October 31, 2026
+
+Owner verified migration 027 at 2026-10-31 20:38:52.294535+00 on the isolated
+branch: ledger entry, four empty tables, expected nullable date/token fields and
+non-null published/revision. Commit 0b95172694936e26925d7cfc57b96cc84dd8320d was
+pushed to preview; main remains 6710d1299a208c8905927cdacf8baf59662371f7.
+
+GitHub API and Preview HTTPS requests are blocked by the execution environment's
+proxy (403), so deployment Ready status and live acceptance are not verified.
+No DNS, Production variables or production data were changed. Email enablement
+and allowlisting remain an owner Vercel configuration step. No live invitations
+were sent. Wait for Preview / 0b95172 / Ready before acceptance.
