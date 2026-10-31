@@ -124,3 +124,18 @@ This is a local implementation awaiting isolated preflight/migration and live R2
 acceptance. No production, DNS, bucket permissions or live data were changed.
 The chat photographs remain labelled references until their original files are
 uploaded through the owner UI; no claim is made that they are already on the site.
+
+## Preview handoff · October 31, 2026
+
+Owner verified migration 028 on the isolated branch at
+2026-10-31 22:38:10.753663+00: sail_media present and empty, text asset IDs,
+UUID ownership/voyage fields, private/not-ready defaults, nullable dimensions,
+and revision 1. Published accepted application commit
+adcf40576a125559d898fce8c69cea15d69c6575 to preview only. Main remains
+6710d1299a208c8905927cdacf8baf59662371f7.
+
+GitHub API and Preview HTTPS checks remain blocked by the execution proxy (403),
+so Ready status and live R2 uploads are not yet verified. Owner should wait for
+Preview / adcf405 / Ready, then upload the original photographs privately and
+explicitly publish/select covers in /sail/manage/photos. No production or DNS
+change and no live photo upload was performed by Codex.
