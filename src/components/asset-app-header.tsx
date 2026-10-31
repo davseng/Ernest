@@ -25,6 +25,7 @@ export function AssetAppHeader({ assetId, assetName, email, assets }: {
           <summary aria-label={`Manage ${assetName}`} title="Manage">☰</summary>
           <div className="manage-menu-panel">
             <p>Manage {assetName}</p>
+            <Link href="/sail/manage">Sail Far Better · Voyages</Link>
             <Link href={`/assets/${assetId}/summary`}>Boat knowledge</Link>
             <Link href={`/assets/${assetId}/history`}>Maintenance history</Link>
             <Link href={`/assets/${assetId}/survey`}>Survey A/B status</Link>

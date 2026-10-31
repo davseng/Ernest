@@ -1,0 +1,427 @@
+.sail-site {
+  --sail-ink: #183b3a;
+  --sail-muted: #576d6a;
+  --sail-paper: #faf9f4;
+  --sail-line: #d9e1db;
+  --sail-accent: #245f58;
+  min-height: 100vh;
+  background: var(--sail-paper);
+  color: var(--sail-ink);
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.65;
+}
+.sail-site * {
+  box-sizing: border-box;
+}
+.sail-site a {
+  color: inherit;
+  text-underline-offset: 0.22em;
+}
+.sail-site h1,
+.sail-site h2,
+.sail-site h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+.sail-site h1 {
+  font-size: clamp(2.5rem, 6vw, 4.6rem);
+  margin: 0.35em 0;
+}
+.sail-site h2 {
+  font-size: 2rem;
+  margin: 0.4em 0 0.75em;
+}
+.sail-site h3 {
+  font-size: 1.7rem;
+  margin: 0.65em 0;
+}
+.sail-header {
+  max-width: 1200px;
+  margin: auto;
+  padding: 28px 32px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  border-bottom: 1px solid var(--sail-line);
+}
+.sail-brand {
+  font-family: Georgia, serif;
+  font-size: 1.55rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sail-brand span {
+  display: inline-block;
+  border: 1px solid var(--sail-line);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  text-align: center;
+  margin-right: 8px;
+}
+.sail-header nav {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  font-size: 0.9rem;
+}
+.sail-header nav a {
+  text-decoration: none;
+}
+.sail-owner-link {
+  color: var(--sail-muted) !important;
+  font-size: 0.8rem;
+}
+.sail-main {
+  max-width: 1200px;
+  margin: auto;
+  padding: 36px 32px 64px;
+}
+.sail-narrow {
+  max-width: 860px;
+}
+.sail-hero {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 60px;
+  align-items: center;
+  padding: 35px 0 60px;
+}
+.sail-hero h1 {
+  font-size: clamp(3rem, 6.5vw, 5.5rem);
+}
+.sail-hero p:not(.sail-kicker) {
+  font-size: 1.1rem;
+  max-width: 460px;
+  color: var(--sail-muted);
+  margin: 24px 0;
+}
+.sail-horizon {
+  min-height: 390px;
+  background: linear-gradient(
+    180deg,
+    #e5e9df 0%,
+    #c8ddd8 48%,
+    #77aaa3 49%,
+    #2b6663 100%
+  );
+  border-radius: 180px 180px 4px 4px;
+  position: relative;
+  overflow: hidden;
+}
+.sail-horizon:after {
+  content: "";
+  position: absolute;
+  border: 1px solid #ffffff70;
+  width: 440px;
+  height: 110px;
+  border-radius: 50%;
+  transform: rotate(-17deg);
+  bottom: 80px;
+  left: -60px;
+}
+.sail-horizon span {
+  position: absolute;
+  bottom: 26px;
+  left: 25px;
+  color: #fff;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+}
+.sail-kicker {
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.13em;
+  color: var(--sail-muted);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.sail-pill {
+  border: 1px solid var(--sail-line);
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+  background: #fff8;
+}
+.sail-section {
+  padding: 40px 0;
+  border-top: 1px solid var(--sail-line);
+  margin-top: 32px;
+}
+.sail-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+  margin-bottom: 24px;
+}
+.sail-section-heading > p {
+  max-width: 370px;
+  color: var(--sail-muted);
+  font-size: 0.9rem;
+}
+.sail-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 24px;
+}
+.sail-card {
+  border: 1px solid var(--sail-line);
+  background: #fff;
+  padding: 28px;
+  border-radius: 5px;
+}
+.sail-card h3 a,
+.sail-card h2 a {
+  text-decoration: none;
+}
+.sail-card p {
+  color: var(--sail-muted);
+}
+.sail-number {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.sail-text-link {
+  display: inline-block;
+  margin-top: 15px;
+  font-size: 0.9rem;
+}
+.sail-button,
+.sail-site button {
+  cursor: pointer;
+  border: 1px solid var(--sail-line);
+  border-radius: 4px;
+  padding: 10px 18px;
+  background: #fff;
+  color: var(--sail-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  text-decoration: none;
+  display: inline-block;
+}
+.sail-button,
+.sail-site button.sail-button {
+  background: var(--sail-accent);
+  color: #fff;
+  border-color: var(--sail-accent);
+}
+.sail-site button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.sail-site :focus-visible {
+  outline: 3px solid #bd8843;
+  outline-offset: 3px;
+}
+.sail-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sail-footnote,
+.sail-site small {
+  color: var(--sail-muted);
+  font-size: 0.85rem;
+}
+.sail-empty {
+  border: 1px dashed var(--sail-line);
+  padding: 35px;
+}
+.sail-route {
+  font-size: 1.2rem;
+}
+.sail-timing {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  border-left: 3px solid #c6aa79;
+  padding: 14px 24px;
+  margin: 30px 0;
+  background: #f0f1e9;
+}
+.sail-timing p {
+  margin: 0;
+}
+.sail-prose {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.sail-form {
+  margin: 24px 0;
+}
+.sail-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.sail-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.sail-form input:not([type="checkbox"]),
+.sail-form textarea,
+.sail-form select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #bbc9c3;
+  border-radius: 4px;
+  padding: 11px 12px;
+  color: var(--sail-ink);
+  background: #fff;
+  font: inherit;
+}
+.sail-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr));
+  gap: 18px;
+}
+.sail-form label.sail-check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+.sail-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--sail-accent);
+}
+.sail-inset {
+  background: #f0f1e9;
+  padding: 24px;
+  border-radius: 5px;
+  margin: 24px 0;
+}
+.sail-inset h2 {
+  font-size: 1.5rem;
+}
+.sail-details {
+  border-top: 1px solid var(--sail-line);
+  padding: 18px 0;
+}
+.sail-site summary {
+  cursor: pointer;
+}
+.sail-details summary {
+  margin-bottom: 12px;
+}
+.sail-people {
+  list-style: none;
+  padding: 0;
+}
+.sail-people li {
+  border-top: 1px solid var(--sail-line);
+  padding: 20px 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  align-items: center;
+}
+.sail-people li > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sail-people span {
+  font-size: 0.85rem;
+  color: var(--sail-muted);
+}
+.sail-notice {
+  padding: 18px 22px;
+  border-left: 3px solid #b58953;
+  background: #f2eee1;
+}
+.sail-site [role="alert"] {
+  color: #903e32;
+  background: #fff0ec;
+  padding: 12px;
+}
+.sail-site [role="status"] {
+  padding: 12px;
+  background: #e9f1e9;
+}
+.sail-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.sail-footer {
+  max-width: 1200px;
+  margin: auto;
+  border-top: 1px solid var(--sail-line);
+  padding: 28px 32px;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--sail-muted);
+}
+.sail-footer span {
+  flex: 1;
+}
+.sail-skip {
+  position: absolute;
+  left: -10000px;
+}
+.sail-skip:focus {
+  position: fixed;
+  left: 20px;
+  top: 10px;
+  background: #fff;
+  z-index: 10;
+  padding: 12px;
+}
+@media (max-width: 700px) {
+  .sail-header {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 20px;
+  }
+  .sail-header nav {
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .sail-main {
+    padding: 26px 20px 40px;
+  }
+  .sail-hero {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 0 0 35px;
+  }
+  .sail-horizon {
+    min-height: 230px;
+    border-radius: 110px 110px 4px 4px;
+  }
+  .sail-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .sail-people li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .sail-site h1 {
+    overflow-wrap: anywhere;
+  }
+  .sail-footer {
+    padding: 24px 20px;
+    flex-direction: column;
+    gap: 10px;
+  }
+}

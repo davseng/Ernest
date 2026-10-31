@@ -23,5 +23,6 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run test:review-browser
+      - run: npm run test:sail-browser
       - run: npm run build
       - run: git diff --check

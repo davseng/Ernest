@@ -70,3 +70,11 @@ ARCHITECTURE.md   Planned boundaries and evolution
 AUTHENTICATION.md Authentication provider decision and trade-offs
 .env.example      Future configuration names, without secrets
 ```
+
+## Sail Far Better
+
+The new owner-managed voyage and invitation module is documented in
+[SAIL_FAR_BETTER_V1.md](docs/SAIL_FAR_BETTER_V1.md). It starts at `/sail`, with
+separate crew/passenger guidance and no guest access to Ernest. Follow its
+isolated SQL Editor setup and email testing instructions; do not use historical
+migration/seed commands against existing environments.

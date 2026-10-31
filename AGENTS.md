@@ -92,3 +92,39 @@ Document processing may extract historical evidence but may not automatically re
 Migration 026 is a separate owner-run additive rollout. Do not deploy this version over the fixed Preview until its isolated schema is verified. SQL scripts are in scripts/v012/sql-editor. Never replay 022 or a complete historical migration sequence. No automatic migrations in install/build/start, no seed, no new services or secret values in output. Production requires a separately approved rollout.
 
 Run lint, typecheck, the full unit/integration suite, `npm run test:review-browser`, build and diff checks. The browser harness uses the actual React/forms/actions/store against synthetic PGlite data with injected session/provider boundaries; it is not live Neon/R2/email/model acceptance. Live owner acceptance must exercise the impeller/spare example, date correction, survey reconciliation and readable history on the isolated Preview.
+
+## Sail Far Better rebuild
+
+Sail Far Better is a new bounded module in this repository, not a Supabase/Bolt
+migration. Its first Preview URL is `/sail`; Ernest's existing root, auth
+configuration, owner records and domain remain unchanged. No DNS or production
+release is authorized by development of this module.
+
+Only authenticated vessel owners can manage voyages or issue invitations.
+Crew/passenger is a per-invitation role, never an Ernest permission. Guests use
+30-day, cryptographically random invitation links; store hashes only, never
+return raw tokens from owner actions, and never log them. GET is read-only.
+Private invitation pages are dynamic, noindex and no-referrer. Editing a person,
+cancelling or resending revokes the old link. Public read models explicitly
+project approved public fields; do not expose private joining notes, role
+guidance, participant/email lists or audit snapshots. Use the existing owner's
+asset boundary for every admin query/mutation. Do not grant invitees access to
+Ernest's documents, tools, conversations or maintenance.
+
+Flexible planning uses an optional target departure or date window, optional
+estimated arrival and a timing note. Optimistic revisions prevent stale saves
+and responses. A changed plan requires accepted invitees to review it again;
+a no-op save does not. Save/publish never sends emails. Send is a separate owner
+action with a per-person cooldown, honest delivery status and fixed configured
+origin; use direct SMTP rather than repurposing sign-in emails. Delivery defaults
+to disabled. Preview additionally requires SAIL_TEST_RECIPIENTS. Synthetic tests
+must never send real email or use live data. Public enquiries are bounded,
+honeypot/rate protected and owner-private; no automatic bookings or notifications.
+
+Migration 027 is additive and owner-run only after isolated schema preflight.
+Scripts are in scripts/sail/sql-editor. Never replay old migrations, copy Bolt
+users/data, seed live tables, push feature branches that inherit production
+bindings, merge to main or change DNS without the applicable release approval.
+Run the required checks and both browser suites (`test:review-browser` and
+`test:sail-browser`). Browser/SSR tests use synthetic PostgreSQL and injected
+session/SMTP boundaries; distinguish these from live acceptance.

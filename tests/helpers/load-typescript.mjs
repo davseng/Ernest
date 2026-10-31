@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
@@ -18,7 +19,7 @@ export async function loadTypeScript(path, stubs={}) {
       url='data:text/javascript;base64,'+Buffer.from(Object.keys(values).map(k=>k==='default'?`export default globalThis.__ernestTestModules[${JSON.stringify(key)}].default;`:`export const ${k}=globalThis.__ernestTestModules[${JSON.stringify(key)}][${JSON.stringify(k)}];`).join('\n')).toString('base64');
     }else if(spec.startsWith('@/')||spec.startsWith('.')){
       const p=spec.startsWith('@/')?resolve('src',spec.slice(2)):resolve(dirname(filename),spec);
-      const loaded=await moduleUrl(/\.tsx?$/.test(p)?p:p+'.ts',stubs);url=loaded;
+      const loaded=await moduleUrl(/\.tsx?$/.test(p)?p:existsSync(p+'.ts')?p+'.ts':p+'.tsx',stubs);url=loaded;
     }else url=spec.startsWith('node:')?spec:pathToFileURL(require.resolve(spec)).href;
     code=code.replace(m[0],m[0].replace(m[1]+spec+m[1],JSON.stringify(url)));
   }
