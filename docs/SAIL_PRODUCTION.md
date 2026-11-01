@@ -100,3 +100,41 @@ Preview retain their original root sign-in behavior. No live database or storage
 was accessed by that HTTP check. Exact-host routing rejects lookalike hosts;
 the root rewrite runs before filesystem routes so it takes precedence over the
 existing Ernest root only on the intended public domain.
+
+## Owner-supplied production preflight
+
+After clarifying the first output was from ernest-v011-test, the owner supplied
+a new production preflight: neondb/public, all existing Ernest 025/026 relations
+present, all six Sail relations absent, assets.id text, assets.owner_id uuid,
+assets.name text, users.id uuid, schema_migrations present. Only migrations
+027–029 are required; do not replay 025/026 or historical migrations.
+
+The production apply script is now
+`scripts/sail/production-sql-editor/02-apply-027-through-029.sql`. Take a fresh Neon
+production recovery branch/checkpoint, select the same Production branch as that
+preflight, and run the entire transaction once. It embeds unchanged migrations
+027/028/029, verifies the baseline/identity types, rejects existing/partial Sail
+tables or prior target ledger entries, and records all three migrations together.
+SQL cannot verify Neon branch identity from a shared neondb database name; the
+owner must select the correct branch. On error, ROLLBACK and stop for review.
+Then run `03-verify.sql` and review the ledger, relations and column shapes. All
+six Sail tables should start empty. Existing Ernest rows are not changed.
+
+The owner also supplied Vercel-assigned Production DNS targets:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| A | @ | 216.198.79.1 |
+| CNAME | www | c56e0654bf53a75e.vercel-dns-017.com |
+
+Squarespace is the DNS provider; Bolt still serves the old public site. Apex/www
+are attached to the Ernest Vercel project's Production environment, showing
+Invalid Configuration until DNS cutover. Ernest and Preview are still valid.
+Keep DNS at Bolt until production schema, release and intentional content setup
+are verified. Do not enable Vercel nameservers/DNS or alter mail records.
+
+The combined SQL script passed a synthetic PGlite rollout test, including exact
+migration-byte preservation, database/baseline guards, partial-schema refusal,
+existing vessel/maintenance row preservation, empty Sail data, verification and
+replay refusal. The full suite passed all 152 tests; lint (two existing warnings),
+TypeScript, build and diff checks passed. No live production SQL was executed.
