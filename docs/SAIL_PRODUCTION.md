@@ -167,3 +167,15 @@ disabled until final-host HTTPS works. Reupload and explicitly publish approved
 website photos, add real plans and a dated position report. No Preview rows or
 storage objects were copied. DNS cutover remains pending until content and the
 Production deployment are ready.
+
+
+## Content copy completed and transfer retirement
+
+The owner confirmed the one-file Preview-to-Production transfer succeeded and
+requested DNS cutover guidance and transfer cleanup. Remove the temporary tool
+and its server actions from both deployments. Leave all imported Sail records,
+new R2 objects and existing Ernest data intact. No credentials were created for
+the transfer, so no transfer-specific credentials need revocation. The owner
+should delete their local content file after confirming the production pages.
+Production content is now owner-confirmed copied; DNS cutover and final-host
+HTTPS/invitation verification are the next live steps.

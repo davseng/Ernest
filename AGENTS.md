@@ -167,11 +167,9 @@ Production readiness. See docs/SAIL_PRODUCTION.md for exact-host routing, owner
 host preservation, dependency sequencing and DNS rollback. Do not promote an
 isolated Preview deployment with its test services into Production.
 
-Owner explicitly requested copying Preview Sail content into Production. Use the
-owner-only /sail/manage/transfer flow (docs/SAIL_TRANSFER.md), never whole-database
-cloning or copying credentials/guest tokens/private Ernest evidence. Export only
-allowlisted Sail plans, ready website photos and position. Preserve publication
-choices, map fresh IDs and refuse a nonempty destination. Stage validated photos
-privately; commit metadata atomically under authenticated ownership. Never delete
-staged uploads after an uncertain final commit acknowledgement. Run the new
-`test:sail-transfer-browser` alongside the four existing browser suites.
+The owner confirmed the Preview-to-Production Sail content transfer succeeded.
+The temporary transfer page, server actions, supporting modules and dedicated
+tests were retired after that confirmation. Preserve the imported records and
+R2 copies; retirement requires no database or storage deletion. Transfer code
+remains in Git history at b663108, not an active owner workflow. Continue running
+the four retained browser suites. See docs/SAIL_TRANSFER.md for the archival note.

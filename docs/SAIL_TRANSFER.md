@@ -1,3 +1,18 @@
+# Transfer completed — tool retired
+
+The owner confirmed the Preview-to-Production copy succeeded. The temporary
+Content transfer page, server actions, supporting modules and dedicated tests
+have been removed. The imported plans, photos, publication choices and position
+report remain untouched. No database or storage cleanup is needed.
+
+The code and its tests are recoverable from Git commit b663108 if a future,
+explicitly authorized transfer is needed. The instructions below describe the
+completed historical process; those transfer URLs are no longer active.
+Delete the downloaded sail-content.json file and any spare local copies once
+production content is verified; it can contain private joining notes.
+
+---
+
 # Owner-mediated Preview → Production content copy
 
 The owner requested copying Preview Sail content into Production. This workspace
@@ -60,3 +75,7 @@ is performed only by the owner using the two pages above.
 Validation for this release: all 157 unit/integration tests and all five browser
 suites passed; lint passed with the same two existing warnings; TypeScript,
 production build and whitespace checks passed. Tests use synthetic data only.
+
+Retirement verification: the retained 152 tests and four browser suites passed,
+as did lint (two existing warnings), TypeScript, build and whitespace checks.
+No transfer imports or routes remain under src, tests or active CI scripts.
