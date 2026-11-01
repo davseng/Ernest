@@ -199,7 +199,8 @@ export function SailPositionForm({
       </fieldset>
       <p className="sail-footnote">
         This is a report from you, not live tracking. Leave the pin off to share
-        just the place name. This does not change voyage plans or send email.
+        just the place name. This does not change trip plans or send guest
+        invitations.
       </p>
     </form>
   );

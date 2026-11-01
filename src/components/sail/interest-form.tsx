@@ -52,7 +52,7 @@ export function SailInterestForm({
   return (
     <form
       className="sail-form"
-      aria-label="Voyage enquiry"
+      aria-label="Trip inquiry"
       onSubmit={async (e) => {
         e.preventDefault();
         if (busy) return;
@@ -71,7 +71,7 @@ export function SailInterestForm({
             setMessage(r.message);
           } else setError(r.error);
         } catch {
-          setError("Your enquiry was not confirmed. Please try again.");
+          setError("Your inquiry was not confirmed. Please try again.");
         } finally {
           setBusy(false);
         }

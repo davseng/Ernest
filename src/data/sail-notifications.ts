@@ -6,6 +6,8 @@ import { sailMailProblem } from "./sail-mail";
 import { sailInvitationOrigin } from "./sail-invitation-url";
 import { createSailNotificationStore } from "./sail-notification-store";
 let sql: ReturnType<typeof postgres> | undefined;
+const notificationCopy = (text: string) =>
+  text.replace(/\benquiry\b/g, "inquiry").replace(/\bEnquiry\b/g, "Inquiry");
 export function sailNotifications() {
   if (!process.env.DATABASE_URL) throw Error("Database is not configured.");
   return createSailNotificationStore(
@@ -62,13 +64,13 @@ export async function dispatchSailNotifications(owner?: string) {
       to: recipient,
       subject:
         events.length === 1
-          ? `Sail Far Better: ${events[0].summary}`
+          ? `Sail Far Better: ${notificationCopy(events[0].summary)}`
           : `Sail Far Better: ${events.length} updates`,
       text: [
         "There’s an update aboard.",
         ...events.map(
           (e) =>
-            `${e.summary}${e.title ? `: ${e.title}` : ""}\n${origin}/sail/manage${e.category === "sail_media" ? "/photos" : e.category === "sail_positions" ? "/position" : e.voyageId ? `/${e.voyageId}` : ""}`,
+            `${notificationCopy(e.summary)}${e.title ? `: ${e.title}` : ""}\n${origin}/sail/manage${e.category === "sail_media" ? "/photos" : e.category === "sail_positions" ? "/position" : e.voyageId ? `/${e.voyageId}` : ""}`,
         ),
         "Open your owner workspace to see the details. These links require your owner sign-in; no personal guest invitation links are included.",
       ].join("\n\n"),

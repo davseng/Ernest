@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { sailStatusLabel } from "@/domain/sail";
 import { useRouter } from "next/navigation";
 import {
   addSailPerson,
@@ -61,8 +62,8 @@ export function SailPeople({
     <section className="sail-section">
       <h2>People</h2>
       <p>
-        Adding a person doesn’t send anything. When you’re ready, email their
-        invitation or create a link to share yourself.
+        Adding a person doesn’t send them an invitation. When you’re ready,
+        email their invitation or create a link to share yourself.
       </p>
       <form
         className="sail-form"
@@ -111,7 +112,8 @@ export function SailPeople({
               <div>
                 <strong>{p.fullName}</strong>
                 <span>
-                  {p.role === "crew" ? "Crew" : "Passenger"} · {p.status}
+                  {p.role === "crew" ? "Crew" : "Passenger"} ·{" "}
+                  {sailStatusLabel(p.status)}
                   {p.status === "accepted" &&
                   p.acceptedRevision !== voyageRevision
                     ? " · plan changed; review needed"
@@ -270,7 +272,7 @@ export function SailPeople({
       ) : null}
       <details className="sail-details">
         <summary>
-          Enquiries ({enquiries.filter((e) => !e.reviewed).length} new)
+          Inquiries ({enquiries.filter((e) => !e.reviewed).length} new)
         </summary>
         {enquiries.length ? (
           enquiries.map((e) => (
@@ -307,7 +309,7 @@ export function SailPeople({
             </article>
           ))
         ) : (
-          <p>No enquiries yet.</p>
+          <p>No inquiries yet.</p>
         )}
       </details>
       <p className="sail-footnote">

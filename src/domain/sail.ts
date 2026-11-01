@@ -23,7 +23,7 @@ export type VoyageInput = {
   boardingNotes: string;
 };
 export const expectationTemplates = {
-  crew: "Let’s talk through your sailing experience, the jobs you’re comfortable with and what you’d like to try. We’ll agree watches, safety preparation and what to bring before the trip.",
+  crew: "Let’s talk through your sailing experience, the jobs you’re comfortable with and what you’d like to try. We’ll go over watch schedules, safety preparations, and what to bring before the trip.",
   passenger:
     "Let’s talk about life aboard, the route, and anything you’d like me to know about your needs. We’ll work through sleeping arrangements, the safety briefing and what to bring before you come.",
 };
@@ -142,4 +142,11 @@ export function blankVoyage(): VoyageInput {
     passengerExpectations: expectationTemplates.passenger,
     boardingNotes: "",
   };
+}
+
+/** American English display labels; persisted status values stay unchanged. */
+export function sailStatusLabel(status: string) {
+  if (status === "cancelled") return "Canceled";
+  if (status === "ready") return "Ready to go";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }

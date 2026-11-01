@@ -20,7 +20,7 @@ export default async function SailInvitationPage({
       <main id="sail-main" className="sail-main sail-narrow">
         <h1>This invitation is unavailable.</h1>
         <p>
-          It may have expired, been replaced or been cancelled. Ask the skipper
+          It may have expired, been replaced or been canceled. Ask the skipper
           for a fresh invitation.
         </p>
       </main>

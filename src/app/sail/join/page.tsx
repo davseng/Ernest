@@ -50,8 +50,8 @@ export default async function SailJoinPage({
         <p className="sail-kicker">Friends & family aboard</p>
         <h1>Come along.</h1>
         <p className="sail-story-lede">
-          Some friends want to get involved in the sailing. Others would rather
-          take in the ride. Either way, let’s talk about what would make a good
+          Some friends want to get involved in the sailing. Others just want to
+          enjoy the ride. Either way, let’s talk about what would make a good
           trip for you.
         </p>
       </section>
@@ -63,7 +63,7 @@ export default async function SailJoinPage({
           <div>
             <p className="sail-kicker">Joining as crew</p>
             <h2>
-              Fancy helping
+              Want to help
               <br />
               with the sailing?
             </h2>
@@ -106,7 +106,7 @@ export default async function SailJoinPage({
       </section>
       <section className="sail-story-section">
         <div className="sail-story-heading">
-          <p className="sail-kicker">No grand process</p>
+          <p className="sail-kicker">Let’s keep it simple</p>
           <h2>Here’s how we make it happen.</h2>
         </div>
         <ol className="sail-join-steps">
@@ -117,7 +117,7 @@ export default async function SailJoinPage({
           </li>
           <li>
             <span>02</span>
-            <h3>Have a chat.</h3>
+            <h3>Let’s talk.</h3>
             <p>Let’s talk about dates, expectations and what works for you.</p>
           </li>
           <li>
@@ -143,16 +143,16 @@ export default async function SailJoinPage({
           <details>
             <summary>Are the dates fixed?</summary>
             <p>
-              They’re best read as a plan. Weather and getting the boat ready
-              can move things around. Have a chat with me before making travel
+              The dates are tentative. Weather and getting the boat ready can
+              move things around. Talk with me before making travel
               arrangements.
             </p>
           </details>
           <details>
-            <summary>Which berth would I use?</summary>
+            <summary>Where would I sleep?</summary>
             <p>
               I’ll confirm sleeping arrangements with you before you join. You
-              can have a look at the berths on{" "}
+              can take a look at the berths on{" "}
               <Link href="/sail/boat#berths">The Boat page</Link>.
             </p>
           </details>
@@ -179,7 +179,8 @@ export default async function SailJoinPage({
             <h2>Find a trip to talk about.</h2>
           </div>
           <p>
-            Looking at joining as {role}.{" "}
+            Looking to join as{" "}
+            {role === "crew" ? "a crew member" : "a passenger"}.{" "}
             <Link
               href={`/sail/join?as=${role === "crew" ? "passenger" : "crew"}#join-voyages`}
             >
@@ -193,8 +194,8 @@ export default async function SailJoinPage({
           role={role}
         />
         <p className="sail-footnote">
-          Already invited? Your personal email link has the latest plan and your
-          joining details.
+          Already invited? Your personal invitation link has the latest plan and
+          your joining details.
         </p>
       </section>
     </main>

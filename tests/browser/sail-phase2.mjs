@@ -220,7 +220,9 @@ try {
     await page.getByText("Old completed trip", { exact: true }).count(),
     0,
   );
-  await page.getByText("Looking for 1 more crew", { exact: true }).waitFor();
+  await page
+    .getByText("Looking for 1 more crew member", { exact: true })
+    .waitFor();
   assert.equal(await page.getByText(/awaiting a reply/).count(), 0);
   await page.screenshot({
     path: "/tmp/sail-timeline-public.png",
@@ -242,9 +244,7 @@ try {
   await page
     .getByRole("link", { name: "Private draft", exact: true })
     .waitFor();
-  await page
-    .getByText("Completed and cancelled trips", { exact: true })
-    .click();
+  await page.getByText("Completed and canceled trips", { exact: true }).click();
   await page
     .getByRole("link", { name: "Old completed trip", exact: true })
     .waitFor();

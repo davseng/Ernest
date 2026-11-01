@@ -1,7 +1,12 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { blankVoyage, voyageStatuses, type VoyageInput } from "@/domain/sail";
+import {
+  blankVoyage,
+  voyageStatuses,
+  sailStatusLabel,
+  type VoyageInput,
+} from "@/domain/sail";
 import { saveSailVoyage } from "@/app/sail/actions";
 export function SailVoyageForm({
   assets,
@@ -227,9 +232,7 @@ export function SailVoyageForm({
           >
             {voyageStatuses.map((s) => (
               <option key={s} value={s}>
-                {s === "ready"
-                  ? "Ready to go"
-                  : s[0].toUpperCase() + s.slice(1)}
+                {sailStatusLabel(s)}
               </option>
             ))}
           </select>
@@ -260,8 +263,8 @@ export function SailVoyageForm({
         </button>
       </fieldset>
       <p className="sail-footnote">
-        Saving does not send emails. Invitees always see the latest plan, and
-        accepted invitations show when a plan needs another review.
+        Saving does not send invitations. Invitees always see the latest plan,
+        and accepted invitations show when a plan needs another review.
       </p>
     </form>
   );

@@ -285,7 +285,7 @@ try {
     .filter({ hasText: "passenger@example.invalid" });
   await cancel.getByText("Cancel invitation", { exact: true }).click();
   await cancel.getByRole("button", { name: "Confirm cancellation" }).click();
-  await page.getByRole("status").filter({ hasText: "cancelled" }).waitFor();
+  await page.getByRole("status").filter({ hasText: "canceled" }).waitFor();
   await page.goto(origin + "/sail/invitations/" + passengerToken);
   await page.getByRole("heading", { name: "Invitation unavailable" }).waitFor();
   const previous = process.env.AUTH_SECRET;
@@ -298,7 +298,7 @@ try {
         .count(),
       0,
     );
-    const enquiry = page.getByRole("form", { name: "Voyage enquiry" });
+    const enquiry = page.getByRole("form", { name: "Trip inquiry" });
     await enquiry.getByLabel("Your name").fill("Interested sailor");
     await enquiry
       .getByLabel("Email", { exact: true })
@@ -325,7 +325,7 @@ try {
     });
     const mailBeforeEnquiry = mail.length;
     await page.goto(origin + "/sail/manage/" + id);
-    await page.getByText(/Enquiries \(/).click();
+    await page.getByText(/Inquiries \(/).click();
     await page
       .getByRole("button", { name: "Invite this person", exact: true })
       .click();

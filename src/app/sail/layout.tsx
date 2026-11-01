@@ -4,7 +4,7 @@ import "./sail.css";
 export const metadata: Metadata = {
   title: { default: "Sail Far Better", template: "%s · Sail Far Better" },
   description:
-    "Friends and family aboard Far Better. Have a look around and let’s figure out a trip together.",
+    "Friends and family aboard Far Better. Take a look around and let’s figure out a trip together.",
   robots: {
     index: process.env.VERCEL_ENV === "production",
     follow: process.env.VERCEL_ENV === "production",

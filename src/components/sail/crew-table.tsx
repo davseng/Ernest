@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Voyage } from "@/data/sail-store";
-import { departureLabel } from "@/domain/sail";
+import { departureLabel, sailStatusLabel } from "@/domain/sail";
 import {
   availabilityLabel,
   type SailAvailability,
@@ -100,7 +100,8 @@ export function SailCrewTable({
                   </p>
                   <p>{departureLabel(v.departureFrom, v.departureTo)}</p>
                   <small>
-                    {v.published ? "Public" : "Private draft"} · {v.status}
+                    {v.published ? "Public" : "Private draft"} ·{" "}
+                    {sailStatusLabel(v.status)}
                   </small>
                   {a?.note ? <p className="sail-prose">{a.note}</p> : null}
                   <p>

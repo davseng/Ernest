@@ -83,7 +83,7 @@ export async function sendSailInvitation(input: {
     subject: `Sail Far Better: ${v.title}`,
     text: [
       `Hello ${input.fullName},`,
-      `I’d love you to join me aboard ${v.assetName} as ${input.role === "crew" ? "crew" : "a passenger"}.`,
+      `I’d love you to join me aboard ${v.assetName} as ${input.role === "crew" ? "a crew member" : "a passenger"}.`,
       `${v.departurePort || "Departure to be arranged"} → ${v.arrivalPort || "Destination to be arranged"}`,
       departureLabel(v.departureFrom, v.departureTo),
       v.timingNote,

@@ -49,7 +49,7 @@ export default async function SailBoatPage() {
           </h1>
           <p className="sail-story-lede">
             Here’s a look around, from the cockpit to the cabins. We’ll figure
-            out where you’ll sleep and what to bring before you come.
+            out where you’ll sleep and what to bring before you arrive.
           </p>
           <Link className="sail-button" href="/sail/join">
             Come along →
@@ -71,7 +71,7 @@ export default async function SailBoatPage() {
       {!photos.length ? (
         <div className="sail-empty">
           <h2>The pictures are on their way.</h2>
-          <p>I’ll put a look around the boat here as the photos are ready.</p>
+          <p>I’ll add photos here so you can take a look around the boat.</p>
         </div>
       ) : null}
       {above.length ? (
@@ -95,7 +95,7 @@ export default async function SailBoatPage() {
         <section className="sail-story-moment">
           <div>
             <p className="sail-kicker">Out on the water</p>
-            <h2>Some of my favourite views.</h2>
+            <h2>Some of my favorite views.</h2>
           </div>
           <SailPhotoGallery
             photos={moments}
@@ -114,8 +114,8 @@ export default async function SailBoatPage() {
               and a place to sit.
             </h2>
             <p>
-              The galley and salon give you an idea of everyday life aboard
-              between the sailing.
+              The galley and salon give you an idea of everyday life aboard when
+              we’re not sailing.
             </p>
           </div>
           <SailPhotoGallery
@@ -131,8 +131,8 @@ export default async function SailBoatPage() {
             <p className="sail-kicker">At the end of the day</p>
             <h2>Where you might sleep.</h2>
             <p>
-              Here are the berths. I’ll agree sleeping arrangements with you
-              before the trip.
+              Here are the sleeping spaces. We’ll figure out where everyone will
+              sleep before the trip.
             </p>
           </div>
           <SailPhotoGallery
@@ -145,10 +145,10 @@ export default async function SailBoatPage() {
       {practical.length ? (
         <section className="sail-story-section sail-story-practical">
           <div className="sail-story-heading">
-            <p className="sail-kicker">The practical bits</p>
+            <p className="sail-kicker">The everyday details</p>
             <h2>Good to know before you pack.</h2>
             <p>
-              We’ll talk through the everyday details before you come. Bring
+              We’ll talk through the everyday details before you arrive. Bring
               your questions.
             </p>
           </div>
@@ -160,14 +160,14 @@ export default async function SailBoatPage() {
         </section>
       ) : null}
       <section className="sail-story-invite">
-        <p className="sail-kicker">Fancy coming along?</p>
+        <p className="sail-kicker">Want to come along?</p>
         <h2>Let’s work out a trip.</h2>
-        <p>Have a look at the plans, then send me a note.</p>
+        <p>Take a look at the plans, then send me a note.</p>
         <div className="sail-actions">
           <Link href="/sail#voyages" className="sail-button">
             See the plans →
           </Link>
-          <Link href="/sail/join">What’s joining like?</Link>
+          <Link href="/sail/join">What’s it like on board?</Link>
         </div>
       </section>
     </main>

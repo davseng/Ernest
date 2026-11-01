@@ -409,12 +409,12 @@ export function createSailStore(sql: Sql) {
         // Also prevent a publication/status change racing this submission.
         const [v] =
           await tx`SELECT v.id FROM sail_voyages v JOIN assets a ON a.id=v.asset_id AND a.owner_id=v.owner_id WHERE v.id=${id} AND v.published=true AND v.status NOT IN ('completed','cancelled') FOR UPDATE OF v`;
-        if (!v) throw Error("This voyage is not accepting enquiries.");
+        if (!v) throw Error("This trip is not accepting inquiries.");
         const [{ count }] = await tx<
           { count: number }[]
         >`SELECT count(*)::int AS count FROM sail_interest WHERE created_at>now()-interval '1 hour' AND (requester_hash=${requesterHash} OR email=${p.email})`;
         if (count >= 3)
-          throw Error("Please wait before sending another enquiry.");
+          throw Error("Please wait before sending another inquiry.");
         await tx`INSERT INTO sail_interest(voyage_id,full_name,email,role,message,requester_hash) VALUES(${id},${p.fullName},${p.email},${p.role},${message},${requesterHash})`;
       });
     },
@@ -441,7 +441,7 @@ export function createSailStore(sql: Sql) {
         const [enquiry] = await tx<
           { full_name: string; email: string; role: ParticipationRole }[]
         >`SELECT full_name,email,role FROM sail_interest WHERE id=${enquiryId} AND voyage_id=${id} FOR UPDATE`;
-        if (!enquiry) throw Error("Enquiry not found.");
+        if (!enquiry) throw Error("Inquiry not found.");
         const [existing] = await tx<
           { id: string }[]
         >`SELECT id FROM sail_participants WHERE voyage_id=${id} AND email=${enquiry.email}`;

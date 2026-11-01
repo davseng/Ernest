@@ -164,3 +164,23 @@ initial-space atomicity and roster projection, and the actual browser creates a
 trip with spaces and verifies the owner table on desktop/mobile. No live data or
 notification sends were used. This refinement is deployed only to Preview;
 Production remains gated on its migration 031 verification.
+
+## American English copy review
+
+Before Production rollout, the owner requested American English and a grammar
+pass. Public/owner screens now use favorite, canceled and inquiries. Joining Us
+and the homepage ask “Want to help with the sailing?” with matching casual,
+personal phrasing elsewhere. Crew counts correctly say 1 crew member / multiple
+crew members, and owner summary counts use matching singular/plural grammar.
+Invitation and closed-trip wording is clearer, and all displayed status labels
+use American spelling while persisted enum values and route/API names remain
+unchanged. Saved owner-authored descriptions, captions and guidance were not
+rewritten. Only future blank-trip guidance defaults changed.
+
+Save/link messages now distinguish sending guest invitations from background
+owner notification emails. Rendered notification summaries translate older queued
+'enquiry' wording without rewriting stored outbox data or migration history.
+No schema, authentication, notification routing or availability behavior changed.
+Validation: all 167 tests, five browser suites, lint (two existing warnings),
+TypeScript, production build and whitespace checks passed. Preview-only release;
+Production remains unchanged pending its phase2 rollout.

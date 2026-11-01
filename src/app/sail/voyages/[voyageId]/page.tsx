@@ -84,7 +84,10 @@ export default async function PublicVoyagePage({
         </section>
       ) : (
         <p className="sail-notice">
-          This voyage is {voyage.status} and is not accepting enquiries.
+          {voyage.status === "cancelled"
+            ? "This trip has been canceled."
+            : "This trip has ended."}{" "}
+          We’re no longer accepting inquiries for this trip.
         </p>
       )}
     </main>

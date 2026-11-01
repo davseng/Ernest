@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { departureLabel } from "@/domain/sail";
+import { departureLabel, sailStatusLabel } from "@/domain/sail";
 import {
   availabilityLabel,
   type SailAvailability,
@@ -93,8 +93,7 @@ export function SailTripTimeline({
                     />
                   ) : null}
                   <p className="sail-kicker">
-                    {v.assetName} ·{" "}
-                    {v.status === "ready" ? "Ready to go" : v.status}
+                    {v.assetName} · {sailStatusLabel(v.status)}
                     {owner && "published" in v
                       ? ` · ${v.published ? "Public" : "Private draft"}`
                       : ""}
@@ -123,18 +122,24 @@ export function SailTripTimeline({
                   {owner && s ? (
                     <div className="sail-owner-summary">
                       <p>
-                        {s.acceptedCrew} crew · {s.acceptedPassengers}{" "}
-                        passengers confirmed on this plan
+                        {s.acceptedCrew} crew member
+                        {s.acceptedCrew === 1 ? "" : "s"} ·{" "}
+                        {s.acceptedPassengers} passenger
+                        {s.acceptedPassengers === 1 ? "" : "s"} confirmed on
+                        this plan
                       </p>
                       <p>
-                        {s.drafts} need an invitation · {s.waiting} awaiting a
-                        reply · {s.reconfirm} need to reconfirm · {s.enquiries}{" "}
-                        new enquiries
+                        {s.drafts}{" "}
+                        {s.drafts === 1 ? "person needs" : "people need"} an
+                        invitation · {s.waiting} awaiting a reply ·{" "}
+                        {s.reconfirm} {s.reconfirm === 1 ? "needs" : "need"} to
+                        reconfirm · {s.enquiries} new{" "}
+                        {s.enquiries === 1 ? "inquiry" : "inquiries"}
                       </p>
                     </div>
                   ) : null}
                   <Link href={href} className="sail-text-link">
-                    {owner ? "Manage this trip →" : "Have a look →"}
+                    {owner ? "Manage this trip →" : "Take a look →"}
                   </Link>
                 </article>
               </li>
@@ -151,13 +156,13 @@ export function SailTripTimeline({
       {owner &&
       voyages.some((v) => ["completed", "cancelled"].includes(v.status)) ? (
         <details className="sail-details">
-          <summary>Completed and cancelled trips</summary>
+          <summary>Completed and canceled trips</summary>
           {voyages
             .filter((v) => ["completed", "cancelled"].includes(v.status))
             .map((v) => (
               <p key={v.id}>
                 <Link href={`/sail/manage/${v.id}`}>{v.title}</Link> ·{" "}
-                {v.status}
+                {sailStatusLabel(v.status)}
               </p>
             ))}
         </details>

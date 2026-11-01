@@ -145,7 +145,7 @@ export async function createSailPersonLink(
       ok: true,
       invitationUrl: `${origin}/sail/invitations/${invitation.token}`,
       message:
-        "Personal link created. Copy it and send it directly to this person. No email was sent.",
+        "Personal link created. Copy it and send it directly to this person. No invitation email was sent.",
     };
   } catch (e) {
     return errorResult(e);
@@ -185,7 +185,7 @@ export async function cancelSailPerson(
     refresh(voyageId);
     return {
       ok: true,
-      message: "Invitation cancelled. Its link no longer works.",
+      message: "Invitation canceled. Its link no longer works.",
     };
   } catch (e) {
     return errorResult(e);
@@ -217,7 +217,7 @@ export async function submitSailInterest(
 ): Promise<SailResult> {
   try {
     const secret = process.env.AUTH_SECRET;
-    if (!secret) throw Error("The enquiry form is temporarily unavailable.");
+    if (!secret) throw Error("The inquiry form is temporarily unavailable.");
     const h = await headers(),
       ip = (h.get("x-forwarded-for") ?? "unavailable")
         .split(",")[0]
@@ -266,7 +266,7 @@ export async function inviteSailEnquiry(
       id: person.id,
       message: person.existing
         ? "This person is already in People. Their invitation is unchanged; you can manage it there."
-        : "Added to People with their preferred role. Email an invitation or create a personal link when you’re ready. Nothing has been sent yet.",
+        : "Added to People with their preferred role. Email an invitation or create a personal link when you’re ready. No invitation has been sent.",
     };
   } catch (e) {
     return errorResult(e);

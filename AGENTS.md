@@ -214,3 +214,9 @@ availability atomically; keep later availability edits separate from guest plan
 revisions. Preserve background notifications, but remove user-facing mail-status
 tracking. /sail/manage/notifications redirects to /sail/manage/crew. This refinement
 needs no schema beyond 031 and remains Preview-only until Production verification.
+
+Sail UI and email copy use American English (favorite, canceled, inquiries) and a
+casual friends/family tone. Persisted statuses such as cancelled and existing
+route/API identifiers are unchanged; use sailStatusLabel for human-facing labels.
+Do not rewrite existing owner-authored trip descriptions/captions/guidance during
+copy cleanup. Distinguish guest invitation sends from background owner emails.

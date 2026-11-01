@@ -288,7 +288,7 @@ test("timeline orders real windows, separates undated/closed plans, distinguishe
     };
     const html = renderToStaticMarkup(createElement(SailTripTimeline, props));
     assert.ok(html.indexOf("Earlier trip") < html.indexOf("Later trip"));
-    assert.ok(html.includes("No passenger places open"));
+    assert.ok(html.includes("No passenger spots open"));
     assert.ok(html.includes("Ask me about crew"));
     assert.equal(html.includes("awaiting a reply"), false);
     const passengers = renderToStaticMarkup(

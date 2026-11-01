@@ -36,8 +36,8 @@ export function availabilityLabel(
     : n === 0
       ? role === "crew"
         ? "Crew covered"
-        : "No passenger places open"
+        : "No passenger spots open"
       : role === "crew"
-        ? `Looking for ${n} more crew`
+        ? `Looking for ${n} more crew member${n === 1 ? "" : "s"}`
         : `Room for ${n} passenger${n === 1 ? "" : "s"}`;
 }

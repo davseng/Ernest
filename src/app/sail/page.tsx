@@ -95,7 +95,7 @@ export default async function SailHomePage() {
       <section className="sail-section sail-boat-teaser">
         <div>
           <p className="sail-kicker">Step aboard</p>
-          <h2>Come and have a look around.</h2>
+          <h2>Come and take a look around.</h2>
           <p>
             From the cockpit to the cabins: here’s the boat we’ll be spending
             time aboard.
@@ -106,12 +106,12 @@ export default async function SailHomePage() {
         </div>
       </section>
       <section id="joining" className="sail-section">
-        <p className="sail-kicker">Fancy coming along?</p>
+        <p className="sail-kicker">Want to come along?</p>
         <h2>A bit of sailing. A bit of company.</h2>
         <div className="sail-cards">
           <article className="sail-card">
             <span className="sail-number">01 / Crew</span>
-            <h3>Fancy helping with the sailing?</h3>
+            <h3>Want to help with the sailing?</h3>
             <p>
               Tell me what you’ve done before and what you’d like to try. We’ll
               talk through how you’d like to take part.
@@ -124,8 +124,8 @@ export default async function SailHomePage() {
             <span className="sail-number">02 / Passenger</span>
             <h3>Coming along for the ride?</h3>
             <p>
-              Have a look at life aboard and bring your questions. We’ll work
-              through the practical bits together.
+              Take a look at life aboard and bring your questions. We’ll work
+              out the details together.
               <Link className="sail-text-link" href="/sail/join#passenger">
                 Joining as a passenger →
               </Link>
@@ -135,7 +135,7 @@ export default async function SailHomePage() {
         <p className="sail-footnote">
           Not sure where to start?{" "}
           <Link href="/sail/join">Here’s how joining works.</Link> Already
-          invited? Use the personal link in your email.
+          invited? Use your personal invitation link.
         </p>
       </section>
     </main>

@@ -20,7 +20,9 @@ export function SailInvitationContent({
       </p>
       <h1>
         {closed
-          ? `This trip is ${v.status}.`
+          ? v.status === "cancelled"
+            ? "This trip has been canceled."
+            : "This trip has ended."
           : changed
             ? `Let’s check the updated plan, ${p.fullName}.`
             : p.status === "accepted"
@@ -58,7 +60,7 @@ export function SailInvitationContent({
           {guest.changes?.length ? (
             <ul>
               {guest.changes.map((label) => (
-                <li key={label}>{label} has been updated.</li>
+                <li key={label}>{label}</li>
               ))}
             </ul>
           ) : (
@@ -73,7 +75,7 @@ export function SailInvitationContent({
         <SailVoyageOverview voyage={v} headingLevel={2} />
       </section>
       <section className="sail-section">
-        <h2>What to expect as {p.role === "crew" ? "crew" : "a passenger"}</h2>
+        <h2>What to expect as {p.role === "crew" ? "a crew member" : "a passenger"}</h2>
         <p className="sail-prose">
           {guest.expectations ||
             "We’ll talk through preparations, responsibilities and what to bring before the trip."}

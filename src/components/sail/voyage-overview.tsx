@@ -1,4 +1,4 @@
-import { departureLabel } from "@/domain/sail";
+import { departureLabel, sailStatusLabel } from "@/domain/sail";
 import type { PublicVoyage } from "@/data/sail-store";
 export function SailVoyageOverview({
   voyage: v,
@@ -11,9 +11,7 @@ export function SailVoyageOverview({
     <>
       <div className="sail-kicker">
         {v.assetName}{" "}
-        <span className="sail-pill">
-          {v.status === "ready" ? "Ready to go" : v.status}
-        </span>
+        <span className="sail-pill">{sailStatusLabel(v.status)}</span>
       </div>
       {headingLevel === 1 ? <h1>{v.title}</h1> : <h2>{v.title}</h2>}
       <p className="sail-route">
