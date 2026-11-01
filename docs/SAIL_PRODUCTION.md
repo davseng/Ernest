@@ -138,3 +138,32 @@ migration-byte preservation, database/baseline guards, partial-schema refusal,
 existing vessel/maintenance row preservation, empty Sail data, verification and
 replay refusal. The full suite passed all 152 tests; lint (two existing warnings),
 TypeScript, build and diff checks passed. No live production SQL was executed.
+
+## Production schema verified and code release
+
+The owner supplied successful production verification after re-running the entire
+transaction through COMMIT: migrations 027, 028 and 029 share applied_at
+2026-11-01 02:21:40.705546+00, all six relations exist, all six row counts are zero,
+and supplied columns/types/defaults match the migrations. Earlier apparent partial
+tables disappeared after ROLLBACK; no partial repair or migration replay is needed.
+The optional read-only diagnostic is retained as 04-diagnose-partial.sql.
+
+Release baseline: production main 6710d1299a208c8905927cdacf8baf59662371f7;
+source application code 6dcca147f65a5912fd558009ff3cc960d5838b62, with only release
+notes/diagnostic SQL added afterward. Current main is an ancestor, and review
+against it confines app changes to Sail, the menu entry, host routing and the
+bounded website-upload read helper. Prior required checks passed: 152 tests,
+four browser suites, lint/typecheck/build/diff. No runtime change was introduced
+after those checks. A local recovery tag records the prior production SHA.
+
+After the main push, wait for the Vercel **Production** deployment to be Ready;
+Git push success is not deployment/acceptance success. Use
+https://ernest.sailfarbetter.com/sail/manage to populate production content, and
+https://ernest.sailfarbetter.com/sail to review before DNS changes. Existing
+Ernest sign-in remains the authentication origin. Keep existing Production
+Neon/R2/auth bindings; never promote an isolated Preview deployment. Set
+Production SAIL_BASE_URL to https://sailfarbetter.com; keep invitation delivery
+disabled until final-host HTTPS works. Reupload and explicitly publish approved
+website photos, add real plans and a dated position report. No Preview rows or
+storage objects were copied. DNS cutover remains pending until content and the
+Production deployment are ready.
