@@ -15,6 +15,12 @@ try {
   await db.exec(
     await readFile("migrations/030_sail_optional_email.sql", "utf8"),
   );
+  for (const name of [
+    "028_sail_photos.sql",
+    "029_sail_position.sql",
+    "031_sail_timeline_notifications.sql",
+  ])
+    await db.exec(await readFile("migrations/" + name, "utf8"));
   const actions = await loadTypeScript("src/app/sail/actions.ts", {
     "@/auth": { auth: async () => ({ user: { id: OWNER } }) },
     "@/data/sail": { sail: () => store },

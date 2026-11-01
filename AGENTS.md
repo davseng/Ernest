@@ -206,3 +206,11 @@ never drain another owner's queue from a manual action. SMTP acceptance is not
 inbox receipt; uncertain sends are never retried automatically. Preserve guest
 success even if SMTP fails. Run test:sail-phase2-browser with the four retained
 browser suites. See docs/SAIL_PHASE2.md for enablement and exact rollout limits.
+
+After Preview review, the owner clarified that initial crew/passenger spaces must
+be entered while creating a trip, and the owner overview is a Crew & spaces
+planning table rather than an email-delivery dashboard. Save new trip plus initial
+availability atomically; keep later availability edits separate from guest plan
+revisions. Preserve background notifications, but remove user-facing mail-status
+tracking. /sail/manage/notifications redirects to /sail/manage/crew. This refinement
+needs no schema beyond 031 and remains Preview-only until Production verification.

@@ -72,7 +72,18 @@ try {
       published: true,
     }),
   );
-  let dispatches = 0;
+  const pid = await store.addPerson(early, OWNER, {
+    fullName: "Alex Crew",
+    email: "alex@example.invalid",
+    role: "crew",
+  });
+  const invite = await store.issue(early, OWNER, pid);
+  await store.respond(invite.token, "accepted", 1, 2);
+  await store.addPerson(early, OWNER, {
+    fullName: "Sam Passenger",
+    email: "sam@example.invalid",
+    role: "passenger",
+  });
   const stubs = {
     "@/data/sail": { sail: () => store },
     "@/data/sail-timeline": { sailTimeline: () => timeline },
@@ -91,47 +102,41 @@ try {
         createElement("a", { href, ...props }, children),
     },
   };
+  stubs["../context"] = stubs["./context"];
+  const CrewPage = await loadTypeScript(
+    "src/app/sail/manage/crew/page.tsx",
+    stubs,
+  );
+  const voyageActions = await loadTypeScript("src/app/sail/actions.ts", {
+    "@/auth": { auth: async () => ({ user: { id: OWNER } }) },
+    "@/data/sail": { sail: () => store },
+    "@/data/sail-notifications": { scheduleSailNotifications() {} },
+    "next/cache": { revalidatePath() {} },
+  });
   const Public = await loadTypeScript("src/app/sail/trips/page.tsx", stubs),
     OwnerPage = await loadTypeScript("src/app/sail/manage/page.tsx", stubs);
   const actions = await loadTypeScript("src/app/sail/timeline-actions.ts", {
     "@/auth": { auth: async () => ({ user: { id: OWNER } }) },
     "@/data/sail-timeline": { sailTimeline: () => timeline },
     "next/cache": { revalidatePath() {} },
-    "@/data/sail-notifications": {
-      sailNotifications: () => notifications,
-      scheduleSailNotifications() {},
-      dispatchSailNotifications: async (owner) => {
-        dispatches++;
-        const events = await notifications.claim(
-          "captain@example.invalid",
-          owner,
-        );
-        await notifications.complete(
-          events.map((e) => e.id),
-          true,
-        );
-        return {
-          ok: true,
-          message: "Synthetic updates accepted for delivery.",
-        };
-      },
-    },
+    "@/data/sail-notifications": { scheduleSailNotifications() {} },
   });
   const { ids, runtime } = await browserBundle(
     [
       "react",
       "react-dom/client",
       "@/components/sail/availability-form",
-      "@/components/sail/notification-controls",
+      "@/components/sail/voyage-form",
     ],
     {
-      "next/navigation": `exports.useRouter=()=>({refresh(){}});`,
-      "@/app/sail/timeline-actions": `exports.saveSailAvailability=(...args)=>window.rpc('saveSailAvailability',args);exports.sendSailUpdates=(...args)=>window.rpc('sendSailUpdates',args);`,
+      "next/navigation": `exports.useRouter=()=>({refresh(){},push(){location.href='/owner';}});`,
+      "@/app/sail/actions": `exports.saveSailVoyage=(...args)=>window.rpc('saveSailVoyage',args);`,
+      "@/app/sail/timeline-actions": `exports.saveSailAvailability=(...args)=>window.rpc('saveSailAvailability',args);`,
     },
   );
   const script =
     runtime +
-    `window.rpc=async(action,args)=>{const r=await fetch('/rpc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,args})});return r.json();};const React=__require(${JSON.stringify(ids.react)}),root=__require(${JSON.stringify(ids["react-dom/client"])});const el=document.getElementById('editor');if(el)root.createRoot(el).render(React.createElement(__require(${JSON.stringify(ids["@/components/sail/availability-form"])}).SailAvailabilityForm,JSON.parse(el.dataset.props)));const n=document.getElementById('notifications');if(n)root.createRoot(n).render(React.createElement(__require(${JSON.stringify(ids["@/components/sail/notification-controls"])}).SailNotificationControls));`;
+    `window.rpc=async(action,args)=>{const r=await fetch('/rpc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,args})});return r.json();};const React=__require(${JSON.stringify(ids.react)}),root=__require(${JSON.stringify(ids["react-dom/client"])});const el=document.getElementById('editor');if(el)root.createRoot(el).render(React.createElement(__require(${JSON.stringify(ids["@/components/sail/availability-form"])}).SailAvailabilityForm,JSON.parse(el.dataset.props)));const n=document.getElementById('new-trip');if(n)root.createRoot(n).render(React.createElement(__require(${JSON.stringify(ids["@/components/sail/voyage-form"])}).SailVoyageForm,{assets:[{id:'vessel',name:'Test vessel'}]}));`;
   const css = await readFile("src/app/sail/sail.css", "utf8");
   server = createServer(async (req, res) => {
     try {
@@ -144,7 +149,9 @@ try {
         let body = "";
         for await (const c of req) body += c;
         const { action, args } = JSON.parse(body);
-        const result = await actions[action](...args);
+        const result = await (actions[action] ?? voyageActions[action])(
+          ...args,
+        );
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(result));
         return;
@@ -155,14 +162,17 @@ try {
         const initial = (await timeline.ownerAvailability(OWNER)).find(
           (a) => a.voyageId === early,
         );
-        content =
-          renderToStaticMarkup(
-            createElement("div", {
-              id: "editor",
-              "data-props": JSON.stringify({ voyageId: early, initial }),
-            }),
-          ) + `<div id="notifications"></div>`;
-      } else
+        content = renderToStaticMarkup(
+          createElement("div", {
+            id: "editor",
+            "data-props": JSON.stringify({ voyageId: early, initial }),
+          }),
+        );
+      } else if (url.pathname === "/owner/new")
+        content = '<div id="new-trip"></div>';
+      else if (url.pathname === "/owner/crew")
+        content = renderToStaticMarkup(await CrewPage.default());
+      else
         content = renderToStaticMarkup(
           url.pathname === "/owner"
             ? await OwnerPage.default()
@@ -258,19 +268,37 @@ try {
       .passengerPlaces,
     null,
   );
-  await page
-    .getByRole("button", { name: "Send pending updates", exact: true })
-    .click();
-  await page
-    .getByRole("status")
-    .filter({ hasText: "Synthetic updates accepted" })
-    .waitFor();
-  assert.equal(dispatches, 1);
   assert.ok(
-    (await notifications.status(OWNER)).some((r) => r.state === "sent"),
+    (await notifications.status(OWNER)).some((r) => r.state === "pending"),
   );
+  await page.goto(origin + "/owner/new");
+  await page
+    .getByLabel("Voyage name", { exact: true })
+    .fill("Created with spaces");
+  await page.getByLabel("More crew needed").fill("2");
+  await page.getByLabel("Passenger places open").fill("3");
+  await page.getByLabel("A note about space").fill("Come along");
+  await page.getByRole("button", { name: "Save voyage", exact: true }).click();
+  await page.waitForURL("**/owner");
+  const created = (await store.ownerList(OWNER)).find(
+    (v) => v.title === "Created with spaces",
+  );
+  assert.ok(created);
+  const initialSpaces = (await timeline.ownerAvailability(OWNER)).find(
+    (a) => a.voyageId === created.id,
+  );
+  assert.equal(initialSpaces.crewNeeded, 2);
+  assert.equal(initialSpaces.passengerPlaces, 3);
+  await page.goto(origin + "/owner/crew");
+  await page
+    .getByRole("heading", { name: "Crew & spaces", exact: true })
+    .waitFor();
+  await page.getByText("Alex Crew · crew", { exact: true }).waitFor();
+  await page.getByText("Sam Passenger · passenger", { exact: true }).waitFor();
+  await page.getByText("Need an invitation", { exact: true }).waitFor();
+  await page.screenshot({ path: "/tmp/sail-crew-table.png", fullPage: true });
   await page.setViewportSize({ width: 375, height: 900 });
-  await page.goto(origin + "/public");
+  await page.goto(origin + "/owner/crew");
   assert.equal(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -283,7 +311,7 @@ try {
   });
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: actual public/owner timeline pages, role filters, unknown/zero availability, draft and closed-trip privacy, owner availability form/actions with unchanged guest plan, notification queue controls and mobile layout. Synthetic PostgreSQL/session/mail only.",
+    "PASS: actual public/owner timeline pages, role filters, unknown/zero availability, draft and closed-trip privacy, owner availability form/actions with unchanged guest plan, new-trip initial spaces, crew/passenger roster table and mobile layout. Synthetic PostgreSQL/session/mail only.",
   );
 } finally {
   await browser?.close();

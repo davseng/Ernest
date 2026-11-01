@@ -38,6 +38,7 @@ export async function saveSailVoyage(
   id: string | null,
   input: unknown,
   expectedRevision?: number,
+  initialAvailability?: unknown,
 ): Promise<SailResult> {
   try {
     const saved = await sail().save(
@@ -46,6 +47,7 @@ export async function saveSailVoyage(
       id,
       input,
       expectedRevision,
+      initialAvailability,
     );
     refresh(saved);
     return { ok: true, id: saved, message: "Voyage saved." };

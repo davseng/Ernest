@@ -22,6 +22,18 @@ export function createSailTimelineStore(sql: Sql) {
         SailAvailability[]
       >`SELECT av.voyage_id AS "voyageId",av.crew_needed AS "crewNeeded",av.passenger_places AS "passengerPlaces",av.note,av.revision FROM sail_availability av JOIN sail_voyages v ON v.id=av.voyage_id AND v.owner_id=av.owner_id JOIN assets a ON a.id=v.asset_id AND a.owner_id=v.owner_id WHERE v.owner_id=${owner}`;
     },
+    async roster(owner: string) {
+      return sql<
+        {
+          voyageId: string;
+          fullName: string;
+          role: "crew" | "passenger";
+          status: string;
+          acceptedRevision: number | null;
+          invited: boolean;
+        }[]
+      >`SELECT p.voyage_id AS "voyageId",p.full_name AS "fullName",p.role,p.status,p.accepted_revision AS "acceptedRevision",p.token_hash IS NOT NULL AS invited FROM sail_participants p JOIN sail_voyages v ON v.id=p.voyage_id JOIN assets a ON a.id=v.asset_id AND a.owner_id=v.owner_id WHERE v.owner_id=${owner} ORDER BY p.created_at,p.id`;
+    },
     async summary(owner: string) {
       return sql<
         {

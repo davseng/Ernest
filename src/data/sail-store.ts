@@ -1,4 +1,5 @@
 import type { Sql } from "postgres";
+import { parseSailAvailability } from "../domain/sail-timeline";
 import { sailPlanChanges } from "../domain/sail-journey";
 import { createHash, randomBytes } from "node:crypto";
 import {
@@ -195,8 +196,15 @@ export function createSailStore(sql: Sql) {
       id: string | null,
       input: unknown,
       expectedRevision?: number,
+      initialAvailability?: unknown,
     ) {
       const v = parseVoyage(input);
+      if (id && initialAvailability != null)
+        throw Error("Edit remaining spaces using the availability form.");
+      const places =
+        initialAvailability == null
+          ? null
+          : parseSailAvailability(initialAvailability);
       return sql.begin(async (raw) => {
         const tx = raw as unknown as Sql;
         if (
@@ -221,6 +229,8 @@ export function createSailStore(sql: Sql) {
               { id: string }[]
             >`INSERT INTO sail_voyages(asset_id,owner_id,title,summary,departure_port,arrival_port,departure_from,departure_to,arrival_estimate,timing_note,status,published,crew_expectations,passenger_expectations,boarding_notes) VALUES(${assetId},${ownerId},${v.title},${v.summary},${v.departurePort},${v.arrivalPort},${v.departureFrom},${v.departureTo},${v.arrivalEstimate},${v.timingNote},${v.status},${v.published},${v.crewExpectations},${v.passengerExpectations},${v.boardingNotes}) RETURNING id`;
         await tx`INSERT INTO sail_changes(voyage_id,revision,before_record,after_record) VALUES(${row.id},${next},${before ? tx.json(before) : null},${tx.json(v)})`;
+        if (places)
+          await tx`INSERT INTO sail_availability(voyage_id,owner_id,crew_needed,passenger_places,note) VALUES(${row.id},${ownerId},${places.crewNeeded},${places.passengerPlaces},${places.note})`;
         return row.id;
       });
     },

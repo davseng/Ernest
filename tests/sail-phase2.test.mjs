@@ -410,3 +410,84 @@ test("guarded phase2 rollout embeds unchanged SQL, preserves baseline content an
     await db.close();
   }
 });
+
+test("new trip and initial remaining spaces commit together; invalid spaces or a failing write leave no partial trip", async () => {
+  const f = await fixture();
+  try {
+    const id = await f.store.save(
+      OWNER,
+      "vessel",
+      null,
+      voyage({ title: "Trip with spaces" }),
+      undefined,
+      { crewNeeded: 2, passengerPlaces: 0, note: "Crew wanted" },
+    );
+    const a = (await f.timeline.ownerAvailability(OWNER)).find(
+      (a) => a.voyageId === id,
+    );
+    assert.equal(a.crewNeeded, 2);
+    assert.equal(a.passengerPlaces, 0);
+    assert.equal((await f.store.ownerVoyage(id, OWNER)).revision, 1);
+    const unchanged = await f.store.ownerVoyage(id, OWNER);
+    assert.equal(
+      await f.store.save(OWNER, "vessel", id, unchanged, 1, null),
+      id,
+    );
+    assert.equal(
+      (await f.timeline.ownerAvailability(OWNER)).find(
+        (row) => row.voyageId === id,
+      ).crewNeeded,
+      2,
+    );
+    const before = (await f.store.ownerList(OWNER)).length;
+    await assert.rejects(
+      () =>
+        f.store.save(OWNER, "vessel", null, voyage(), undefined, {
+          crewNeeded: -1,
+        }),
+      /whole number/,
+    );
+    assert.equal((await f.store.ownerList(OWNER)).length, before);
+    await f.db.exec(
+      "ALTER TABLE sail_availability ADD CONSTRAINT synthetic_atomicity CHECK(note<>'FAIL')",
+    );
+    await assert.rejects(() =>
+      f.store.save(
+        OWNER,
+        "vessel",
+        null,
+        voyage({ title: "Should roll back" }),
+        undefined,
+        { note: "FAIL" },
+      ),
+    );
+    assert.equal((await f.store.ownerList(OWNER)).length, before);
+    await assert.rejects(
+      () => f.store.save(OWNER, "vessel", id, voyage(), 1, { crewNeeded: 3 }),
+      /availability form/,
+    );
+  } finally {
+    await f.db.close();
+  }
+});
+test("planning roster projects names and response state for this owner only, never emails or invitation tokens", async () => {
+  const f = await fixture();
+  try {
+    const id = await f.store.save(OWNER, "vessel", null, voyage()),
+      other = await f.store.save(OTHER, "other", null, voyage());
+    await f.store.addPerson(id, OWNER, person());
+    await f.store.addPerson(
+      other,
+      OTHER,
+      person({ fullName: "Other owner person" }),
+    );
+    const rows = await f.timeline.roster(OWNER);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].invited, false);
+    assert.equal(JSON.stringify(rows).includes("Other owner person"), false);
+    assert.equal("email" in rows[0], false);
+    assert.equal("token_hash" in rows[0], false);
+  } finally {
+    await f.db.close();
+  }
+});

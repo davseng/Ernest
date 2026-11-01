@@ -1064,3 +1064,48 @@
     margin: 0;
   }
 }
+
+.sail-crew-scroll {
+  overflow-x: auto;
+  margin-top: 30px;
+  border: 1px solid var(--sail-line);
+  border-radius: 6px;
+}
+.sail-crew-table {
+  width: 100%;
+  min-width: 1000px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.sail-crew-table caption {
+  text-align: left;
+  padding: 16px;
+  color: var(--sail-muted);
+}
+.sail-crew-table th,
+.sail-crew-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 20px 16px;
+  border-top: 1px solid var(--sail-line);
+  min-width: 125px;
+}
+.sail-crew-table thead {
+  background: #edf1e7;
+}
+.sail-crew-table tbody th {
+  min-width: 220px;
+  max-width: 300px;
+  font-weight: normal;
+}
+.sail-crew-table tbody th > a {
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+}
+.sail-crew-table ul {
+  margin: 10px 0;
+  padding-left: 16px;
+}
+.sail-crew-table p {
+  margin: 10px 0;
+}

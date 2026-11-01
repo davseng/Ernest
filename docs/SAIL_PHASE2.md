@@ -44,19 +44,21 @@ URLs/tokens or enquiry/private-guidance text. Existing Brevo/SMTP credentials an
 TLS/file/URL protections are reused. Guest-facing success is independent of SMTP.
 There are no automatic emails to enquirers or guests beyond explicit invitations.
 
-Owner queue: `/sail/manage/notifications`. It shows pending, sending/uncertain,
-accepted-for-delivery and failed counts for the authenticated owner only. Pending
-updates can be sent manually; failed updates require explicit retry confirmation.
-SMTP acceptance is not proof of inbox receipt. A crash after SMTP acceptance but
-before acknowledgement persistence remains uncertain and is NOT automatically
-resent. Exact-once delivery across SMTP is not claimed. No-op/retry intent
-protection plus non-retry of uncertain sends avoids silent duplicate mail.
+The queue is background operational data, not an owner planning dashboard.
+The Crew & spaces page is the owner-facing overview; the previous
+/sail/manage/notifications address redirects there. SMTP acceptance is not proof
+of inbox receipt. A crash after SMTP acceptance but before receipt persistence
+remains uncertain and is NOT automatically resent. Exact-once delivery across
+SMTP is not claimed. Failed/uncertain rows are retained for operator review
+against provider/inbox evidence before any explicit retry; planning screens do
+not ask the owner to monitor email delivery.
 
-No cron is introduced: after-request processing is best effort, and a later saved
-change or the owner’s Send pending updates action drains remaining pending work.
-A deployment kill/time limit cannot erase committed notification intent. Old
-sending/uncertain records should be reviewed against provider/inbox evidence
-before any operator-authorized reset; they are not retried automatically.
+No cron is introduced: after-request processing is best effort. Subsequent saved
+changes drain remaining pending work, and a deployment kill/time limit cannot
+erase committed notification intent. The normal per-action drain is bounded to
+40 updates. No-op/retry intent protection plus non-retry of uncertain sends avoids
+silent duplicate mail. The application never retries uncertain deliveries without
+operator review.
 
 ## Recipient and enablement
 
@@ -75,8 +77,8 @@ By default the configured recipient must match the owning account's users.email.
 Other owners' queued changes are not sent to this recipient. If the intended
 owner signs in using a different address, set `SAIL_NOTIFICATION_OWNER_EMAIL` to
 that actual owner's sign-in email; destination remains the configured recipient.
-The owner page warns on account mismatch. The override must not be set to another
-person's account. Manual sends and failed resets remain session-owner scoped.
+The override must not be set to another person’s account. Queue operations remain
+owner-scoped; private roster data is never included in public timelines.
 
 ## Additive rollout
 
@@ -94,7 +96,8 @@ After verification, release the tested commit to preview and main. Never promote
 an isolated Preview deployment with its test bindings. Wait for Vercel Ready,
 confirm the homepage/trip landing and owner timeline, enter real remaining spaces,
 and verify one owner-controlled enquiry and reply reaches the intended inbox.
-Check the queue on disabled/failed delivery rather than assuming a save sent mail.
+A saved change is not proof of inbox delivery; verify one live owner-controlled
+notification after enabling the environment.
 No DNS or new email/SMS provider is needed.
 
 ## Validation scope
@@ -127,3 +130,37 @@ Production remains on 97e57c2; its 031 migration is not yet verified. This relea
 note changes no application code and does not rerun migrations or send email.
 Wait for Vercel Ready, then inspect /sail/trips and /sail/manage. Configure Preview
 notifications and allowlist separately before exercising live notification sends.
+
+## Owner planning refinements after Preview review
+
+The owner requested remaining spaces in the creation form and clarified that the
+owner page should plan people/places, not track mail delivery. The new-trip form
+now accepts crew needed, passenger places and a note; the existing voyage save
+transaction inserts the initial availability record with the trip and its first
+audit entry. Validation or a failing availability write rolls everything back.
+Existing trip editing still uses the separate availability form and its revision,
+so edits cannot accidentally change accepted guest itinerary confirmations.
+
+`/sail/manage/crew` is the owner-only Crew & spaces table. It shows active trips,
+dates/routes, named crew/passengers who accepted the current plan, explicit
+remaining places, waiting replies, invitation drafts and people needing to
+reconfirm. Declines can be expanded. Completed/cancelled trips stay in timeline
+history. Roster reads project names/roles/response states, not email addresses or
+raw token/hash values; all joins remain constrained to the authenticated owner.
+The mobile table scrolls inside its own labelled keyboard-accessible region.
+
+The owner navigation now says Crew & spaces. The old /manage/notifications URL
+redirects to that planning page; its email-status component and manual-send action
+were removed. Notifications still queue and send in the background. Queue states
+remain internal operational data, not an owner planning task. Earlier instructions
+above describing that delivery-status screen apply to the initial Preview only;
+they are superseded by this refinement. No additional schema or environment
+changes are required beyond the already prepared phase2 migration/configuration.
+
+Refinement validation: all 167 unit/integration tests and five browser suites
+passed; lint (two existing warnings), TypeScript, build and whitespace checks
+passed. Reviewed the synthetic Crew & spaces table screenshot. New coverage tests
+initial-space atomicity and roster projection, and the actual browser creates a
+trip with spaces and verifies the owner table on desktop/mobile. No live data or
+notification sends were used. This refinement is deployed only to Preview;
+Production remains gated on its migration 031 verification.

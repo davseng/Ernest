@@ -24,6 +24,9 @@ export function SailVoyageForm({
     [v, setV] = useState(initial ?? blankVoyage()),
     [asset, setAsset] = useState(assetId ?? assets[0]?.id ?? ""),
     [window, setWindow] = useState(!!initial?.departureTo),
+    [crewNeeded, setCrewNeeded] = useState(""),
+    [passengerPlaces, setPassengerPlaces] = useState(""),
+    [availabilityNote, setAvailabilityNote] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [message, setMessage] = useState("");
@@ -69,6 +72,9 @@ export function SailVoyageForm({
             id ?? null,
             { ...v, departureTo: window ? v.departureTo : null },
             revision,
+            id
+              ? undefined
+              : { crewNeeded, passengerPlaces, note: availabilityNote },
           );
           if (!result.ok) setError(result.error);
           else {
@@ -165,6 +171,51 @@ export function SailVoyageForm({
             Dates can stay open. Share weather or readiness changes here.
           </small>
         </section>
+        {!id ? (
+          <section className="sail-inset">
+            <h2>Who can join?</h2>
+            <p>
+              Enter how many more people you’re looking for. Blank means “Ask
+              me”; 0 means no places open.
+            </p>
+            <div className="sail-fields">
+              <label>
+                More crew needed
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={crewNeeded}
+                  onChange={(e) => setCrewNeeded(e.target.value)}
+                />
+              </label>
+              <label>
+                Passenger places open
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={passengerPlaces}
+                  onChange={(e) => setPassengerPlaces(e.target.value)}
+                />
+              </label>
+            </div>
+            <label>
+              A note about space
+              <textarea
+                maxLength={400}
+                value={availabilityNote}
+                onChange={(e) => setAvailabilityNote(e.target.value)}
+              />
+            </label>
+            <p className="sail-footnote">
+              These are remaining places, not total capacity. You can update
+              them later without changing guests’ responses.
+            </p>
+          </section>
+        ) : null}
         <label>
           Status
           <select
