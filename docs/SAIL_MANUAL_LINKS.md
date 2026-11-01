@@ -44,3 +44,11 @@ lint passed with two existing warnings; TypeScript, final production build and
 diff checks passed. No live SQL, emails, links or deployments were created for
 this change. Code is held locally until migration 030 is verified in Preview and
 Production; existing public deployments remain on 4640771.
+
+The owner subsequently verified migration 030 in both branches: Preview applied
+2026-11-01 03:02:14.544661+00 and Production applied
+2026-11-01 03:05:44.746551+00. Both reported neondb/public and email text with
+is_nullable YES. This satisfies the schema release prerequisite. Application
+commit fa54c4d is released to preview and main with this verification note;
+no application changes followed its passing checks. Wait for Vercel Ready before
+live acceptance. No SMS configuration or automatic message sending is introduced.
