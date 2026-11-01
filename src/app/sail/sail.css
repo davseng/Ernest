@@ -949,3 +949,28 @@
   width: 100%;
   min-width: 0;
 }
+
+.sail-receipt {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) minmax(0, 3fr);
+  gap: 10px 20px;
+}
+.sail-receipt dt {
+  color: var(--sail-muted);
+}
+.sail-receipt dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+#your-response {
+  scroll-margin-top: 30px;
+}
+@media (max-width: 540px) {
+  .sail-receipt {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+  .sail-receipt dd {
+    margin-bottom: 12px;
+  }
+}

@@ -38,10 +38,10 @@ export default async function PublicVoyagePage({
       ) : null}
       {!["completed", "cancelled"].includes(voyage.status) ? (
         <section className="sail-section" id="enquiry">
-          <h2>Let’s talk about this trip.</h2>
+          <h2>Interested in coming?</h2>
           <p>
-            Let me know what you’re thinking about, and we’ll work out the
-            details together.
+            Send me a note and we’ll work out whether this trip fits. This is a
+            conversation starter, not a reservation. No sign-in needed.
           </p>
           <SailInterestForm
             key={preferredRole}

@@ -1,4 +1,5 @@
 import type { Sql } from "postgres";
+import { sailPlanChanges } from "../domain/sail-journey";
 import { createHash, randomBytes } from "node:crypto";
 import {
   parseVoyage,
@@ -49,6 +50,7 @@ export type GuestInvitation = {
   voyage: PublicVoyage;
   expectations: string;
   boardingNotes: string;
+  changes: string[];
 };
 const digest = (token: string) =>
   createHash("sha256").update(token).digest("hex");
@@ -119,7 +121,25 @@ export function createSailStore(sql: Sql) {
       boardingNotes,
       ...voyage
     } = row;
+    let changes: string[] = [];
+    if (
+      participantStatus === "accepted" &&
+      acceptedRevision != null &&
+      acceptedRevision !== voyage.revision
+    ) {
+      const [snapshot] = await conn<
+        { after_record: unknown }[]
+      >`SELECT after_record FROM sail_changes WHERE voyage_id=${voyage.id} AND revision=${acceptedRevision}`;
+      changes = sailPlanChanges(
+        snapshot?.after_record,
+        voyage,
+        role,
+        expectations,
+        boardingNotes,
+      );
+    }
     return {
+      changes,
       participant: {
         id: participantId,
         fullName,
@@ -400,6 +420,31 @@ export function createSailStore(sql: Sql) {
           reviewed: boolean;
         }[]
       >`SELECT id,full_name,email,role,message,reviewed FROM sail_interest WHERE voyage_id=${id} ORDER BY created_at DESC`;
+    },
+    async inviteEnquiry(id: string, ownerId: string, enquiryId: string) {
+      return sql.begin(async (raw) => {
+        const tx = raw as unknown as Sql;
+        const voyage = await ownerVoyage(id, ownerId, tx, true);
+        if (!voyage) throw Error("Voyage not found.");
+        if (["completed", "cancelled"].includes(voyage.status))
+          throw Error("This trip is closed to invitations.");
+        const [enquiry] = await tx<
+          { full_name: string; email: string; role: ParticipationRole }[]
+        >`SELECT full_name,email,role FROM sail_interest WHERE id=${enquiryId} AND voyage_id=${id} FOR UPDATE`;
+        if (!enquiry) throw Error("Enquiry not found.");
+        const [existing] = await tx<
+          { id: string }[]
+        >`SELECT id FROM sail_participants WHERE voyage_id=${id} AND email=${enquiry.email}`;
+        let participantId = existing?.id;
+        if (!participantId) {
+          const [p] = await tx<
+            { id: string }[]
+          >`INSERT INTO sail_participants(voyage_id,full_name,email,role) VALUES(${id},${enquiry.full_name},${enquiry.email},${enquiry.role}) RETURNING id`;
+          participantId = p.id;
+        }
+        await tx`UPDATE sail_interest SET reviewed=true WHERE id=${enquiryId} AND voyage_id=${id}`;
+        return { id: participantId, existing: !!existing };
+      });
     },
     async reviewEnquiry(id: string, ownerId: string, enquiryId: string) {
       if (!(await ownerVoyage(id, ownerId))) throw Error("Voyage not found.");

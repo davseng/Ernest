@@ -1,6 +1,12 @@
 import { departureLabel } from "@/domain/sail";
 import type { PublicVoyage } from "@/data/sail-store";
-export function SailVoyageOverview({ voyage: v }: { voyage: PublicVoyage }) {
+export function SailVoyageOverview({
+  voyage: v,
+  headingLevel = 1,
+}: {
+  voyage: PublicVoyage;
+  headingLevel?: 1 | 2;
+}) {
   return (
     <>
       <div className="sail-kicker">
@@ -9,7 +15,7 @@ export function SailVoyageOverview({ voyage: v }: { voyage: PublicVoyage }) {
           {v.status === "ready" ? "Ready to go" : v.status}
         </span>
       </div>
-      <h1>{v.title}</h1>
+      {headingLevel === 1 ? <h1>{v.title}</h1> : <h2>{v.title}</h2>}
       <p className="sail-route">
         {v.departurePort || "Departure to be arranged"}{" "}
         <span aria-label="to">→</span>{" "}

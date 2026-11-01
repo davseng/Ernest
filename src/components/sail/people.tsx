@@ -8,6 +8,7 @@ import {
   createSailPersonLink,
   cancelSailPerson,
   reviewSailEnquiry,
+  inviteSailEnquiry,
   type SailResult,
 } from "@/app/sail/actions";
 import type { Participant } from "@/data/sail-store";
@@ -31,12 +32,14 @@ export function SailPeople({
 }) {
   const router = useRouter(),
     [busy, setBusy] = useState(false),
+    [preparedPersonId, setPreparedPersonId] = useState<string | null>(null),
     [message, setMessage] = useState(""),
     [error, setError] = useState(""),
     [link, setLink] = useState<{ id: string; url: string } | null>(null);
   async function run(work: () => Promise<SailResult>) {
     if (busy) return;
     setBusy(true);
+    setPreparedPersonId(null);
     setLink(null);
     setMessage("");
     setError("");
@@ -44,6 +47,7 @@ export function SailPeople({
       const r = await work();
       if (r.ok) {
         setMessage(r.message);
+        if (r.id) setPreparedPersonId(r.id);
         router.refresh();
       } else setError(r.error);
       return r;
@@ -56,6 +60,10 @@ export function SailPeople({
   return (
     <section className="sail-section">
       <h2>People</h2>
+      <p>
+        Adding a person doesn’t send anything. When you’re ready, email their
+        invitation or create a link to share yourself.
+      </p>
       <form
         className="sail-form"
         aria-label="Add a person"
@@ -99,7 +107,7 @@ export function SailPeople({
       {people.length ? (
         <ul className="sail-people">
           {people.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} id={`sail-person-${p.id}`} tabIndex={-1}>
               <div>
                 <strong>{p.fullName}</strong>
                 <span>
@@ -257,6 +265,9 @@ export function SailPeople({
       )}
       {error ? <p role="alert">{error}</p> : null}
       {message ? <p role="status">{message}</p> : null}
+      {preparedPersonId ? (
+        <a href={`#sail-person-${preparedPersonId}`}>View in People ↑</a>
+      ) : null}
       <details className="sail-details">
         <summary>
           Enquiries ({enquiries.filter((e) => !e.reviewed).length} new)
@@ -269,6 +280,18 @@ export function SailPeople({
               </h3>
               <p>{e.email}</p>
               <p className="sail-prose">{e.message}</p>
+              <button
+                disabled={busy}
+                onClick={() =>
+                  void run(() => inviteSailEnquiry(voyageId, e.id))
+                }
+              >
+                Invite this person
+              </button>
+              <p className="sail-footnote">
+                Adds them to People with their preferred role. You choose when
+                to send their invitation.
+              </p>
               {e.reviewed ? (
                 <small>Reviewed</small>
               ) : (

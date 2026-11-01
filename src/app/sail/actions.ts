@@ -225,7 +225,7 @@ export async function submitSailInterest(
     return {
       ok: true,
       message:
-        "Your note has been received. We can work out the details together.",
+        "Your note has been received. I’ll get back to you to work out the details. This doesn’t reserve a place.",
     };
   } catch (e) {
     return errorResult(e);
@@ -239,6 +239,29 @@ export async function reviewSailEnquiry(
     await sail().reviewEnquiry(voyageId, await owner(), id);
     refresh(voyageId);
     return { ok: true, message: "Marked reviewed." };
+  } catch (e) {
+    return errorResult(e);
+  }
+}
+
+export async function inviteSailEnquiry(
+  voyageId: string,
+  enquiryId: string,
+): Promise<SailResult> {
+  try {
+    const person = await sail().inviteEnquiry(
+      voyageId,
+      await owner(),
+      enquiryId,
+    );
+    refresh(voyageId);
+    return {
+      ok: true,
+      id: person.id,
+      message: person.existing
+        ? "This person is already in People. Their invitation is unchanged; you can manage it there."
+        : "Added to People with their preferred role. Email an invitation or create a personal link when you’re ready. Nothing has been sent yet.",
+    };
   } catch (e) {
     return errorResult(e);
   }

@@ -42,6 +42,7 @@ try {
     "respondToSailInvitation",
     "submitSailInterest",
     "reviewSailEnquiry",
+    "inviteSailEnquiry",
   ];
   const stubs = {
     "next/navigation": `exports.useRouter=()=>({push:href=>{history.pushState({},'',href);window.render();},refresh:()=>window.render()});`,
@@ -55,6 +56,7 @@ try {
     "@/components/sail/voyage-form",
     "@/components/sail/people",
     "@/components/sail/guest-response",
+    "@/components/sail/invitation-content",
     "@/components/sail/interest-form",
     "@/components/sail/voyage-overview",
     "@/components/sail/workspace",
@@ -68,7 +70,7 @@ try {
  window.rpc=async(action,args)=>{const r=await fetch('/rpc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,args})});if(!r.ok)throw Error('Synthetic boundary failure');return r.json();};
  const React=__require(${JSON.stringify(ids.react)}),h=React.createElement,root=__require(${JSON.stringify(ids["react-dom/client"])}).createRoot(document.getElementById('root'));
  window.render=async()=>{const state=await window.rpc('state',[location.pathname]);let content;
- if(state.guest){const g=state.guest;content=h(React.Fragment,null,h(${component("voyage-overview", "SailVoyageOverview")},{voyage:g.voyage}),h('h2',null,'What to expect as '+g.participant.role),h('p',null,g.expectations),h('p',null,g.boardingNotes),h('p',{role:'status'},g.participant.status==='accepted'&&g.participant.acceptedRevision!==g.voyage.revision?'The plan changed. Please review again.':'Your response: '+g.participant.status),h(${component("guest-response", "SailGuestResponse")},{key:g.participant.revision+':'+g.voyage.revision,token:state.token,voyageRevision:g.voyage.revision,participantRevision:g.participant.revision,closed:['cancelled','completed'].includes(g.voyage.status)}));}
+ if(state.guest){const g=state.guest;content=h(${component("invitation-content", "SailInvitationContent")},{guest:g,token:state.token,contactHref:'mailto:captain@example.invalid?subject=Trip'});}
  else if(state.publicVoyage){content=h(React.Fragment,null,h(${component("voyage-overview", "SailVoyageOverview")},{voyage:state.publicVoyage}),h(${component("interest-form", "SailInterestForm")},{voyageId:state.publicVoyage.id}));}
  else if(state.unavailable){content=h('h1',null,'Invitation unavailable');}
  else {content=state.voyage?h(${component("workspace", "SailWorkspace")},{voyage:state.voyage,assets:[{id:'vessel',name:'Test vessel'}],people:state.people,enquiries:state.enquiries}):h(${component("voyage-form", "SailVoyageForm")},{assets:[{id:'vessel',name:'Test vessel'}]});}
@@ -204,10 +206,11 @@ try {
     0,
   );
   assert.equal((await store.guest(crewToken)).participant.status, "invited");
-  await page.getByRole("button", { name: "Accept current plan" }).click();
+  await page.screenshot({path:"/tmp/sail-invitation-clarity.png",fullPage:true});
+  await page.getByRole("button", { name: "Count me in" }).click();
   await page
     .getByRole("status")
-    .filter({ hasText: "Your response: accepted" })
+    .filter({ hasText: "acceptance is saved" })
     .waitFor();
   assert.equal((await store.guest(crewToken)).participant.acceptedRevision, 2);
   await page.goto(origin + "/sail/manage/" + id);
@@ -217,13 +220,13 @@ try {
   await page.getByRole("button", { name: "Save voyage", exact: true }).click();
   await page.getByRole("status").filter({ hasText: "Voyage saved" }).waitFor();
   await page.goto(origin + "/sail/invitations/" + crewToken);
+  await page.getByText("What’s changed", { exact: true }).waitFor();
   await page
-    .getByText("The plan changed. Please review again.", { exact: true })
-    .waitFor();
-  await page.getByRole("button", { name: "Accept current plan" }).click();
+    .getByRole("button", { name: "Yes, the updated plan works" })
+    .click();
   await page
     .getByRole("status")
-    .filter({ hasText: "Your response: accepted" })
+    .filter({ hasText: "acceptance is saved" })
     .waitFor();
   assert.equal((await store.guest(crewToken)).participant.acceptedRevision, 3);
   await page.goto(origin + "/sail/manage/" + id);
@@ -259,10 +262,12 @@ try {
       .count(),
     0,
   );
-  await page.getByRole("button", { name: "Decline", exact: true }).click();
+  await page
+    .getByRole("button", { name: "I can’t make this one", exact: true })
+    .click();
   await page
     .getByRole("status")
-    .filter({ hasText: "Your response: declined" })
+    .filter({ hasText: "can’t make this one" })
     .waitFor();
   await page.goto(origin + "/sail/manage/" + id);
   const cancel = page
@@ -294,6 +299,32 @@ try {
     await enquiry.getByRole("button", { name: "Send note" }).click();
     await page.getByRole("status").filter({ hasText: "received" }).waitFor();
     assert.equal((await store.enquiries(id, OWNER)).length, 1);
+    await page
+      .getByRole("heading", { name: "Your note is with me." })
+      .waitFor();
+    await page.getByText("Synthetic enquiry.", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("heading",{name:"Your note is with me."}).evaluate(el=>document.activeElement===el),true);
+    await page.screenshot({path:"/tmp/sail-enquiry-receipt.png",fullPage:true});
+    const mailBeforeEnquiry = mail.length;
+    await page.goto(origin + "/sail/manage/" + id);
+    await page.getByText(/Enquiries \(/).click();
+    await page
+      .getByRole("button", { name: "Invite this person", exact: true })
+      .click();
+    await page
+      .locator(".sail-people li")
+      .filter({ hasText: "Interested sailor" })
+      .waitFor();
+    await page
+      .getByRole("button", { name: "Invite this person", exact: true })
+      .click();
+    assert.equal(
+      (await store.participants(id, OWNER)).filter(
+        (p) => p.email === "interest@example.invalid",
+      ).length,
+      1,
+    );
+    assert.equal(mail.length, mailBeforeEnquiry);
   } finally {
     if (previous === undefined) delete process.env.AUTH_SECRET;
     else process.env.AUTH_SECRET = previous;
@@ -346,10 +377,10 @@ try {
     personalLink,
   );
   await page.goto(origin + new URL(personalLink).pathname);
-  await page.getByRole("button", { name: /Accept/ }).click();
+  await page.getByRole("button", { name: "Count me in", exact: true }).click();
   await page
     .getByRole("status")
-    .filter({ hasText: "accepted" })
+    .filter({ hasText: "acceptance is saved" })
     .first()
     .waitFor();
   await page.setViewportSize({ width: 375, height: 900 });

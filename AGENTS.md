@@ -183,3 +183,12 @@ placeholder addresses. Manual links use the same hashed random tokens, fixed
 configured HTTPS origin, cooldown, expiry, ownership and revocation as email. No
 SMS provider or message send is part of creating/copying a link. Deploy only after
 030 is verified in the target branch; keep existing email and guest flows working.
+
+The Sail clarity pass distinguishes anonymous enquiries from personal invitations
+and saved responses. Enquiry-to-person preparation must be owner-scoped, atomic,
+idempotent and must never send mail or replace an existing invitation/token.
+Changed-plan messages may expose section labels for the guest's own role only,
+never raw audit snapshots or another role's guidance. Optional SAIL_CONTACT_EMAIL
+is private-invitation contact configuration, not a public directory or automatic
+send. The next approved design direction is a public/homepage and owner timeline;
+availability facts still require explicit owner inputs. See docs/SAIL_CLARITY.md.
