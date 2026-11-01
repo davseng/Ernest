@@ -157,3 +157,12 @@ before 029: retain availability guards and pending owner setup state. No automat
 migration, seed, production/DNS changes or feature-branch deployment. Run
 `test:sail-design-browser` in addition to the three existing browser suites.
 See docs/SAIL_DESIGN.md for the rollout and live acceptance limits.
+
+The owner has now reported Preview acceptance tests passed and requested moving
+toward Production, including DNS instructions. Production preparation is
+therefore authorized. Verify the existing Production schema using the read-only
+scripts/sail/production-sql-editor/01-preflight.sql before any production apply
+or code promotion. Do not mistake isolated Preview verification of 029 for
+Production readiness. See docs/SAIL_PRODUCTION.md for exact-host routing, owner
+host preservation, dependency sequencing and DNS rollback. Do not promote an
+isolated Preview deployment with its test services into Production.

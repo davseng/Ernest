@@ -70,3 +70,11 @@ Local validation for this change: lint passed with two pre-existing warnings;
 TypeScript passed; all 150 unit/integration tests passed; review, Sail invitation,
 Sail photo and Sail design browser suites passed; production build and diff
 whitespace checks passed. No live database migrations were executed.
+
+## Subsequent owner verification
+
+The owner supplied migration 029 ledger/table/column verification: applied at
+2026-11-01 00:47:00.73685+00, empty sail_positions, correct types/defaults. This
+verifies the isolated Preview only. The owner subsequently reported acceptance
+tests passed and requested production preparation. Production schema and domain
+cutover remain separate; see SAIL_PRODUCTION.md.
