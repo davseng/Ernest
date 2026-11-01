@@ -17,6 +17,7 @@ export default async function SailManagePage() {
           <Link href="/">Open Ernest</Link>
           <Link href="/sail/manage/photos">Website photos</Link>
           <Link href="/sail/manage/position">Position update</Link>
+          <Link href="/sail/manage/transfer">Content transfer</Link>
           {ready ? (
             <Link href="/sail/manage/new" className="sail-button">
               Plan a voyage

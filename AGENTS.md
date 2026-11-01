@@ -166,3 +166,12 @@ or code promotion. Do not mistake isolated Preview verification of 029 for
 Production readiness. See docs/SAIL_PRODUCTION.md for exact-host routing, owner
 host preservation, dependency sequencing and DNS rollback. Do not promote an
 isolated Preview deployment with its test services into Production.
+
+Owner explicitly requested copying Preview Sail content into Production. Use the
+owner-only /sail/manage/transfer flow (docs/SAIL_TRANSFER.md), never whole-database
+cloning or copying credentials/guest tokens/private Ernest evidence. Export only
+allowlisted Sail plans, ready website photos and position. Preserve publication
+choices, map fresh IDs and refuse a nonempty destination. Stage validated photos
+privately; commit metadata atomically under authenticated ownership. Never delete
+staged uploads after an uncertain final commit acknowledgement. Run the new
+`test:sail-transfer-browser` alongside the four existing browser suites.
