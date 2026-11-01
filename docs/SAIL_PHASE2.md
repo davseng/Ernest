@@ -115,3 +115,15 @@ whitespace checks passed. Reviewed public/owner desktop and public mobile
 screenshots. No live database, inbox, auth session, DNS or SMTP was accessed.
 The combined code is held locally pending owner verification of 031 in both
 branches and environment enablement; current deployments remain on 97e57c2.
+
+## Preview rollout verified
+
+The owner supplied isolated Preview verification for 031, applied at
+2026-11-01 19:39:00.622488+00: neondb/public, sail_availability and
+sail_notifications present, all six expected triggers present, and column types /
+nullability match. At the owner's request the tested application commit d1d9eac
+is now released to preview for review before Production migration/promotion.
+Production remains on 97e57c2; its 031 migration is not yet verified. This release
+note changes no application code and does not rerun migrations or send email.
+Wait for Vercel Ready, then inspect /sail/trips and /sail/manage. Configure Preview
+notifications and allowlist separately before exercising live notification sends.
