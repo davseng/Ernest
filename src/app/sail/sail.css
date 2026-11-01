@@ -974,3 +974,93 @@
     margin-bottom: 12px;
   }
 }
+
+.sail-trip-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 35px 0;
+}
+.sail-trip-timeline > li {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(0, 3fr);
+  gap: 36px;
+  padding: 0 0 36px;
+  position: relative;
+}
+.sail-timeline-date {
+  border-right: 2px solid #c9d7d0;
+  padding-right: 28px;
+}
+.sail-timeline-date h3 {
+  margin-top: 0;
+  font-size: 1.6rem;
+}
+.sail-timeline-date p {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.sail-timeline-trip {
+  position: relative;
+  overflow: hidden;
+}
+.sail-timeline-trip h3 {
+  font-size: 2rem;
+  margin: 12px 0;
+}
+.sail-timeline-photo {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.sail-availability {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0;
+}
+.sail-availability span {
+  background: #edf1e7;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+.sail-owner-summary {
+  border-top: 1px solid var(--sail-line);
+  margin-top: 18px;
+  padding-top: 8px;
+  font-size: 0.9rem;
+}
+.sail-trip-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 28px 0;
+}
+.sail-trip-filters a {
+  padding: 10px 16px;
+  border: 1px solid var(--sail-line);
+  border-radius: 20px;
+  text-decoration: none;
+}
+.sail-trip-filters a[aria-current] {
+  background: var(--sail-accent);
+  color: white;
+}
+@media (max-width: 640px) {
+  .sail-trip-timeline > li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .sail-timeline-date {
+    border-right: 0;
+    border-left: 2px solid #c9d7d0;
+    padding-left: 15px;
+  }
+  .sail-timeline-date h3 {
+    margin-bottom: 6px;
+  }
+  .sail-timeline-date p {
+    margin: 0;
+  }
+}

@@ -25,7 +25,7 @@ export default function SailLayout({
           <span aria-hidden="true">↗</span> Sail Far Better
         </Link>
         <nav aria-label="Sail Far Better">
-          <Link href="/sail#voyages">Voyages</Link>
+          <Link href="/sail/trips">Trips ahead</Link>
           <Link href="/sail/boat">The Boat</Link>
           <Link href="/sail/join">Joining us</Link>
           <Link href="/sail/manage" className="sail-owner-link">

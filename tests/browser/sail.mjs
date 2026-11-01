@@ -45,6 +45,7 @@ try {
     "inviteSailEnquiry",
   ];
   const stubs = {
+    "@/app/sail/timeline-actions": `exports.saveSailAvailability=async()=>({ok:false,error:"Not used by this suite"});`,
     "next/navigation": `exports.useRouter=()=>({push:href=>{history.pushState({},'',href);window.render();},refresh:()=>window.render()});`,
     "@/app/sail/actions": actionNames
       .map((name) => `exports.${name}=(...args)=>window.rpc('${name}',args);`)
@@ -206,7 +207,10 @@ try {
     0,
   );
   assert.equal((await store.guest(crewToken)).participant.status, "invited");
-  await page.screenshot({path:"/tmp/sail-invitation-clarity.png",fullPage:true});
+  await page.screenshot({
+    path: "/tmp/sail-invitation-clarity.png",
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "Count me in" }).click();
   await page
     .getByRole("status")
@@ -303,8 +307,16 @@ try {
       .getByRole("heading", { name: "Your note is with me." })
       .waitFor();
     await page.getByText("Synthetic enquiry.", { exact: true }).waitFor();
-    assert.equal(await page.getByRole("heading",{name:"Your note is with me."}).evaluate(el=>document.activeElement===el),true);
-    await page.screenshot({path:"/tmp/sail-enquiry-receipt.png",fullPage:true});
+    assert.equal(
+      await page
+        .getByRole("heading", { name: "Your note is with me." })
+        .evaluate((el) => document.activeElement === el),
+      true,
+    );
+    await page.screenshot({
+      path: "/tmp/sail-enquiry-receipt.png",
+      fullPage: true,
+    });
     const mailBeforeEnquiry = mail.length;
     await page.goto(origin + "/sail/manage/" + id);
     await page.getByText(/Enquiries \(/).click();

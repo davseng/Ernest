@@ -259,7 +259,7 @@ try {
     .getByRole("heading", { name: "Come along.", exact: true })
     .waitFor();
   assert.ok(
-    (await page.locator('a[href*="#enquiry"]').getAttribute("href")).includes(
+    (await page.locator('a[href*="#enquiry"]').first().getAttribute("href")).includes(
       `?as=passenger#enquiry`,
     ),
   );

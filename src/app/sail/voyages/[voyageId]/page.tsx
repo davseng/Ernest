@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { sail } from "@/data/sail";
+import { sailTimeline } from "@/data/sail-timeline";
+import { availabilityLabel } from "@/domain/sail-timeline";
 import { sailPhotos } from "@/data/sail-photos";
 import { SailPhotoGallery } from "@/components/sail/photo-gallery";
 import { SailVoyageOverview } from "@/components/sail/voyage-overview";
@@ -23,9 +25,37 @@ export default async function PublicVoyagePage({
     photoReady = await sailPhotos().available();
   } catch {}
   const photos = photoReady ? await sailPhotos().publicPhotos(voyage.id) : [];
+  let availability:
+    | Awaited<
+        ReturnType<ReturnType<typeof sailTimeline>["publicAvailability"]>
+      >[number]
+    | undefined;
+  try {
+    if (await sailTimeline().available())
+      availability = (await sailTimeline().publicAvailability()).find(
+        (a) => a.voyageId === voyage.id,
+      );
+  } catch {}
   return (
     <main id="sail-main" className="sail-main sail-narrow">
       <SailVoyageOverview voyage={voyage} />
+      {availability ? (
+        <section aria-label="Space on this trip">
+          <div className="sail-availability">
+            <span>{availabilityLabel(availability.crewNeeded, "crew")}</span>
+            <span>
+              {availabilityLabel(availability.passengerPlaces, "passenger")}
+            </span>
+          </div>
+          {availability.note ? (
+            <p className="sail-prose">{availability.note}</p>
+          ) : null}
+          <p className="sail-footnote">
+            These are the remaining spaces I’ve listed. We’ll confirm
+            arrangements together.
+          </p>
+        </section>
+      ) : null}
       {photos.length ? (
         <section className="sail-section">
           <h2>A glimpse of the journey</h2>

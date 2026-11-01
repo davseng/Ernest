@@ -1,4 +1,5 @@
 "use server";
+import { scheduleSailNotifications } from "@/data/sail-notifications";
 import { auth } from "@/auth";
 import { sailInvitationOrigin } from "@/data/sail-invitation-url";
 import { sail } from "@/data/sail";
@@ -24,6 +25,7 @@ async function owner() {
   return session.user.id;
 }
 function refresh(id?: string) {
+  scheduleSailNotifications();
   revalidatePath("/sail");
   revalidatePath("/sail/manage");
   if (id) {
@@ -195,6 +197,7 @@ export async function respondToSailInvitation(
 ): Promise<SailResult> {
   try {
     await sail().respond(token, status, voyageRevision, participantRevision);
+    scheduleSailNotifications();
     return {
       ok: true,
       message:
@@ -222,6 +225,7 @@ export async function submitSailInterest(
       .update("sail-interest:" + ip)
       .digest("hex");
     await sail().interest(voyageId, input, requesterHash);
+    scheduleSailNotifications();
     return {
       ok: true,
       message:

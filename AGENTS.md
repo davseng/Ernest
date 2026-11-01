@@ -192,3 +192,17 @@ never raw audit snapshots or another role's guidance. Optional SAIL_CONTACT_EMAI
 is private-invitation contact configuration, not a public directory or automatic
 send. The next approved design direction is a public/homepage and owner timeline;
 availability facts still require explicit owner inputs. See docs/SAIL_CLARITY.md.
+
+Phase 2 is authorized: public/homepage and owner timelines plus owner email
+notifications for successful Sail submissions/changes. Migration 031 is owner-run
+once per verified target using scripts/sail/phase2-sql-editor. Hold the joint code
+release until both targets are verified; no automatic migrations or seeds.
+Availability is explicit remaining space, not inferred capacity, and has its own
+revision so changing it does not force guest itinerary reconfirmation. Public
+projections must omit owner attendance/enquiry counts and private drafts.
+Notification intents are transactional and minimal, with no raw invitation tokens
+or private snapshots. Match the configured recipient to the intended owner account;
+never drain another owner's queue from a manual action. SMTP acceptance is not
+inbox receipt; uncertain sends are never retried automatically. Preserve guest
+success even if SMTP fails. Run test:sail-phase2-browser with the four retained
+browser suites. See docs/SAIL_PHASE2.md for enablement and exact rollout limits.

@@ -1,4 +1,5 @@
 "use server";
+import { scheduleSailNotifications } from "@/data/sail-notifications";
 import { auth } from "@/auth";
 import { sailPosition } from "@/data/sail-position";
 import { revalidatePath } from "next/cache";
@@ -17,6 +18,7 @@ export async function saveSailPosition(
       input,
       revision,
     );
+    scheduleSailNotifications();
     revalidatePath("/sail");
     revalidatePath("/sail/manage/position");
     return {

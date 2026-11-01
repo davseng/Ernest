@@ -1,4 +1,5 @@
 "use server";
+import { scheduleSailNotifications } from "@/data/sail-notifications";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { sailPhotos } from "@/data/sail-photos";
@@ -30,6 +31,7 @@ function failure(e: unknown) {
   };
 }
 function refresh() {
+  scheduleSailNotifications();
   for (const path of [
     "/sail",
     "/sail/boat",

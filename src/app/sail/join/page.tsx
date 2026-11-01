@@ -2,7 +2,8 @@ import Link from "next/link";
 import { sail } from "@/data/sail";
 import { sailPhotos } from "@/data/sail-photos";
 import { SailPhotoGallery } from "@/components/sail/photo-gallery";
-import { departureLabel } from "@/domain/sail";
+import { sailTimeline } from "@/data/sail-timeline";
+import { SailTripTimeline } from "@/components/sail/trip-timeline";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Joining us",
@@ -36,6 +37,13 @@ export default async function SailJoinPage({
     passengerPhoto =
       photos.find((p) => p.category === "salon") ??
       photos.find((p) => p.category === "forward_berth");
+  let availability: Awaited<
+    ReturnType<ReturnType<typeof sailTimeline>["publicAvailability"]>
+  >[number][] = [];
+  try {
+    if (await sailTimeline().available())
+      availability = await sailTimeline().publicAvailability();
+  } catch {}
   return (
     <main id="sail-main" className="sail-main sail-story">
       <section className="sail-join-intro">
@@ -179,27 +187,11 @@ export default async function SailJoinPage({
             </Link>
           </p>
         </div>
-        {voyages.length ? (
-          <div className="sail-cards">
-            {voyages.map((v) => (
-              <article key={v.id} className="sail-card">
-                <h3>{v.title}</h3>
-                <p>
-                  {v.departurePort} → {v.arrivalPort}
-                </p>
-                <p>{departureLabel(v.departureFrom, v.departureTo)}</p>
-                <Link
-                  className="sail-text-link"
-                  href={`/sail/voyages/${v.id}?as=${role}#enquiry`}
-                >
-                  Let’s talk about this one →
-                </Link>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p>I’ll put the next trips here as the plans take shape.</p>
-        )}
+        <SailTripTimeline
+          voyages={voyages}
+          availability={availability}
+          role={role}
+        />
         <p className="sail-footnote">
           Already invited? Your personal email link has the latest plan and your
           joining details.

@@ -4,7 +4,8 @@ import { sailPhotos } from "@/data/sail-photos";
 import { sail } from "@/data/sail";
 import { sailPosition } from "@/data/sail-position";
 import { SailJourney } from "@/components/sail/journey";
-import { departureLabel } from "@/domain/sail";
+import { sailTimeline } from "@/data/sail-timeline";
+import { SailTripTimeline } from "@/components/sail/trip-timeline";
 export const dynamic = "force-dynamic";
 export default async function SailHomePage() {
   let ready = false;
@@ -25,6 +26,13 @@ export default async function SailHomePage() {
   try {
     if (await sailPosition().available())
       position = await sailPosition().publicLatest();
+  } catch {}
+  let availability: Awaited<
+    ReturnType<ReturnType<typeof sailTimeline>["publicAvailability"]>
+  >[number][] = [];
+  try {
+    if (await sailTimeline().available())
+      availability = await sailTimeline().publicAvailability();
   } catch {}
   return (
     <main id="sail-main" className="sail-main">
@@ -68,71 +76,21 @@ export default async function SailHomePage() {
         <div className="sail-section-heading">
           <div>
             <p className="sail-kicker">What I’m thinking about next</p>
-            <h2>Voyages</h2>
+            <h2>The trips ahead</h2>
           </div>
           <p>
             These are the plans so far. Weather and boat jobs can move things
             around—we’ll keep talking.
           </p>
         </div>
-        {voyages.length ? (
-          <div className="sail-cards">
-            {voyages.map((v) => (
-              <article key={v.id} className="sail-card">
-                {covers
-                  .filter((p) => p.voyageId === v.id)
-                  .slice(0, 1)
-                  .map((p) => (
-                    <Link
-                      href={`/sail/voyages/${v.id}`}
-                      key={p.id}
-                      className="sail-voyage-photo"
-                    >
-                      <Image
-                        unoptimized
-                        src={`/sail/media/${p.id}`}
-                        alt={p.altText}
-                        width={p.width ?? 1200}
-                        height={p.height ?? 800}
-                      />
-                    </Link>
-                  ))}
-                <div className="sail-kicker">
-                  {v.assetName}
-                  <span className="sail-pill">
-                    {v.status === "ready" ? "Ready to go" : v.status}
-                  </span>
-                </div>
-                <h3>
-                  <Link href={`/sail/voyages/${v.id}`}>{v.title}</Link>
-                </h3>
-                <p>
-                  {v.departurePort} → {v.arrivalPort}
-                </p>
-                <strong>
-                  {departureLabel(v.departureFrom, v.departureTo)}
-                </strong>
-                {v.timingNote ? <p>{v.timingNote}</p> : null}
-                <Link href={`/sail/voyages/${v.id}`} className="sail-text-link">
-                  Have a look →
-                </Link>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="sail-empty">
-            <h3>
-              {ready
-                ? "I’m working out the next trip."
-                : "The plans are on their way."}
-            </h3>
-            <p>
-              {ready
-                ? "I’ll put the plans here when they’re ready to share."
-                : "I’ll put the next trips here as things take shape."}
-            </p>
-          </div>
-        )}
+        <p>
+          <Link href="/sail/trips">Explore the full trip timeline →</Link>
+        </p>
+        <SailTripTimeline
+          voyages={voyages}
+          availability={availability}
+          covers={covers}
+        />
       </section>
       <section className="sail-section sail-boat-teaser">
         <div>

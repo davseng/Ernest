@@ -1,20 +1,34 @@
 import Link from "next/link";
 import { sailOwnerContext } from "./context";
 import { sail } from "@/data/sail";
-import { departureLabel } from "@/domain/sail";
+import { sailTimeline } from "@/data/sail-timeline";
+import { SailTripTimeline } from "@/components/sail/trip-timeline";
 export const dynamic = "force-dynamic";
 export default async function SailManagePage() {
   const { session, ready } = await sailOwnerContext();
   const voyages = ready ? await sail().ownerList(session.user.id) : [];
+  let availability: Awaited<
+      ReturnType<ReturnType<typeof sailTimeline>["ownerAvailability"]>
+    >[number][] = [],
+    summaries: Awaited<
+      ReturnType<ReturnType<typeof sailTimeline>["summary"]>
+    >[number][] = [];
+  try {
+    if (await sailTimeline().available()) {
+      availability = await sailTimeline().ownerAvailability(session.user.id);
+      summaries = await sailTimeline().summary(session.user.id);
+    }
+  } catch {}
   return (
     <main id="sail-main" className="sail-main">
       <div className="sail-section-heading">
         <div>
           <p className="sail-kicker">Owner workspace</p>
-          <h1>Your voyages</h1>
+          <h1>Your trips ahead</h1>
         </div>
         <div className="sail-actions">
           <Link href="/">Open Ernest</Link>
+          <Link href="/sail/manage/notifications">Email updates</Link>
           <Link href="/sail/manage/photos">Website photos</Link>
           <Link href="/sail/manage/position">Position update</Link>
           {ready ? (
@@ -30,26 +44,12 @@ export default async function SailManagePage() {
           before planning can begin.
         </p>
       ) : voyages.length ? (
-        <div className="sail-cards">
-          {voyages.map((v) => (
-            <article className="sail-card" key={v.id}>
-              <p className="sail-kicker">
-                {v.published ? "Public" : "Private draft"} · {v.status}
-              </p>
-              <h2>
-                <Link href={`/sail/manage/${v.id}`}>{v.title}</Link>
-              </h2>
-              <p>
-                {v.departurePort || "Departure open"} →{" "}
-                {v.arrivalPort || "Destination open"}
-              </p>
-              <p>{departureLabel(v.departureFrom, v.departureTo)}</p>
-              <Link className="sail-text-link" href={`/sail/manage/${v.id}`}>
-                Manage voyage →
-              </Link>
-            </article>
-          ))}
-        </div>
+        <SailTripTimeline
+          owner
+          voyages={voyages}
+          availability={availability}
+          summaries={summaries}
+        />
       ) : (
         <div className="sail-empty">
           <h2>Start with the next voyage.</h2>
