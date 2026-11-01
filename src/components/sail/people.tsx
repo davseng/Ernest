@@ -5,6 +5,7 @@ import {
   addSailPerson,
   updateSailPerson,
   sendSailPerson,
+  createSailPersonLink,
   cancelSailPerson,
   reviewSailEnquiry,
   type SailResult,
@@ -31,10 +32,12 @@ export function SailPeople({
   const router = useRouter(),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [link, setLink] = useState<{ id: string; url: string } | null>(null);
   async function run(work: () => Promise<SailResult>) {
     if (busy) return;
     setBusy(true);
+    setLink(null);
     setMessage("");
     setError("");
     try {
@@ -77,8 +80,8 @@ export function SailPeople({
               <input name="fullName" maxLength={160} required />
             </label>
             <label>
-              Email
-              <input name="email" type="email" maxLength={254} required />
+              Email (optional)
+              <input name="email" type="email" maxLength={254} />
             </label>
             <label>
               Joining as
@@ -106,7 +109,7 @@ export function SailPeople({
                     ? " · plan changed; review needed"
                     : ""}
                 </span>
-                <span>{p.email}</span>
+                <span>{p.email || "No email — share a personal link"}</span>
                 <small>
                   Email:{" "}
                   {p.deliveryStatus === "sent"
@@ -148,13 +151,12 @@ export function SailPeople({
                         />
                       </label>
                       <label>
-                        Email
+                        Email (optional)
                         <input
                           name="email"
                           type="email"
-                          defaultValue={p.email}
+                          defaultValue={p.email ?? ""}
                           maxLength={254}
-                          required
                         />
                       </label>
                       <label>
@@ -173,7 +175,7 @@ export function SailPeople({
                 {p.status !== "cancelled" ? (
                   <>
                     <button
-                      disabled={busy}
+                      disabled={busy || !p.email}
                       onClick={() =>
                         void run(() => sendSailPerson(voyageId, p.id))
                       }
@@ -181,6 +183,18 @@ export function SailPeople({
                       {p.deliveryStatus === "sent"
                         ? "Send fresh invitation"
                         : "Send invitation"}
+                    </button>
+                    <button
+                      disabled={busy}
+                      onClick={async () => {
+                        const result = await run(() =>
+                          createSailPersonLink(voyageId, p.id),
+                        );
+                        if (result?.ok && result.invitationUrl)
+                          setLink({ id: p.id, url: result.invitationUrl });
+                      }}
+                    >
+                      Create invitation link
                     </button>
                     <details>
                       <summary>Cancel invitation</summary>
@@ -198,11 +212,48 @@ export function SailPeople({
                   </>
                 ) : null}
               </div>
+              {link?.id === p.id ? (
+                <div className="sail-form sail-person-link">
+                  <label>
+                    Personal invitation link
+                    <input
+                      aria-label="Personal invitation link"
+                      readOnly
+                      value={link.url}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(link.url);
+                        setMessage(
+                          "Link copied. Send it directly to this person.",
+                        );
+                      } catch {
+                        setMessage(
+                          "Select the link above and copy it manually.",
+                        );
+                      }
+                    }}
+                  >
+                    Copy link
+                  </button>
+                  <small>
+                    This personal link is shown here only until you leave or
+                    take another action. Keep it private.
+                  </small>
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>
       ) : (
-        <p>No one added yet. Add a person, then send their invitation.</p>
+        <p>
+          No one added yet. Add a name, then email their invitation or create a
+          link to share.
+        </p>
       )}
       {error ? <p role="alert">{error}</p> : null}
       {message ? <p role="status">{message}</p> : null}
@@ -238,7 +289,8 @@ export function SailPeople({
       </details>
       <p className="sail-footnote">
         Invitation links are personal, expire after 30 days, and give no access
-        to Ernest. Sending a fresh invitation replaces the previous link.
+        to Ernest. Creating a fresh link or sending a fresh email replaces the
+        previous link.
       </p>
     </section>
   );

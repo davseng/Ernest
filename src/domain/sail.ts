@@ -96,12 +96,13 @@ export function parseVoyage(input: unknown): VoyageInput {
     );
   return v;
 }
-export function parsePerson(input: unknown) {
+export function parsePerson(input: unknown, emailOptional = false) {
   if (!input || typeof input !== "object")
     throw Error("Enter the person’s details.");
   const r = input as Record<string, unknown>;
-  const email = sailText(r.email, 254, "Email", true).toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+  const email =
+    sailText(r.email, 254, "Email", !emailOptional).toLowerCase() || null;
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
     throw Error("Enter a valid email address.");
   if (r.role !== "crew" && r.role !== "passenger")
     throw Error("Choose crew or passenger.");

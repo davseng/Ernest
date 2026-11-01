@@ -33,7 +33,7 @@ export type Participant = {
   id: string;
   voyageId: string;
   fullName: string;
-  email: string;
+  email: string | null;
   role: ParticipationRole;
   status: "invited" | "accepted" | "declined" | "cancelled";
   deliveryStatus: string;
@@ -212,7 +212,7 @@ export function createSailStore(sql: Sql) {
       );
     },
     async addPerson(id: string, ownerId: string, input: unknown) {
-      const p = parsePerson(input);
+      const p = parsePerson(input, true);
       return sql.begin(async (raw) => {
         const tx = raw as unknown as Sql;
         if (!(await ownerVoyage(id, ownerId, tx, true)))
@@ -238,7 +238,7 @@ export function createSailStore(sql: Sql) {
       input: unknown,
       expectedRevision: number,
     ) {
-      const p = parsePerson(input);
+      const p = parsePerson(input, true);
       return sql.begin(async (raw) => {
         const tx = raw as unknown as Sql;
         if (!(await ownerVoyage(id, ownerId, tx, true)))
@@ -273,7 +273,12 @@ export function createSailStore(sql: Sql) {
           throw Error("This invitation changed. Reload before cancelling.");
       });
     },
-    async issue(id: string, ownerId: string, participantId: string) {
+    async issue(
+      id: string,
+      ownerId: string,
+      participantId: string,
+      channel: "email" | "link" = "email",
+    ) {
       return sql.begin(async (raw) => {
         const tx = raw as unknown as Sql;
         const voyage = await ownerVoyage(id, ownerId, tx, true);
@@ -283,21 +288,27 @@ export function createSailStore(sql: Sql) {
         const [p] = await tx<
           {
             id: string;
-            email: string;
+            email: string | null;
             full_name: string;
             role: ParticipationRole;
             last_attempt_at: Date | null;
           }[]
         >`SELECT id,email,full_name,role,last_attempt_at FROM sail_participants WHERE id=${participantId} AND voyage_id=${id} AND status<>'cancelled' FOR UPDATE`;
         if (!p) throw Error("Invitation not found.");
+        if (channel === "email" && !p.email)
+          throw Error(
+            "Add an email address or create a link to share yourself.",
+          );
         if (
           p.last_attempt_at &&
           new Date(p.last_attempt_at).getTime() > Date.now() - 60000
         )
-          throw Error("Wait a minute before sending this invitation again.");
+          throw Error(
+            "Wait a minute before creating or sending another invitation.",
+          );
         const token = randomBytes(32).toString("hex"),
           hash = digest(token);
-        await tx`UPDATE sail_participants SET token_hash=${hash},token_expires_at=now()+interval '30 days',last_attempt_at=now(),delivery_status='pending',revision=revision+1 WHERE id=${participantId}`;
+        await tx`UPDATE sail_participants SET token_hash=${hash},token_expires_at=now()+interval '30 days',last_attempt_at=now(),delivery_status=${channel === "email" ? "pending" : "not_sent"},revision=revision+1 WHERE id=${participantId}`;
         return {
           token,
           hash,

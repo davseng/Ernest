@@ -1,12 +1,13 @@
 "use server";
 import { auth } from "@/auth";
+import { sailInvitationOrigin } from "@/data/sail-invitation-url";
 import { sail } from "@/data/sail";
 import { sailMailProblem, sendSailInvitation } from "@/data/sail-mail";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createHmac } from "node:crypto";
 export type SailResult =
-  | { ok: true; id?: string; message: string }
+  | { ok: true; id?: string; message: string; invitationUrl?: string }
   | { ok: false; error: string };
 function errorResult(error: unknown): SailResult {
   return {
@@ -60,7 +61,8 @@ export async function addSailPerson(
     return {
       ok: true,
       id,
-      message: "Person added. Send their invitation when you are ready.",
+      message:
+        "Person added. Email their invitation or create a link to share.",
     };
   } catch (e) {
     return errorResult(e);
@@ -78,11 +80,13 @@ export async function sendSailPerson(
       (p) => p.id === participantId,
     );
     if (!person) throw Error("Invitation not found.");
+    if (!person.email)
+      throw Error("Add an email address or create a link to share yourself.");
     const problem = sailMailProblem(person.email);
     if (problem) throw Error(problem);
     const invitation = await store.issue(voyageId, ownerId, participantId);
     delivery = { hash: invitation.hash, ownerId };
-    await sendSailInvitation(invitation);
+    await sendSailInvitation({ ...invitation, email: person.email });
     await store.recordDelivery(
       voyageId,
       ownerId,
@@ -119,6 +123,30 @@ export async function sendSailPerson(
     return errorResult(e);
   }
 }
+export async function createSailPersonLink(
+  voyageId: string,
+  participantId: string,
+): Promise<SailResult> {
+  try {
+    const ownerId = await owner();
+    const origin = sailInvitationOrigin();
+    const invitation = await sail().issue(
+      voyageId,
+      ownerId,
+      participantId,
+      "link",
+    );
+    refresh(voyageId);
+    return {
+      ok: true,
+      invitationUrl: `${origin}/sail/invitations/${invitation.token}`,
+      message:
+        "Personal link created. Copy it and send it directly to this person. No email was sent.",
+    };
+  } catch (e) {
+    return errorResult(e);
+  }
+}
 export async function updateSailPerson(
   voyageId: string,
   participantId: string,
@@ -137,7 +165,7 @@ export async function updateSailPerson(
     return {
       ok: true,
       message:
-        "Person updated. Send a fresh invitation; the previous link no longer works.",
+        "Person updated. Email or create a fresh invitation; the previous link no longer works.",
     };
   } catch (e) {
     return errorResult(e);

@@ -102,8 +102,10 @@ release is authorized by development of this module.
 
 Only authenticated vessel owners can manage voyages or issue invitations.
 Crew/passenger is a per-invitation role, never an Ernest permission. Guests use
-30-day, cryptographically random invitation links; store hashes only, never
-return raw tokens from owner actions, and never log them. GET is read-only.
+30-day, cryptographically random invitation links; store hashes only and never
+log raw tokens. Only the explicitly requested owner-only create-link action may
+return a fresh personal URL for manual sharing; email/save actions must not return
+tokens. Keep that URL in transient UI state, never persistent browser storage. GET is read-only.
 Private invitation pages are dynamic, noindex and no-referrer. Editing a person,
 cancelling or resending revokes the old link. Public read models explicitly
 project approved public fields; do not expose private joining notes, role
@@ -173,3 +175,11 @@ tests were retired after that confirmation. Preserve the imported records and
 R2 copies; retirement requires no database or storage deletion. Transfer code
 remains in Git history at b663108, not an active owner workflow. Continue running
 the four retained browser suites. See docs/SAIL_TRANSFER.md for the archival note.
+
+Email-free invitations are explicitly requested: named participants may have NULL
+email after owner-run migration 030 (scripts/sail/link-sql-editor). Public enquiries
+still require email. Keep email uniqueness for supplied addresses; never invent
+placeholder addresses. Manual links use the same hashed random tokens, fixed
+configured HTTPS origin, cooldown, expiry, ownership and revocation as email. No
+SMS provider or message send is part of creating/copying a link. Deploy only after
+030 is verified in the target branch; keep existing email and guest flows working.

@@ -12,9 +12,15 @@ const { db, store } = await sailDatabase();
 let browser, server;
 const mail = [];
 try {
+  await db.exec(
+    await readFile("migrations/030_sail_optional_email.sql", "utf8"),
+  );
   const actions = await loadTypeScript("src/app/sail/actions.ts", {
     "@/auth": { auth: async () => ({ user: { id: OWNER } }) },
     "@/data/sail": { sail: () => store },
+    "@/data/sail-invitation-url": {
+      sailInvitationOrigin: () => "https://sail.example.invalid",
+    },
     "@/data/sail-mail": {
       sailMailProblem: () => null,
       sendSailInvitation: async (input) => {
@@ -30,6 +36,7 @@ try {
     "saveSailVoyage",
     "addSailPerson",
     "sendSailPerson",
+    "createSailPersonLink",
     "updateSailPerson",
     "cancelSailPerson",
     "respondToSailInvitation",
@@ -170,7 +177,9 @@ try {
   assert.equal((await store.publicList()).length, 1);
   const add = page.getByRole("form", { name: "Add a person" });
   await add.getByLabel("Name", { exact: true }).fill("Browser crew");
-  await add.getByLabel("Email", { exact: true }).fill("crew@example.invalid");
+  await add
+    .getByLabel("Email (optional)", { exact: true })
+    .fill("crew@example.invalid");
   await add.getByLabel("Joining as").selectOption("crew");
   await add.getByRole("button", { name: "Add person" }).click();
   await page.getByText("crew@example.invalid", { exact: true }).waitFor();
@@ -223,7 +232,7 @@ try {
     .getByLabel("Name", { exact: true })
     .fill("Browser passenger");
   await addPassenger
-    .getByLabel("Email", { exact: true })
+    .getByLabel("Email (optional)", { exact: true })
     .fill("passenger@example.invalid");
   await addPassenger.getByLabel("Joining as").selectOption("passenger");
   await addPassenger.getByRole("button", { name: "Add person" }).click();
@@ -289,6 +298,60 @@ try {
     if (previous === undefined) delete process.env.AUTH_SECRET;
     else process.env.AUTH_SECRET = previous;
   }
+  await page.goto(origin + "/sail/manage/" + id);
+  const noEmailForm = page.getByRole("form", { name: "Add a person" });
+  await noEmailForm
+    .getByLabel("Name", { exact: true })
+    .fill("Friend without email");
+  await noEmailForm
+    .getByRole("button", { name: "Add person", exact: true })
+    .click();
+  const friend = page
+    .locator(".sail-people li")
+    .filter({ hasText: "Friend without email" });
+  await friend
+    .getByRole("button", { name: "Send invitation", exact: true })
+    .waitFor();
+  assert.equal(
+    await friend
+      .getByRole("button", { name: "Send invitation", exact: true })
+      .isDisabled(),
+    true,
+  );
+  const beforeLinkMail = mail.length;
+  await friend
+    .getByRole("button", { name: "Create invitation link", exact: true })
+    .click();
+  const field = friend.getByLabel("Personal invitation link", { exact: true });
+  await field.waitFor();
+  await page.setViewportSize({ width: 375, height: 900 });
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+    true,
+  );
+  const personalLink = await field.inputValue();
+  assert.match(
+    personalLink,
+    /^https:\/\/sail\.example\.invalid\/sail\/invitations\/[a-f0-9]{64}$/,
+  );
+  assert.equal(mail.length, beforeLinkMail);
+  await page
+    .context()
+    .grantPermissions(["clipboard-read", "clipboard-write"], { origin });
+  await friend.getByRole("button", { name: "Copy link", exact: true }).click();
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    personalLink,
+  );
+  await page.goto(origin + new URL(personalLink).pathname);
+  await page.getByRole("button", { name: /Accept/ }).click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "accepted" })
+    .first()
+    .waitFor();
   await page.setViewportSize({ width: 375, height: 900 });
   await page.goto(origin + "/sail/manage/" + id);
   await page.getByRole("form", { name: "Voyage editor" }).waitFor();
@@ -304,7 +367,7 @@ try {
   });
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: actual Sail forms/actions/store create a private voyage, publish safely, add crew/passengers without sending automatically, deliver synthetic invitations, accept/reconfirm a changed plan, show role-specific guidance, decline/cancel access, submit a private enquiry and fit a mobile viewport. No live SMTP or Auth.js/Vercel/Neon acceptance.",
+    "PASS: actual Sail forms/actions/store create a private voyage, publish safely, add crew/passengers without sending automatically, deliver synthetic invitations, accept/reconfirm a changed plan, show role-specific guidance, decline/cancel access, submit a private enquiry, create/copy an email-free personal link and accept it, and fit a mobile viewport. No live SMTP or Auth.js/Vercel/Neon acceptance.",
   );
 } finally {
   await browser?.close();

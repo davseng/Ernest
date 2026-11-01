@@ -940,3 +940,12 @@
     transform: none;
   }
 }
+
+.sail-people li {
+  flex-wrap: wrap;
+}
+.sail-person-link {
+  flex-basis: 100%;
+  width: 100%;
+  min-width: 0;
+}
