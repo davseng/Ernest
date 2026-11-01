@@ -184,3 +184,23 @@ No schema, authentication, notification routing or availability behavior changed
 Validation: all 167 tests, five browser suites, lint (two existing warnings),
 TypeScript, production build and whitespace checks passed. Preview-only release;
 Production remains unchanged pending its phase2 rollout.
+
+## Production rollout verified
+
+The owner explicitly requested production promotion and supplied successful 031
+verification for Production, applied 2026-11-01 20:16:32.595581+00: neondb/public,
+both tables, all six expected triggers, and matching column types/nullability.
+Both Preview and Production prerequisites are now satisfied. Release application
+commit c403f44 plus this documentation-only note; it includes the owner-reviewed
+planning refinements and American English pass. All prior 167 tests, five browser
+suites, lint/typecheck/build/diff checks passed with no subsequent runtime edits.
+Retain prior Production SHA 97e57c22b3c4cd63271f54a0210f4907fa14549c as the code
+rollback point. No live SQL, record copies, DNS changes or messages are sent by
+this promotion. Wait for Vercel Production Ready before live acceptance.
+
+Notification enablement remains environment configuration, not inferred from
+schema success: SAIL_NOTIFICATIONS_ENABLED=true, SAIL_NOTIFICATION_EMAIL set to
+the agreed owner recipient, existing working SAIL_EMAIL_ENABLED/SMTP settings,
+and a Production SAIL_BASE_URL of https://sailfarbetter.com. Existing Production
+trip content remains separate from Preview; set real remaining spaces in the
+Production editor. Guest invitation URLs and auth boundaries remain unchanged.
